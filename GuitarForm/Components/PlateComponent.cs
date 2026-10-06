@@ -67,7 +67,7 @@ namespace GuitarForm.Components
             pManager.AddLineParameter("Construction Lines", "CL", "Construction lines for the plate", GH_ParamAccess.list);
             pManager.AddCircleParameter("Outline Radii", "OR", "Circles for the upper bout primary and secondary, waist, and lower bout primary and secondary radii, right side then left side for each", GH_ParamAccess.list);
             pManager.AddArcParameter("Outline Arcs", "OA", "Shoulder arcs from the heel flat ends to the upper bout radii, right side then left side", GH_ParamAccess.list);
-            pManager.AddLineParameter("Outline Lines", "OL", "Straight parts of the final body outline (the heel flat)", GH_ParamAccess.list);
+            pManager.AddLineParameter("Outline Lines", "OL", "Straight parts of the final body outline: the heel flat, then the waist tangent lines (upper bout right, left, lower bout right, left)", GH_ParamAccess.list);
         }
 
         protected override void BeforeSolveInstance()
@@ -119,6 +119,37 @@ namespace GuitarForm.Components
                 $"Reduce the {inputName}, or adjust the waist radius, width or offset.");
             return false;
         }
+
+        // Straight outline line from a bout secondary circle to the waist circle on the right side. It is the internal
+        // (crossing) tangent: it touches the bout circle on its outer side and the waist circle on its inner side, so
+        // the two circles sit on opposite sides of it. Returns null once the circles touch (the line has shrunk to a
+        // point) or overlap.
+        static Line? WaistTangentLine(Circle bout, Circle waist, double tolerance)
+        {
+            Vector3d toWaist = waist.Center - bout.Center;
+            double distance = toWaist.Length;
+            double radiusSum = bout.Radius + waist.Radius;
+            if (distance - radiusSum <= tolerance) return null;
+
+            toWaist.Unitize();
+            double angle = Math.Acos(radiusSum / distance);
+
+            // Of the two internal tangents, take the one touching the bout circle further from the body centre.
+            Line? best = null;
+            foreach (double sign in new[] { 1.0, -1.0 })
+            {
+                var direction = toWaist;
+                direction.Rotate(sign * angle, Vector3d.ZAxis);
+                var boutPoint = bout.Center + direction * bout.Radius;
+                var waistPoint = waist.Center - direction * waist.Radius;
+                if (!best.HasValue || boutPoint.X > best.Value.From.X)
+                    best = new Line(boutPoint, waistPoint);
+            }
+            return best;
+        }
+
+        static Line MirrorX(Line line) =>
+            new Line(new Point3d(-line.From.X, line.From.Y, 0), new Point3d(-line.To.X, line.To.Y, 0));
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
@@ -254,6 +285,8 @@ namespace GuitarForm.Components
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Lower bout width, offset and primary radius are all needed to draw the lower bout center line.");
             }
 
+            // Waist tangent lines: final outline from each bout secondary circle to the waist circle, right then left.
+            var waistTangents = new List<Line>();
             if (waistCircle.HasValue)
             {
                 if (ubSecondary.HasValue &&
@@ -262,6 +295,15 @@ namespace GuitarForm.Components
                 if (lbSecondary.HasValue &&
                     !CheckSecondaryClearsWaist(lbSecondary.Value, waistCircle.Value, "Lower bout", "lower bout secondary offset"))
                     return;
+
+                foreach (var secondary in new[] { ubSecondary, lbSecondary })
+                {
+                    if (!secondary.HasValue) continue;
+                    var tangent = WaistTangentLine(secondary.Value, waistCircle.Value, DocumentTolerance());
+                    if (!tangent.HasValue) continue;
+                    waistTangents.Add(tangent.Value);
+                    waistTangents.Add(MirrorX(tangent.Value));
+                }
             }
 
             // Heel flat: horizontal line at the top of the body, Heel Width long. When the upper bout circle tops are level
@@ -341,6 +383,8 @@ namespace GuitarForm.Components
                 lines.Add(new Line(new Point3d(heelHalf, length - markHalf, 0), new Point3d(heelHalf, length + markHalf, 0)));
                 lines.Add(new Line(new Point3d(-heelHalf, length - markHalf, 0), new Point3d(-heelHalf, length + markHalf, 0)));
             }
+
+            outlineLines.AddRange(waistTangents);
 
             _constructionLines.AddRange(lines);
             _outlineCircles.AddRange(circles);

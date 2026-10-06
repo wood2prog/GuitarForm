@@ -68,7 +68,7 @@ Construction geometry (construction lines and outline radii) is previewed **soli
 | Output | Construction Lines (`CL`) | Lines (list) | Construction lines for the plate (see below). |
 | Output | Outline Radii (`OR`) | Circles (list) | Circles for the body outline radii (see below). |
 | Output | Outline Arcs (`OA`) | Arcs (list) | Shoulder arcs from the heel flat to the upper bout radii (see below). |
-| Output | Outline Lines (`OL`) | Lines (list) | Straight parts of the final outline. Currently the heel flat (see below). |
+| Output | Outline Lines (`OL`) | Lines (list) | Straight parts of the final outline: the heel flat, then the waist tangent lines (see below). |
 
 The construction lines are output in this order:
 
@@ -99,6 +99,12 @@ The outline radii are drawn as full circles, a mirrored pair for each region. Th
 
 A secondary offset can't be negative. A secondary circle also can't overlap the waist circle on the same side, because the bout curve has to meet the waist curve tangentially. They may touch, but if they overlap, the component fails with an error and outputs nothing.
 
+**Waist tangent lines** (on Outline Lines): a straight line from each bout secondary circle to the waist circle on the same side. It touches the secondary circle on its **outer** side and the waist circle on its **inner** side (the side facing the body), so the two circles sit on opposite sides of the line.
+
+- The lines come after the heel flat, in this order: upper bout right, upper bout left, lower bout right, lower bout left.
+- A bout's pair is drawn when its secondary offset and Waist Radius are both connected.
+- As the secondary circle grows toward the waist circle, the line shortens. It disappears once the circles touch, and the component fails with an error once they overlap.
+
 The outline radii circles are construction geometry and are drawn red.
 
 **Quick test:** put a **Plate** component on the canvas and connect **Number Sliders** with these values:
@@ -111,9 +117,9 @@ The outline radii circles are construction geometry and are drawn red.
 | LbW, LbO, LbR | 380, 10, 120 | Lower bout line 380 wide at y = 130. Circles of radius 120 centred at x = ±70. |
 | HW | 56 | Heel flat from x = −28 to 28 at y = 600, with marks at x = ±28. Shoulder arcs of radius 116.9 run from (±28, 600) to about (±111.0, 565.4) on the upper bout circles. |
 | UbO | change to 0 | The shoulder arcs disappear and the heel flat lengthens to run from x = −40 to 40. |
-| UbSO | 30 | Upper bout secondary circles of radius 130 centred at x = ±10, with outer edges still at x = ±140. |
-| LbSO | 40 | Lower bout secondary circles of radius 160 centred at x = ±30, with outer edges still at x = ±190. |
-| LbSO | change to 70 | Error: the lower bout secondary circle overlaps the waist circle. With these values, the most LbSO can be is about 61.4. |
+| UbSO | 30 | Upper bout secondary circles of radius 130 centred at x = ±10, with outer edges still at x = ±140. A waist tangent line runs from about (±139.3, 486.4) on each upper secondary circle to (±120.3, 306.3) on the waist circle. |
+| LbSO | 40 | Lower bout secondary circles of radius 160 centred at x = ±30, with outer edges still at x = ±190. A waist tangent line runs from about (±161.7, 220.8) on each lower secondary circle to (±130.6, 265.9) on the waist circle. |
+| LbSO | change to 70 | Error: the lower bout secondary circle overlaps the waist circle. With these values, the most LbSO can be is about 61.4. Just below that, the lower waist tangent lines become very short. |
 
 ## Troubleshooting
 
