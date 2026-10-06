@@ -19,6 +19,7 @@ namespace GuitarForm.Components
         readonly List<Line> _constructionLines = new List<Line>();
         readonly List<Circle> _outlineCircles = new List<Circle>();
         readonly List<Arc> _outlineArcs = new List<Arc>();
+        readonly List<Line> _outlineLines = new List<Line>();
 
         public PlateComponent()
           : base("Plate", "Plate",
@@ -49,6 +50,7 @@ namespace GuitarForm.Components
             pManager.AddLineParameter("Construction Lines", "CL", "Construction lines for the plate", GH_ParamAccess.list);
             pManager.AddCircleParameter("Outline Radii", "OR", "Circles for the upper bout, waist and lower bout radii, right side then left side for each", GH_ParamAccess.list);
             pManager.AddArcParameter("Outline Arcs", "OA", "Shoulder arcs from the heel flat ends to the upper bout radii, right side then left side", GH_ParamAccess.list);
+            pManager.AddLineParameter("Outline Lines", "OL", "Straight parts of the final body outline (the heel flat)", GH_ParamAccess.list);
         }
 
         protected override void BeforeSolveInstance()
@@ -56,6 +58,7 @@ namespace GuitarForm.Components
             _constructionLines.Clear();
             _outlineCircles.Clear();
             _outlineArcs.Clear();
+            _outlineLines.Clear();
         }
 
         // Adds a circle on each side of the Y axis, centred at (±centreX, y).
@@ -196,6 +199,7 @@ namespace GuitarForm.Components
             // tangent arc runs from each end of the flat (G1 with the flat) to the upper bout circle.
             // Short vertical marks show the heel width ends.
             var arcs = new List<Arc>();
+            var outlineLines = new List<Line>();
             double heelWidth = 0;
             if (DA.GetData(10, ref heelWidth))
             {
@@ -261,7 +265,7 @@ namespace GuitarForm.Components
                     }
                 }
 
-                lines.Add(new Line(new Point3d(-flatHalf, length, 0), new Point3d(flatHalf, length, 0)));
+                outlineLines.Add(new Line(new Point3d(-flatHalf, length, 0), new Point3d(flatHalf, length, 0)));
 
                 double markHalf = HeelMarkLength / 2;
                 lines.Add(new Line(new Point3d(heelHalf, length - markHalf, 0), new Point3d(heelHalf, length + markHalf, 0)));
@@ -271,9 +275,11 @@ namespace GuitarForm.Components
             _constructionLines.AddRange(lines);
             _outlineCircles.AddRange(circles);
             _outlineArcs.AddRange(arcs);
+            _outlineLines.AddRange(outlineLines);
             DA.SetDataList(0, lines);
             DA.SetDataList(1, circles);
             DA.SetDataList(2, arcs);
+            DA.SetDataList(3, outlineLines);
         }
 
         public override BoundingBox ClippingBox
@@ -287,10 +293,14 @@ namespace GuitarForm.Components
                     box.Union(circle.BoundingBox);
                 foreach (var arc in _outlineArcs)
                     box.Union(arc.BoundingBox());
+                foreach (var line in _outlineLines)
+                    box.Union(line.BoundingBox);
                 return box;
             }
         }
 
+        // Construction geometry is drawn red; the final outline (heel flat and shoulder arcs) uses the default
+        // Grasshopper preview colour.
         public override void DrawViewportWires(IGH_PreviewArgs args)
         {
             if (Hidden || Locked) return;
@@ -299,11 +309,15 @@ namespace GuitarForm.Components
             foreach (var circle in _outlineCircles)
                 args.Display.DrawCircle(circle, ConstructionColor, 1);
             foreach (var arc in _outlineArcs)
-                args.Display.DrawArc(arc, ConstructionColor, 1);
+                args.Display.DrawArc(arc, args.WireColour, args.DefaultCurveThickness);
+            foreach (var line in _outlineLines)
+                args.Display.DrawLine(line, args.WireColour, args.DefaultCurveThickness);
         }
 
-        // Baking keeps the red colour and a solid (Continuous) linetype.
-        public override bool IsBakeCapable => _constructionLines.Count > 0 || _outlineCircles.Count > 0 || _outlineArcs.Count > 0;
+        // Baking keeps construction geometry red with a solid (Continuous) linetype; the final outline bakes with the
+        // default attributes.
+        public override bool IsBakeCapable =>
+            _constructionLines.Count > 0 || _outlineCircles.Count > 0 || _outlineArcs.Count > 0 || _outlineLines.Count > 0;
 
         public override void BakeGeometry(RhinoDoc doc, List<Guid> obj_ids)
         {
@@ -312,7 +326,8 @@ namespace GuitarForm.Components
 
         public override void BakeGeometry(RhinoDoc doc, ObjectAttributes att, List<Guid> obj_ids)
         {
-            var attributes = (att ?? doc.CreateDefaultAttributes()).Duplicate();
+            var outlineAttributes = att ?? doc.CreateDefaultAttributes();
+            var attributes = outlineAttributes.Duplicate();
             attributes.ColorSource = ObjectColorSource.ColorFromObject;
             attributes.ObjectColor = ConstructionColor;
             attributes.LinetypeSource = ObjectLinetypeSource.LinetypeFromObject;
@@ -323,7 +338,9 @@ namespace GuitarForm.Components
             foreach (var circle in _outlineCircles)
                 obj_ids.Add(doc.Objects.AddCircle(circle, attributes));
             foreach (var arc in _outlineArcs)
-                obj_ids.Add(doc.Objects.AddArc(arc, attributes));
+                obj_ids.Add(doc.Objects.AddArc(arc, outlineAttributes));
+            foreach (var line in _outlineLines)
+                obj_ids.Add(doc.Objects.AddLine(line, outlineAttributes));
         }
 
         protected override Bitmap Icon => null;

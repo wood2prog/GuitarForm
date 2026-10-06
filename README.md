@@ -46,7 +46,7 @@ The components are on the **GuitarForm** tab of the Grasshopper toolbar.
 
 The guitar is drawn **vertically**: it starts at the origin and the body length runs up the **+Y** axis. All lengths are in the Rhino document's units.
 
-Construction lines are previewed as **solid red lines**. When you bake them, they stay red with the Continuous (solid) linetype.
+Construction geometry (construction lines and outline radii) is previewed **solid red**, and bakes red with the Continuous (solid) linetype. The **final outline** (heel flat and shoulder arcs) uses the default Grasshopper preview colour, and bakes with the default attributes so it takes its layer's colour.
 
 ### Plate (GuitarForm › Body)
 
@@ -66,6 +66,7 @@ Construction lines are previewed as **solid red lines**. When you bake them, the
 | Output | Construction Lines (`CL`) | Lines (list) | Construction lines for the plate (see below). |
 | Output | Outline Radii (`OR`) | Circles (list) | Circles for the body outline radii (see below). |
 | Output | Outline Arcs (`OA`) | Arcs (list) | Shoulder arcs from the heel flat to the upper bout radii (see below). |
+| Output | Outline Lines (`OL`) | Lines (list) | Straight parts of the final outline. Currently the heel flat (see below). |
 
 The construction lines are output in this order:
 
@@ -73,10 +74,11 @@ The construction lines are output in this order:
 2. **Upper bout:** from (−UbW/2, L − UbR − UbO, 0) to (UbW/2, L − UbR − UbO, 0), a horizontal line centred on the Y axis. It's drawn only when Upper Bout Width, Upper Bout Offset and Upper Bout Primary Radius are all connected.
 3. **Waist center line:** from (−WW/2, WO, 0) to (WW/2, WO, 0), a horizontal line centred on the Y axis. It's drawn only when both Waist Width and Waist Offset are connected.
 4. **Lower bout center line:** from (−LbW/2, LbR + LbO, 0) to (LbW/2, LbR + LbO, 0), a horizontal line centred on the Y axis. It's drawn only when Lower Bout Width, Lower Bout Offset and Lower Bout Primary Radius are all connected.
-5. **Heel flat:** a horizontal line at the top of the body (y = L), from −HW/2 to HW/2. It's lengthened only when Upper Bout Offset is 0, which means the upper bout circle tops are level with the top of the body. It then runs from −(UbW/2 − UbR) to (UbW/2 − UbR), directly above the two upper bout circle centres.
-6. **Heel width marks:** two vertical lines 0.25 long (in document units) at x = ±HW/2, centred on y = L. Right mark first, then left.
+5. **Heel width marks:** two vertical lines 0.25 long (in document units) at x = ±HW/2, centred on y = L. Right mark first, then left.
 
 The heel flat and marks are drawn when Heel Width is connected. The component fails with an error and outputs nothing if the upper bout circle centres are closer together than the heel width. It also fails if Upper Bout Offset is negative, which would put the circles above the top of the body, or if the shoulder arc would meet the circle below its centre (see below).
+
+**Heel flat** (on Outline Lines): a horizontal line at the top of the body (y = L), from −HW/2 to HW/2. It's lengthened only when Upper Bout Offset is 0, which means the upper bout circle tops are level with the top of the body. It then runs from −(UbW/2 − UbR) to (UbW/2 − UbR), directly above the two upper bout circle centres.
 
 When Upper Bout Offset is more than 0, the upper bout circle tops sit below the top of the body. The heel flat then stays HW long, and a **shoulder arc** joins each end of the flat to its upper bout circle. The arcs are output on **Outline Arcs**, right side then left side:
 
@@ -91,7 +93,7 @@ The outline radii are drawn as full circles, a mirrored pair for each region. Th
 2. **Waist pair:** radius WR. Each centre is on the waist center line, one radius **outside** the width, at (±(WW/2 + WR), WO). Each circle touches the end of the waist line from outside the body. The pair is drawn when the waist line is drawn and Waist Radius is connected.
 3. **Lower bout pair:** radius LbR. Each centre is on the lower bout center line, one radius **inside** the width, at (±(LbW/2 − LbR), LbR + LbO). Each circle touches the end of the lower bout line. The pair is drawn whenever the lower bout line is drawn.
 
-Lines, circles and arcs are all previewed and baked in solid red.
+The outline radii circles are construction geometry and are drawn red.
 
 **Quick test:** put a **Plate** component on the canvas and connect **Number Sliders** with these values:
 
