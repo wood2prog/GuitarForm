@@ -561,7 +561,9 @@ namespace GuitarForm.Components
                 obj_ids.Add(doc.Objects.AddLine(line, outlineAttributes));
         }
 
-        protected override Bitmap Icon => null;
+        static readonly Bitmap PlateIcon = Icons.Load("Plate.png");
+
+        protected override Bitmap Icon => PlateIcon;
 
         public override Guid ComponentGuid => new Guid("0b87450f-df46-4399-bedc-2321bb4d748c");
     }

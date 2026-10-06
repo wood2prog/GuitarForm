@@ -16,4 +16,9 @@
     <PackageReference Include="Grasshopper" Version="8.0.23304.9001" ExcludeAssets="runtime" />
   </ItemGroup>
 
+  <!-- 24x24 component icons, loaded by file name through Icons.Load. Resources/Source holds the original artwork. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Icons\*.png" LogicalName="GuitarForm.Icons.%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>
