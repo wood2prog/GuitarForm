@@ -149,10 +149,20 @@ The outline radii circles are construction geometry and are drawn light grey.
 | (tail) | with LbO = 10 | Tail arc of radius 370, centred at (0, 370), through the origin to about (±103.6, 14.8) on the lower bout primary circles. |
 | HW | 56 | Heel flat from x = −28 to 28 at y = 600, with marks at x = ±28. Shoulder arcs of radius 116.9 run from (±28, 600) to about (±111.0, 565.4) on the upper bout circles. |
 | UbO | change to 0 | The shoulder arcs disappear and the heel flat lengthens to run from x = −40 to 40. |
-| UbSO | 30 | Upper bout secondary circles of radius 130 centred at x = ±10, with outer edges still at x = ±140. A waist tangent line runs from about (±139.3, 486.4) on each upper secondary circle to (±120.3, 306.3) on the waist circle. |
+| UbSO | 30 | Upper bout secondary circles of radius 130 centred at x = ±10, with outer edges still at x = ±140. A waist tangent line runs from about (±139.2, 481.0) on each upper secondary circle to (±120.3, 306.5) on the waist circle. |
 | LbSO | 40 | Lower bout secondary circles of radius 160 centred at x = ±30, with outer edges still at x = ±190. A waist tangent line runs from about (±161.7, 220.8) on each lower secondary circle to (±130.6, 265.9) on the waist circle. |
 | LbSO | change to 70 | Error: the lower bout secondary circle overlaps the waist circle. With these values, the most LbSO can be is about 61.4. Just below that, the lower waist tangent lines become very short. |
 | LbSO, LbO | change LbSO back to 40, and LbO to 0 | The tail arc disappears and the tail becomes a straight line from (−70, 0) to (70, 0). |
+
+## Tests
+
+The geometry is tested with NUnit and [Rhino.Testing](https://github.com/mcneel/Rhino.Testing), which loads the installed Rhino 8 into the test run, so Rhino 8 must be installed. From the repository folder:
+
+```
+dotnet test GuitarForm.Tests
+```
+
+The tests check the geometry classes (such as `PlateGeometry`) against the Quick Test values above, the error cases, and that the outline forms one closed loop. If Rhino is installed somewhere other than `C:\Program Files\Rhino 8`, change `RhinoSystemDirectory` in `GuitarForm.Tests/Rhino.Testing.Configs.xml`.
 
 ## Troubleshooting
 

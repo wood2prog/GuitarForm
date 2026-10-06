@@ -20,7 +20,8 @@ dotnet build GuitarForm/GuitarForm.csproj
 
 - This is a Rhino 8–only project. It uses the `Grasshopper` NuGet package (8.0.x, `ExcludeAssets="runtime"`), targets only `net7.0-windows` (Rhino 8's default .NET runtime), and outputs `bin/Debug/net7.0-windows/GuitarForm.gha`.
 - To load it in Grasshopper, run `GrasshopperDeveloperSettings` in Rhino and add the `bin/Debug/net7.0-windows` folder, or copy the `.gha` into `%APPDATA%\Grasshopper\Libraries`.
-- There are no automated tests. Check behaviour in Grasshopper.
+- Tests: `dotnet test GuitarForm.Tests`. They cover the geometry classes in `GuitarForm/Geometry/` (NUnit plus Rhino.Testing, which loads the installed Rhino 8; the test project targets `net8.0-windows` to match Rhino 8's current runtime). Add tests when geometry changes, and keep the README Quick Test values and the tests in agreement. Component wiring, preview and baking still need checking in Grasshopper.
+- Test classes that use RhinoCommon types need `[RhinoTestFixture]`. Don't capture RhinoCommon structs (e.g. `Point3d`) in lambdas in test code: the compiler-generated closure class makes NUnit load RhinoCommon before Rhino is set up, and no tests are found. The test project references the plug-in project and copies the `.gha` in as `GuitarForm.dll`; don't compile the geometry sources into it, for the same reason.
 
 ## Component conventions
 

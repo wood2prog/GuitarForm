@@ -30,10 +30,10 @@ Every component draws construction geometry light grey and the final outline in 
 
 ## 4. Automated tests
 
-- [ ] Add a test project (xUnit) for the geometry class.
-- [ ] Turn the README Quick Test values into tests: tail arc radius 370, shoulder arc radius 116.9, tangent line end points, the largest LbSO (about 61.4), and the error cases.
-- [ ] Check which RhinoCommon types work without Rhino running; use [Rhino.Testing](https://github.com/mcneel/Rhino.Testing) if native code is needed.
-- [ ] Update CLAUDE.md and the README with how to run the tests.
+- [x] Add a test project for the geometry class. *(NUnit, because Rhino.Testing requires it.)*
+- [x] Turn the README Quick Test values into tests: tail arc radius 370, shoulder arc radius 116.9, tangent line end points, the largest LbSO (about 61.4), and the error cases. *(This found that the README's upper waist tangent values were wrong; corrected to (±139.2, 481.0) → (±120.3, 306.5).)*
+- [x] Check which RhinoCommon types work without Rhino running; use [Rhino.Testing](https://github.com/mcneel/Rhino.Testing) if native code is needed. *(None load without Rhino, so the tests use Rhino.Testing.)*
+- [x] Update CLAUDE.md and the README with how to run the tests.
 
 ## 5. Plate decisions and polish
 
