@@ -11,6 +11,6 @@ namespace GuitarForm
         public override string Description => "Guitar designer components for Grasshopper.";
         public override Guid Id => new Guid("154dc1a5-f40f-413f-9688-0c8aa64de4f7");
         public override string AuthorName => "";
-        public override string AuthorContact => "";
+        public override string AuthorContact => "wood2prog@gmail.com";
     }
 }

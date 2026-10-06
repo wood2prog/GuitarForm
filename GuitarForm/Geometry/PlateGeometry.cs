@@ -27,14 +27,18 @@ namespace GuitarForm.Geometry
     // circle segments that join them are added last, once every point where the outline meets a circle is known.
     public sealed class PlateGeometry
     {
-        // Length of the vertical marks at each end of the heel width, centred on the top of the body.
-        public const double HeelMarkLength = 0.25;
+        // Length of the vertical marks at each end of the heel width, as a fraction of the body length, so they're visible
+        // at any scale and in any units. They're centred on the top of the body.
+        public const double HeelMarkFraction = 0.01;
 
         // Output geometry, in output order. Mirrored pairs are right side (+X) then left side (-X).
         public List<Line> ConstructionLines { get; } = new List<Line>();
         public List<Circle> OutlineRadii { get; } = new List<Circle>();
         public List<Arc> OutlineArcs { get; } = new List<Arc>();
         public List<Line> OutlineLines { get; } = new List<Line>();
+
+        // The outline arcs and lines joined into one closed curve, or null until the inputs describe a complete outline.
+        public Curve Outline { get; private set; }
 
         public List<GeometryMessage> Messages { get; } = new List<GeometryMessage>();
 
@@ -82,7 +86,23 @@ namespace GuitarForm.Geometry
             if (_tailLine.HasValue) OutlineLines.Add(_tailLine.Value);
             AddCircleSegments();
             if (_tailArc.HasValue) OutlineArcs.Add(_tailArc.Value);
+
+            JoinOutline();
             return true;
+        }
+
+        // Joins the outline arcs and lines. They only form one closed curve once every outline input is connected; until
+        // then the pieces join into several open curves and there's no Outline.
+        void JoinOutline()
+        {
+            var pieces = new List<Curve>();
+            foreach (var arc in OutlineArcs) pieces.Add(new ArcCurve(arc));
+            foreach (var line in OutlineLines) pieces.Add(new LineCurve(line));
+            if (pieces.Count == 0) return;
+
+            var joined = Curve.JoinCurves(pieces, _tolerance);
+            if (joined.Length == 1 && joined[0].IsClosed)
+                Outline = joined[0];
         }
 
         // Upper bout: horizontal line centred on the Y axis. The primary radius centre sits one radius below the top of
@@ -305,7 +325,7 @@ namespace GuitarForm.Geometry
 
             OutlineLines.Add(HorizontalLine(flatHalf, length));
 
-            double markHalf = HeelMarkLength / 2;
+            double markHalf = HeelMarkFraction * length / 2;
             ConstructionLines.Add(new Line(new Point3d(heelHalf, length - markHalf, 0), new Point3d(heelHalf, length + markHalf, 0)));
             ConstructionLines.Add(new Line(new Point3d(-heelHalf, length - markHalf, 0), new Point3d(-heelHalf, length + markHalf, 0)));
             return true;

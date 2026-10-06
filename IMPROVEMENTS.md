@@ -37,9 +37,10 @@ Every component draws construction geometry light grey and the final outline in 
 
 ## 5. Plate decisions and polish
 
-- [ ] **(decision)** `HeelMarkLength = 0.25` is in document units: visible in inches, tiny in millimetres. Keep it, scale it to the body length, or make it an input?
-- [ ] **(decision)** Also output the whole body outline as one closed, joined curve (useful for offsetting, extruding or kerfing downstream)?
-- [ ] **(decision)** Plug-in metadata in `GuitarFormInfo.cs`: author name, contact and a plug-in icon (it's currently `null`).
+- [x] **(decision)** `HeelMarkLength = 0.25` is in document units: visible in inches, tiny in millimetres. Keep it, scale it to the body length, or make it an input? *(Scaled: 1% of the body length.)*
+- [x] **(decision)** Also output the whole body outline as one closed, joined curve (useful for offsetting, extruding or kerfing downstream)? *(Yes: Outline (O) output, empty until the outline is complete.)*
+- [x] **(decision)** Plug-in metadata in `GuitarFormInfo.cs`: author name and contact. *(Contact set to the user's email; name left blank.)*
+- [ ] Plug-in icon (`GuitarFormInfo.Icon` is `null`). *(Waiting on artwork from the user, to go in `Resources/Source/`.)*
 
 ## 6. How components share data (before the second component)
 

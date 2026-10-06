@@ -37,6 +37,7 @@ namespace GuitarForm.Components
         const int OutOutlineRadii = 1;
         const int OutOutlineArcs = 2;
         const int OutOutlineLines = 3;
+        const int OutOutline = 4;
 
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
@@ -63,6 +64,7 @@ namespace GuitarForm.Components
             pManager.AddCircleParameter("Outline Radii", "OR", "Circles for the upper bout primary and secondary, waist, and lower bout primary and secondary radii, right side then left side for each", GH_ParamAccess.list);
             pManager.AddArcParameter("Outline Arcs", "OA", "Final outline arcs, right then left for each: the shoulder arcs, the upper bout primary and secondary, waist, and lower bout secondary and primary circle segments, then the tail arc", GH_ParamAccess.list);
             pManager.AddLineParameter("Outline Lines", "OL", "Straight parts of the final body outline: the heel flat, the waist tangent lines (upper bout right, left, lower bout right, left), then the straight tail", GH_ParamAccess.list);
+            pManager.AddCurveParameter("Outline", "O", "The whole body outline as one closed curve: the outline arcs and lines joined. Empty until every input needed for a complete outline is connected", GH_ParamAccess.item);
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
@@ -101,6 +103,9 @@ namespace GuitarForm.Components
             DA.SetDataList(OutOutlineRadii, plate.OutlineRadii);
             DA.SetDataList(OutOutlineArcs, plate.OutlineArcs);
             DA.SetDataList(OutOutlineLines, plate.OutlineLines);
+            // Not previewed or baked separately: it's the same curves as the outline arcs and lines.
+            if (plate.Outline != null)
+                DA.SetData(OutOutline, plate.Outline);
         }
 
         static readonly Bitmap PlateIcon = Icons.Load("Plate.png");

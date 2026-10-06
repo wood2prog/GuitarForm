@@ -65,8 +65,9 @@ namespace GuitarForm.Tests
             AssertPoint(lines[2].To, 120, 300);
             AssertPoint(lines[3].From, -190, 130); // lower bout
             AssertPoint(lines[3].To, 190, 130);
-            AssertPoint(lines[4].From, 28, 600 - PlateGeometry.HeelMarkLength / 2); // heel marks, right then left
-            AssertPoint(lines[5].From, -28, 600 - PlateGeometry.HeelMarkLength / 2);
+            AssertPoint(lines[4].From, 28, 597); // heel marks, right then left: 1% of the body length, centred on y = L
+            AssertPoint(lines[4].To, 28, 603);
+            AssertPoint(lines[5].From, -28, 597);
         }
 
         [Test]
@@ -177,6 +178,20 @@ namespace GuitarForm.Tests
                     if (other.DistanceTo(end) < Tolerance) meeting++;
                 Assert.That(meeting, Is.EqualTo(2), $"pieces meeting at {end}");
             }
+
+            Assert.That(plate.Outline, Is.Not.Null, "joined outline");
+            Assert.That(plate.Outline.IsClosed, Is.True);
+        }
+
+        [Test]
+        public void Outline_IsEmptyUntilTheOutlineIsComplete()
+        {
+            // Without the waist radius there are no waist tangent lines or waist segment, so the outline has gaps.
+            var plate = Solve(QuickTest with { WaistRadius = null });
+
+            Assert.That(plate.Failed, Is.False);
+            Assert.That(plate.OutlineArcs, Is.Not.Empty);
+            Assert.That(plate.Outline, Is.Null);
         }
 
         [Test]

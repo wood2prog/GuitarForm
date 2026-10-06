@@ -73,6 +73,7 @@ Construction geometry (construction lines, heel width marks and outline radii) i
 | Output | Outline Radii (`OR`) | Circles (list) | Circles for the body outline radii (see below). |
 | Output | Outline Arcs (`OA`) | Arcs (list) | Final outline arcs: the shoulder arcs, the bout and waist circle segments, then the tail arc (see below). |
 | Output | Outline Lines (`OL`) | Lines (list) | Straight parts of the final outline: the heel flat, the waist tangent lines, then the straight tail (see below). |
+| Output | Outline (`O`) | Curve | The whole body outline as one closed curve: Outline Arcs and Outline Lines joined. It's empty until every input needed for a complete outline is connected. It isn't previewed or baked separately, because it's the same curves as Outline Arcs and Outline Lines. |
 
 The construction lines are output in this order:
 
@@ -80,7 +81,7 @@ The construction lines are output in this order:
 2. **Upper bout:** from (−UbW/2, L − UbR − UbO, 0) to (UbW/2, L − UbR − UbO, 0), a horizontal line centred on the Y axis. It's drawn only when Upper Bout Width, Upper Bout Offset and Upper Bout Primary Radius are all connected.
 3. **Waist center line:** from (−WW/2, WO, 0) to (WW/2, WO, 0), a horizontal line centred on the Y axis. It's drawn only when both Waist Width and Waist Offset are connected.
 4. **Lower bout center line:** from (−LbW/2, LbR + LbO, 0) to (LbW/2, LbR + LbO, 0), a horizontal line centred on the Y axis. It's drawn only when Lower Bout Width, Lower Bout Offset and Lower Bout Primary Radius are all connected.
-5. **Heel width marks:** two vertical lines 0.25 long (in document units) at x = ±HW/2, centred on y = L. Right mark first, then left.
+5. **Heel width marks:** two vertical lines L/100 long (1% of the body length) at x = ±HW/2, centred on y = L. Right mark first, then left.
 
 The heel flat and marks are drawn when Heel Width is connected. The component fails with an error and outputs nothing if the upper bout circle centres are closer together than the heel width. It also fails if Upper Bout Offset is negative, which would put the circles above the top of the body, or if the shoulder arc would meet the circle below its centre (see below).
 
