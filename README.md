@@ -54,19 +54,23 @@ Construction lines are previewed as **solid red lines**. When you bake them, the
 |---|---|---|---|
 | Input | Body Length (`L`) | Number | Overall length of the guitar body. Must be greater than 0. |
 | Input | Upper Bout Width (`UbW`) | Number | *Optional.* Width of the upper bout. Must be greater than 0. |
-| Input | Upper Bout Position (`UbP`) | Number | *Optional.* Offset of the upper bout line down Y from the upper bout primary radius centre. A warning appears if the line falls outside 0–L. |
+| Input | Upper Bout Offset (`UbO`) | Number | *Optional.* Offset of the upper bout line down Y from the upper bout primary radius centre. A warning appears if the line falls outside 0–L. |
 | Input | Upper Bout Primary Radius (`UbR`) | Number | *Optional.* Primary radius of the upper bout. Must be greater than 0. Its centre sits one radius below the top of the body length line. For now it's used only to place the upper bout line. |
 | Input | Waist Width (`WW`) | Number | *Optional.* Width of the body at the waist. Must be greater than 0. |
 | Input | Waist Offset (`WO`) | Number | *Optional.* Distance of the waist center line up Y from the tail end (the origin). A warning appears if it's outside 0–L. |
+| Input | Lower Bout Width (`LbW`) | Number | *Optional.* Width of the lower bout. Must be greater than 0. |
+| Input | Lower Bout Offset (`LbO`) | Number | *Optional.* Offset of the lower bout center line up Y from the lower bout primary radius centre. A warning appears if the line falls outside 0–L. |
+| Input | Lower Bout Primary Radius (`LbR`) | Number | *Optional.* Primary radius of the lower bout. Must be greater than 0. Its centre sits one radius above the tail end (the origin). For now it's used only to place the lower bout center line. |
 | Output | Construction Lines (`CL`) | Lines (list) | Construction lines for the plate (see below). |
 
 The construction lines are output in this order:
 
 1. **Centerline:** from (0, 0, 0) to (0, L, 0).
-2. **Upper bout:** from (−UbW/2, L − UbR − UbP, 0) to (UbW/2, L − UbR − UbP, 0), a horizontal line centred on the Y axis. It's drawn only when Upper Bout Width, Upper Bout Position and Upper Bout Primary Radius are all connected.
+2. **Upper bout:** from (−UbW/2, L − UbR − UbO, 0) to (UbW/2, L − UbR − UbO, 0), a horizontal line centred on the Y axis. It's drawn only when Upper Bout Width, Upper Bout Offset and Upper Bout Primary Radius are all connected.
 3. **Waist center line:** from (−WW/2, WO, 0) to (WW/2, WO, 0), a horizontal line centred on the Y axis. It's drawn only when both Waist Width and Waist Offset are connected.
+4. **Lower bout center line:** from (−LbW/2, LbR + LbO, 0) to (LbW/2, LbR + LbO, 0), a horizontal line centred on the Y axis. It's drawn only when Lower Bout Width, Lower Bout Offset and Lower Bout Primary Radius are all connected.
 
-**Quick test:** put a **Plate** component on the canvas and connect a **Number Slider** to **L**, for example 0–600. A solid red line should appear in the Rhino viewport, running up from the origin. Then connect sliders to **UbW** (e.g. 280), **UbP** (e.g. 20) and **UbR** (e.g. 150). A horizontal red line 280 wide should cross the centerline 170 below its top end (radius 150 + offset 20). Finally connect **WW** (e.g. 240) and **WO** (e.g. 300). A 240-wide line should cross the centerline 300 up from the origin.
+**Quick test:** put a **Plate** component on the canvas and connect a **Number Slider** to **L**, for example 0–600. A solid red line should appear in the Rhino viewport, running up from the origin. Then connect sliders to **UbW** (e.g. 280), **UbO** (e.g. 20) and **UbR** (e.g. 150). A horizontal red line 280 wide should cross the centerline 170 below its top end (radius 150 + offset 20). Finally connect **WW** (e.g. 240) and **WO** (e.g. 300). A 240-wide line should cross the centerline 300 up from the origin. Then connect **LbW** (e.g. 380), **LbO** (e.g. 10) and **LbR** (e.g. 190). A 380-wide line should cross the centerline 200 up from the origin (radius 190 + offset 10).
 
 ## Troubleshooting
 

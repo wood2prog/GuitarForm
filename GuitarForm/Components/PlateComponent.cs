@@ -26,10 +26,13 @@ namespace GuitarForm.Components
         {
             pManager.AddNumberParameter("Body Length", "L", "Overall length of the guitar body", GH_ParamAccess.item);
             pManager.AddNumberParameter("Upper Bout Width", "UbW", "Width of the upper bout", GH_ParamAccess.item);
-            pManager.AddNumberParameter("Upper Bout Position", "UbP", "Offset of the upper bout line down the Y axis from the upper bout primary radius centre", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Upper Bout Offset", "UbO", "Offset of the upper bout line down the Y axis from the upper bout primary radius centre", GH_ParamAccess.item);
             pManager.AddNumberParameter("Upper Bout Primary Radius", "UbR", "Primary radius of the upper bout. Its centre sits one radius below the top of the body length line", GH_ParamAccess.item);
             pManager.AddNumberParameter("Waist Width", "WW", "Width of the body at the waist", GH_ParamAccess.item);
             pManager.AddNumberParameter("Waist Offset", "WO", "Distance of the waist center line up the Y axis from the tail end (the origin)", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Lower Bout Width", "LbW", "Width of the lower bout", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Lower Bout Offset", "LbO", "Offset of the lower bout center line up the Y axis from the lower bout primary radius centre", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Lower Bout Primary Radius", "LbR", "Primary radius of the lower bout. Its centre sits one radius above the tail end (the origin)", GH_ParamAccess.item);
             for (int i = 1; i < pManager.ParamCount; i++)
                 pManager[i].Optional = true;
         }
@@ -62,12 +65,12 @@ namespace GuitarForm.Components
             };
 
             // Upper bout: horizontal line centred on the Y axis. The primary radius centre sits one radius below the
-            // top of the body; Upper Bout Position offsets the line down from there.
-            double ubWidth = 0, ubPosition = 0, ubRadius = 0;
+            // top of the body; Upper Bout Offset moves the line down from there.
+            double ubWidth = 0, ubOffset = 0, ubRadius = 0;
             bool hasUbWidth = DA.GetData(1, ref ubWidth);
-            bool hasUbPosition = DA.GetData(2, ref ubPosition);
+            bool hasUbOffset = DA.GetData(2, ref ubOffset);
             bool hasUbRadius = DA.GetData(3, ref ubRadius);
-            if (hasUbWidth && hasUbPosition && hasUbRadius)
+            if (hasUbWidth && hasUbOffset && hasUbRadius)
             {
                 if (ubWidth <= 0)
                 {
@@ -79,16 +82,16 @@ namespace GuitarForm.Components
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Upper bout primary radius must be greater than zero.");
                     return;
                 }
-                double ubY = length - ubRadius - ubPosition;
+                double ubY = length - ubRadius - ubOffset;
                 if (ubY < 0 || ubY > length)
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Upper bout line is outside the body length.");
 
                 double half = ubWidth / 2;
                 lines.Add(new Line(new Point3d(-half, ubY, 0), new Point3d(half, ubY, 0)));
             }
-            else if (hasUbWidth || hasUbPosition || hasUbRadius)
+            else if (hasUbWidth || hasUbOffset || hasUbRadius)
             {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Upper bout width, position and primary radius are all needed to draw the upper bout line.");
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Upper bout width, offset and primary radius are all needed to draw the upper bout line.");
             }
 
             // Waist: horizontal center line centred on the Y axis, Waist Offset up from the tail end.
@@ -111,6 +114,36 @@ namespace GuitarForm.Components
             else if (hasWaistWidth || hasWaistOffset)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Waist width and waist offset are both needed to draw the waist center line.");
+            }
+
+            // Lower bout: horizontal center line centred on the Y axis. The primary radius centre sits one radius above
+            // the tail end; Lower Bout Offset moves the line up from there.
+            double lbWidth = 0, lbOffset = 0, lbRadius = 0;
+            bool hasLbWidth = DA.GetData(6, ref lbWidth);
+            bool hasLbOffset = DA.GetData(7, ref lbOffset);
+            bool hasLbRadius = DA.GetData(8, ref lbRadius);
+            if (hasLbWidth && hasLbOffset && hasLbRadius)
+            {
+                if (lbWidth <= 0)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Lower bout width must be greater than zero.");
+                    return;
+                }
+                if (lbRadius <= 0)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Lower bout primary radius must be greater than zero.");
+                    return;
+                }
+                double lbY = lbRadius + lbOffset;
+                if (lbY < 0 || lbY > length)
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Lower bout center line is outside the body length.");
+
+                double half = lbWidth / 2;
+                lines.Add(new Line(new Point3d(-half, lbY, 0), new Point3d(half, lbY, 0)));
+            }
+            else if (hasLbWidth || hasLbOffset || hasLbRadius)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Lower bout width, offset and primary radius are all needed to draw the lower bout center line.");
             }
 
             _constructionLines.AddRange(lines);
