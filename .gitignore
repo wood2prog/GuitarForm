@@ -12,3 +12,6 @@ obj/
 *.3dmbak
 *.rhl
 *.ghbak
+
+# Local Grasshopper test files
+Test File.gh
