@@ -53,14 +53,14 @@ Construction lines are previewed as **solid red lines**. When you bake them, the
 | | Name | Type | Description |
 |---|---|---|---|
 | Input | Body Length (`L`) | Number | Overall length of the guitar body. Must be greater than 0. |
-| Input | Ub-Width (`UbW`) | Number | *Optional.* Width of the upper bout. Must be greater than 0. |
-| Input | Ub-Position (`UbP`) | Number | *Optional.* Distance of the upper bout line from the **top** of the body length line, measured down Y. A warning appears if it's outside 0–L. |
+| Input | Upper Bout Width (`UbW`) | Number | *Optional.* Width of the upper bout. Must be greater than 0. |
+| Input | Upper Bout Position (`UbP`) | Number | *Optional.* Distance of the upper bout line from the **top** of the body length line, measured down Y. A warning appears if it's outside 0–L. |
 | Output | Construction Lines (`CL`) | Lines (list) | Construction lines for the plate (see below). |
 
 The construction lines are output in this order:
 
 1. **Centerline:** from (0, 0, 0) to (0, L, 0).
-2. **Upper bout:** from (−UbW/2, L − UbP, 0) to (UbW/2, L − UbP, 0), a horizontal line centred on the Y axis. It's drawn only when both Ub-Width and Ub-Position are connected.
+2. **Upper bout:** from (−UbW/2, L − UbP, 0) to (UbW/2, L − UbP, 0), a horizontal line centred on the Y axis. It's drawn only when both Upper Bout Width and Upper Bout Position are connected.
 
 **Quick test:** put a **Plate** component on the canvas and connect a **Number Slider** to **L**, for example 0–600. A solid red line should appear in the Rhino viewport, running up from the origin. Then connect sliders to **UbW** (e.g. 280) and **UbP** (e.g. 150). A horizontal red line should cross the centerline 150 below its top end.
 

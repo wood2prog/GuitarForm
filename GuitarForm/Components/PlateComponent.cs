@@ -25,8 +25,8 @@ namespace GuitarForm.Components
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
             pManager.AddNumberParameter("Body Length", "L", "Overall length of the guitar body", GH_ParamAccess.item);
-            pManager.AddNumberParameter("Ub-Width", "UbW", "Width of the upper bout", GH_ParamAccess.item);
-            pManager.AddNumberParameter("Ub-Position", "UbP", "Distance of the upper bout line from the top of the body length line, measured down the Y axis", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Upper Bout Width", "UbW", "Width of the upper bout", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Upper Bout Position", "UbP", "Distance of the upper bout line from the top of the body length line, measured down the Y axis", GH_ParamAccess.item);
             pManager[1].Optional = true;
             pManager[2].Optional = true;
         }
@@ -58,7 +58,7 @@ namespace GuitarForm.Components
                 new Line(Point3d.Origin, new Point3d(0, length, 0))
             };
 
-            // Upper bout: horizontal line centred on the Y axis, Ub-Position below the top of the body.
+            // Upper bout: horizontal line centred on the Y axis, Upper Bout Position below the top of the body.
             double ubWidth = 0, ubPosition = 0;
             bool hasUbWidth = DA.GetData(1, ref ubWidth);
             bool hasUbPosition = DA.GetData(2, ref ubPosition);
@@ -66,11 +66,11 @@ namespace GuitarForm.Components
             {
                 if (ubWidth <= 0)
                 {
-                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Ub-Width must be greater than zero.");
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Upper bout width must be greater than zero.");
                     return;
                 }
                 if (ubPosition < 0 || ubPosition > length)
-                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Ub-Position is outside the body length.");
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Upper bout position is outside the body length.");
 
                 double half = ubWidth / 2;
                 double ubY = length - ubPosition;
@@ -78,7 +78,7 @@ namespace GuitarForm.Components
             }
             else if (hasUbWidth || hasUbPosition)
             {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Ub-Width and Ub-Position are both needed to draw the upper bout line.");
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Upper bout width and upper bout position are both needed to draw the upper bout line.");
             }
 
             _constructionLines.AddRange(lines);
