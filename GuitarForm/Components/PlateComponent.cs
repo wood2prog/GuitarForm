@@ -1,30 +1,21 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using Grasshopper.Kernel;
-using Rhino;
-using Rhino.DocObjects;
 using Rhino.Geometry;
 
 namespace GuitarForm.Components
 {
-    public class PlateComponent : GH_Component
+    public class PlateComponent : GuitarFormComponent
     {
-        // Construction geometry is drawn in light grey so the final outline stands out.
-        static readonly Color ConstructionColor = Color.FromArgb(200, 200, 200);
-
         // Length of the vertical marks at each end of the heel width, centred on the top of the body.
         const double HeelMarkLength = 0.25;
-
-        readonly List<Line> _constructionLines = new List<Line>();
-        readonly List<Circle> _outlineCircles = new List<Circle>();
-        readonly List<Arc> _outlineArcs = new List<Arc>();
-        readonly List<Line> _outlineLines = new List<Line>();
 
         public PlateComponent()
           : base("Plate", "Plate",
               "Guitar body plate. Outputs construction lines driven by the body dimensions.",
-              "GuitarForm", "Body")
+              "Body")
         {
         }
 
@@ -68,14 +59,6 @@ namespace GuitarForm.Components
             pManager.AddCircleParameter("Outline Radii", "OR", "Circles for the upper bout primary and secondary, waist, and lower bout primary and secondary radii, right side then left side for each", GH_ParamAccess.list);
             pManager.AddArcParameter("Outline Arcs", "OA", "Final outline arcs, right then left for each: the shoulder arcs, the upper bout primary and secondary, waist, and lower bout secondary and primary circle segments, then the tail arc", GH_ParamAccess.list);
             pManager.AddLineParameter("Outline Lines", "OL", "Straight parts of the final body outline: the heel flat, the waist tangent lines (upper bout right, left, lower bout right, left), then the straight tail", GH_ParamAccess.list);
-        }
-
-        protected override void BeforeSolveInstance()
-        {
-            _constructionLines.Clear();
-            _outlineCircles.Clear();
-            _outlineArcs.Clear();
-            _outlineLines.Clear();
         }
 
         // Adds a circle on each side of the Y axis, centred at (±centreX, y).
@@ -490,75 +473,15 @@ namespace GuitarForm.Components
 
             if (tailArc.HasValue) arcs.Add(tailArc.Value);
 
-            _constructionLines.AddRange(lines);
-            _outlineCircles.AddRange(circles);
-            _outlineArcs.AddRange(arcs);
-            _outlineLines.AddRange(outlineLines);
+            // Construction lines and outline radii preview light grey; the outline arcs and lines are the final outline.
+            AddConstruction(lines.Select(line => new LineCurve(line)));
+            AddConstruction(circles.Select(circle => new ArcCurve(circle)));
+            AddOutline(arcs.Select(arc => new ArcCurve(arc)));
+            AddOutline(outlineLines.Select(line => new LineCurve(line)));
             DA.SetDataList(0, lines);
             DA.SetDataList(1, circles);
             DA.SetDataList(2, arcs);
             DA.SetDataList(3, outlineLines);
-        }
-
-        public override BoundingBox ClippingBox
-        {
-            get
-            {
-                var box = BoundingBox.Empty;
-                foreach (var line in _constructionLines)
-                    box.Union(line.BoundingBox);
-                foreach (var circle in _outlineCircles)
-                    box.Union(circle.BoundingBox);
-                foreach (var arc in _outlineArcs)
-                    box.Union(arc.BoundingBox());
-                foreach (var line in _outlineLines)
-                    box.Union(line.BoundingBox);
-                return box;
-            }
-        }
-
-        // Construction geometry is drawn light grey; the final outline (Outline Lines and Outline Arcs) uses the default
-        // Grasshopper preview colour.
-        public override void DrawViewportWires(IGH_PreviewArgs args)
-        {
-            if (Hidden || Locked) return;
-            foreach (var line in _constructionLines)
-                args.Display.DrawLine(line, ConstructionColor, 1);
-            foreach (var circle in _outlineCircles)
-                args.Display.DrawCircle(circle, ConstructionColor, 1);
-            foreach (var arc in _outlineArcs)
-                args.Display.DrawArc(arc, args.WireColour, args.DefaultCurveThickness);
-            foreach (var line in _outlineLines)
-                args.Display.DrawLine(line, args.WireColour, args.DefaultCurveThickness);
-        }
-
-        // Baking keeps construction geometry light grey with a solid (Continuous) linetype; the final outline bakes with the
-        // default attributes.
-        public override bool IsBakeCapable =>
-            _constructionLines.Count > 0 || _outlineCircles.Count > 0 || _outlineArcs.Count > 0 || _outlineLines.Count > 0;
-
-        public override void BakeGeometry(RhinoDoc doc, List<Guid> obj_ids)
-        {
-            BakeGeometry(doc, doc.CreateDefaultAttributes(), obj_ids);
-        }
-
-        public override void BakeGeometry(RhinoDoc doc, ObjectAttributes att, List<Guid> obj_ids)
-        {
-            var outlineAttributes = att ?? doc.CreateDefaultAttributes();
-            var attributes = outlineAttributes.Duplicate();
-            attributes.ColorSource = ObjectColorSource.ColorFromObject;
-            attributes.ObjectColor = ConstructionColor;
-            attributes.LinetypeSource = ObjectLinetypeSource.LinetypeFromObject;
-            attributes.LinetypeIndex = -1; // Continuous
-
-            foreach (var line in _constructionLines)
-                obj_ids.Add(doc.Objects.AddLine(line, attributes));
-            foreach (var circle in _outlineCircles)
-                obj_ids.Add(doc.Objects.AddCircle(circle, attributes));
-            foreach (var arc in _outlineArcs)
-                obj_ids.Add(doc.Objects.AddArc(arc, outlineAttributes));
-            foreach (var line in _outlineLines)
-                obj_ids.Add(doc.Objects.AddLine(line, outlineAttributes));
         }
 
         static readonly Bitmap PlateIcon = Icons.Load("Plate.png");

@@ -14,9 +14,9 @@ Makes the refactors below easier to check in Rhino.
 
 Every component draws construction geometry light grey and the final outline in the default preview colour (see CLAUDE.md). That code is currently in `PlateComponent` (`ClippingBox`, `DrawViewportWires`, `IsBakeCapable`, `BakeGeometry`, ~60 lines) and would be copied into each new component.
 
-- [ ] Add a `GuitarFormComponent` base class that owns the construction and outline geometry lists and does the clipping box, preview and baking.
-- [ ] Move `PlateComponent` onto it, with no change in behaviour.
-- [ ] Update the "Component conventions" in CLAUDE.md to point at the base class.
+- [x] Add a `GuitarFormComponent` base class that owns the construction and outline geometry lists and does the clipping box, preview and baking.
+- [x] Move `PlateComponent` onto it, with no change in behaviour.
+- [x] Update the "Component conventions" in CLAUDE.md to point at the base class.
 
 ## 3. Separate the Plate geometry from the component
 
