@@ -55,13 +55,15 @@ Construction lines are previewed as **solid red lines**. When you bake them, the
 | Input | Body Length (`L`) | Number | Overall length of the guitar body. Must be greater than 0. |
 | Input | Upper Bout Width (`UbW`) | Number | *Optional.* Width of the upper bout. Must be greater than 0. |
 | Input | Upper Bout Offset (`UbO`) | Number | *Optional.* Offset of the upper bout line down Y from the upper bout primary radius centre. A warning appears if the line falls outside 0–L. |
-| Input | Upper Bout Primary Radius (`UbR`) | Number | *Optional.* Primary radius of the upper bout. Must be greater than 0. Its centre sits one radius below the top of the body length line. For now it's used only to place the upper bout line. |
+| Input | Upper Bout Primary Radius (`UbR`) | Number | *Optional.* Primary radius of the upper bout. Must be greater than 0. A warning appears if it's more than half of UbW. |
+| Input | Waist Radius (`WR`) | Number | *Optional.* Radius of the waist curve. Must be greater than 0. |
 | Input | Waist Width (`WW`) | Number | *Optional.* Width of the body at the waist. Must be greater than 0. |
 | Input | Waist Offset (`WO`) | Number | *Optional.* Distance of the waist center line up Y from the tail end (the origin). A warning appears if it's outside 0–L. |
 | Input | Lower Bout Width (`LbW`) | Number | *Optional.* Width of the lower bout. Must be greater than 0. |
 | Input | Lower Bout Offset (`LbO`) | Number | *Optional.* Offset of the lower bout center line up Y from the lower bout primary radius centre. A warning appears if the line falls outside 0–L. |
-| Input | Lower Bout Primary Radius (`LbR`) | Number | *Optional.* Primary radius of the lower bout. Must be greater than 0. Its centre sits one radius above the tail end (the origin). For now it's used only to place the lower bout center line. |
+| Input | Lower Bout Primary Radius (`LbR`) | Number | *Optional.* Primary radius of the lower bout. Must be greater than 0. A warning appears if it's more than half of LbW. |
 | Output | Construction Lines (`CL`) | Lines (list) | Construction lines for the plate (see below). |
+| Output | Outline Radii (`OR`) | Circles (list) | Circles for the body outline radii (see below). |
 
 The construction lines are output in this order:
 
@@ -70,7 +72,22 @@ The construction lines are output in this order:
 3. **Waist center line:** from (−WW/2, WO, 0) to (WW/2, WO, 0), a horizontal line centred on the Y axis. It's drawn only when both Waist Width and Waist Offset are connected.
 4. **Lower bout center line:** from (−LbW/2, LbR + LbO, 0) to (LbW/2, LbR + LbO, 0), a horizontal line centred on the Y axis. It's drawn only when Lower Bout Width, Lower Bout Offset and Lower Bout Primary Radius are all connected.
 
-**Quick test:** put a **Plate** component on the canvas and connect a **Number Slider** to **L**, for example 0–600. A solid red line should appear in the Rhino viewport, running up from the origin. Then connect sliders to **UbW** (e.g. 280), **UbO** (e.g. 20) and **UbR** (e.g. 150). A horizontal red line 280 wide should cross the centerline 170 below its top end (radius 150 + offset 20). Finally connect **WW** (e.g. 240) and **WO** (e.g. 300). A 240-wide line should cross the centerline 300 up from the origin. Then connect **LbW** (e.g. 380), **LbO** (e.g. 10) and **LbR** (e.g. 190). A 380-wide line should cross the centerline 200 up from the origin (radius 190 + offset 10).
+The outline radii are drawn as full circles, a mirrored pair for each region. They're output in this order, right side (+X) then left side (−X) for each pair:
+
+1. **Upper bout pair:** radius UbR. Each centre is on the upper bout line, one radius **inside** the width, at (±(UbW/2 − UbR), L − UbR − UbO). Each circle touches the end of the upper bout line. The pair is drawn whenever the upper bout line is drawn.
+2. **Waist pair:** radius WR. Each centre is on the waist center line, one radius **outside** the width, at (±(WW/2 + WR), WO). Each circle touches the end of the waist line from outside the body. The pair is drawn when the waist line is drawn and Waist Radius is connected.
+3. **Lower bout pair:** radius LbR. Each centre is on the lower bout center line, one radius **inside** the width, at (±(LbW/2 − LbR), LbR + LbO). Each circle touches the end of the lower bout line. The pair is drawn whenever the lower bout line is drawn.
+
+Lines and circles are both previewed and baked in solid red.
+
+**Quick test:** put a **Plate** component on the canvas and connect **Number Sliders** with these values:
+
+| Input | Value | Result |
+|---|---|---|
+| L | 600 | Centerline from the origin up to y = 600. |
+| UbW, UbO, UbR | 280, 20, 100 | Upper bout line 280 wide at y = 480. Circles of radius 100 centred at x = ±40. |
+| WW, WO, WR | 240, 300, 60 | Waist line 240 wide at y = 300. Circles of radius 60 centred at x = ±180. |
+| LbW, LbO, LbR | 380, 10, 120 | Lower bout line 380 wide at y = 130. Circles of radius 120 centred at x = ±70. |
 
 ## Troubleshooting
 
