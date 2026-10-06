@@ -28,9 +28,10 @@ namespace GuitarForm.Components
             pManager.AddNumberParameter("Upper Bout Width", "UbW", "Width of the upper bout", GH_ParamAccess.item);
             pManager.AddNumberParameter("Upper Bout Position", "UbP", "Offset of the upper bout line down the Y axis from the upper bout primary radius centre", GH_ParamAccess.item);
             pManager.AddNumberParameter("Upper Bout Primary Radius", "UbR", "Primary radius of the upper bout. Its centre sits one radius below the top of the body length line", GH_ParamAccess.item);
-            pManager[1].Optional = true;
-            pManager[2].Optional = true;
-            pManager[3].Optional = true;
+            pManager.AddNumberParameter("Waist Width", "WW", "Width of the body at the waist", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Waist Offset", "WO", "Distance of the waist center line up the Y axis from the tail end (the origin)", GH_ParamAccess.item);
+            for (int i = 1; i < pManager.ParamCount; i++)
+                pManager[i].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
@@ -88,6 +89,28 @@ namespace GuitarForm.Components
             else if (hasUbWidth || hasUbPosition || hasUbRadius)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Upper bout width, position and primary radius are all needed to draw the upper bout line.");
+            }
+
+            // Waist: horizontal center line centred on the Y axis, Waist Offset up from the tail end.
+            double waistWidth = 0, waistOffset = 0;
+            bool hasWaistWidth = DA.GetData(4, ref waistWidth);
+            bool hasWaistOffset = DA.GetData(5, ref waistOffset);
+            if (hasWaistWidth && hasWaistOffset)
+            {
+                if (waistWidth <= 0)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Waist width must be greater than zero.");
+                    return;
+                }
+                if (waistOffset < 0 || waistOffset > length)
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Waist center line is outside the body length.");
+
+                double half = waistWidth / 2;
+                lines.Add(new Line(new Point3d(-half, waistOffset, 0), new Point3d(half, waistOffset, 0)));
+            }
+            else if (hasWaistWidth || hasWaistOffset)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Waist width and waist offset are both needed to draw the waist center line.");
             }
 
             _constructionLines.AddRange(lines);
