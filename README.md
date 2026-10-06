@@ -61,14 +61,14 @@ Construction geometry (construction lines and outline radii) is previewed **soli
 | Input | Waist Width (`WW`) | Number | *Optional.* Width of the body at the waist. Must be greater than 0. |
 | Input | Waist Offset (`WO`) | Number | *Optional.* Distance of the waist center line up Y from the tail end (the origin). A warning appears if it's outside 0–L. |
 | Input | Lower Bout Width (`LbW`) | Number | *Optional.* Width of the lower bout. Must be greater than 0. |
-| Input | Lower Bout Offset (`LbO`) | Number | *Optional.* Offset of the lower bout center line up Y from the lower bout primary radius centre. A warning appears if the line falls outside 0–L. |
+| Input | Lower Bout Offset (`LbO`) | Number | *Optional.* Offset of the lower bout center line up Y from the lower bout primary radius centre. A warning appears if the line falls outside 0–L. Can't be negative. |
 | Input | Lower Bout Primary Radius (`LbR`) | Number | *Optional.* Primary radius of the lower bout. Must be greater than 0. A warning appears if it's more than half of LbW. |
 | Input | Lower Bout Secondary Offset (`LbSO`) | Number | *Optional.* Same as UbSO, for the lower bout. |
 | Input | Heel Width (`HW`) | Number | *Optional.* Width of the flat at the top of the body where the heel of the neck attaches. Must be greater than 0, and no more than the distance between the upper bout circle centres. |
 | Output | Construction Lines (`CL`) | Lines (list) | Construction lines for the plate (see below). |
 | Output | Outline Radii (`OR`) | Circles (list) | Circles for the body outline radii (see below). |
-| Output | Outline Arcs (`OA`) | Arcs (list) | Shoulder arcs from the heel flat to the upper bout radii (see below). |
-| Output | Outline Lines (`OL`) | Lines (list) | Straight parts of the final outline: the heel flat, then the waist tangent lines (see below). |
+| Output | Outline Arcs (`OA`) | Arcs (list) | Final outline arcs: the shoulder arcs, then the tail arc (see below). |
+| Output | Outline Lines (`OL`) | Lines (list) | Straight parts of the final outline: the heel flat, the waist tangent lines, then the straight tail (see below). |
 
 The construction lines are output in this order:
 
@@ -105,6 +105,14 @@ A secondary offset can't be negative. A secondary circle also can't overlap the 
 - A bout's pair is drawn when its secondary offset and Waist Radius are both connected.
 - As the secondary circle grows toward the waist circle, the line shortens. It disappears once the circles touch, and the component fails with an error once they overlap.
 
+**Tail end:** joins the two lower bout primary circles across the end of the body (y = 0).
+
+- **Lower Bout Offset = 0:** the circle bottoms sit on the end of the body, so the tail is a straight line from (−(LbW/2 − LbR), 0) to (LbW/2 − LbR, 0). It's the last line on **Outline Lines**.
+- **Lower Bout Offset > 0:** the tail is one arc through the origin, tangent to both lower bout primary circles. It's the last arc on **Outline Arcs**, after the shoulder arcs.
+  - Its centre is on the Y axis at (0, ρ), and it wraps each circle, touching it from outside.
+  - Its radius is ρ = (cx² + cy² − LbR²) / (2·LbO), where cx = LbW/2 − LbR and cy = LbR + LbO.
+- **Errors:** the component fails and outputs nothing if Lower Bout Offset is negative, or if cx is less than LbO. In the second case, the arc would meet the circle above its centre and swing wider than the lower bout width.
+
 The outline radii circles are construction geometry and are drawn red.
 
 **Quick test:** put a **Plate** component on the canvas and connect **Number Sliders** with these values:
@@ -115,11 +123,13 @@ The outline radii circles are construction geometry and are drawn red.
 | UbW, UbO, UbR | 280, 5, 100 | Upper bout line 280 wide at y = 495. Circles of radius 100 centred at x = ±40. |
 | WW, WO, WR | 240, 300, 60 | Waist line 240 wide at y = 300. Circles of radius 60 centred at x = ±180. |
 | LbW, LbO, LbR | 380, 10, 120 | Lower bout line 380 wide at y = 130. Circles of radius 120 centred at x = ±70. |
+| (tail) | with LbO = 10 | Tail arc of radius 370, centred at (0, 370), through the origin to about (±103.6, 14.8) on the lower bout primary circles. |
 | HW | 56 | Heel flat from x = −28 to 28 at y = 600, with marks at x = ±28. Shoulder arcs of radius 116.9 run from (±28, 600) to about (±111.0, 565.4) on the upper bout circles. |
 | UbO | change to 0 | The shoulder arcs disappear and the heel flat lengthens to run from x = −40 to 40. |
 | UbSO | 30 | Upper bout secondary circles of radius 130 centred at x = ±10, with outer edges still at x = ±140. A waist tangent line runs from about (±139.3, 486.4) on each upper secondary circle to (±120.3, 306.3) on the waist circle. |
 | LbSO | 40 | Lower bout secondary circles of radius 160 centred at x = ±30, with outer edges still at x = ±190. A waist tangent line runs from about (±161.7, 220.8) on each lower secondary circle to (±130.6, 265.9) on the waist circle. |
 | LbSO | change to 70 | Error: the lower bout secondary circle overlaps the waist circle. With these values, the most LbSO can be is about 61.4. Just below that, the lower waist tangent lines become very short. |
+| LbSO, LbO | change LbSO back to 40, and LbO to 0 | The tail arc disappears and the tail becomes a straight line from (−70, 0) to (70, 0). |
 
 ## Troubleshooting
 

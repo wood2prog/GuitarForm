@@ -66,8 +66,8 @@ namespace GuitarForm.Components
         {
             pManager.AddLineParameter("Construction Lines", "CL", "Construction lines for the plate", GH_ParamAccess.list);
             pManager.AddCircleParameter("Outline Radii", "OR", "Circles for the upper bout primary and secondary, waist, and lower bout primary and secondary radii, right side then left side for each", GH_ParamAccess.list);
-            pManager.AddArcParameter("Outline Arcs", "OA", "Shoulder arcs from the heel flat ends to the upper bout radii, right side then left side", GH_ParamAccess.list);
-            pManager.AddLineParameter("Outline Lines", "OL", "Straight parts of the final body outline: the heel flat, then the waist tangent lines (upper bout right, left, lower bout right, left)", GH_ParamAccess.list);
+            pManager.AddArcParameter("Outline Arcs", "OA", "Final outline arcs: the shoulder arcs from the heel flat ends to the upper bout radii (right, then left), then the tail arc", GH_ParamAccess.list);
+            pManager.AddLineParameter("Outline Lines", "OL", "Straight parts of the final body outline: the heel flat, the waist tangent lines (upper bout right, left, lower bout right, left), then the straight tail", GH_ParamAccess.list);
         }
 
         protected override void BeforeSolveInstance()
@@ -250,6 +250,8 @@ namespace GuitarForm.Components
             // Lower bout: horizontal center line centred on the Y axis. The primary radius centre sits one radius above
             // the tail end; Lower Bout Offset moves the line up from there.
             double lbWidth = 0, lbOffset = 0, lbRadius = 0;
+            Line? tailLine = null;
+            Arc? tailArc = null;
             bool hasLbWidth = DA.GetData(InLbWidth, ref lbWidth);
             bool hasLbOffset = DA.GetData(InLbOffset, ref lbOffset);
             bool hasLbRadius = DA.GetData(InLbRadius, ref lbRadius);
@@ -279,6 +281,45 @@ namespace GuitarForm.Components
 
                 lbSecondary = AddSecondaryCircles(DA, InLbSecondaryOffset, "Lower bout", circles, half - lbRadius, lbY, lbRadius);
                 if (RuntimeMessageLevel == GH_RuntimeMessageLevel.Error) return;
+
+                // Tail end: when the lower bout primary circles sit on the end of the body it is a straight line between
+                // their bottoms. When they are offset upward it is one arc through the origin, tangent to both circles.
+                double tolerance = DocumentTolerance();
+                double lbCentreX = half - lbRadius;
+                if (lbOffset < -tolerance)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                        "The lower bout circles reach below the end of the body. Lower bout offset can't be negative.");
+                    return;
+                }
+                if (lbOffset <= tolerance)
+                {
+                    if (lbCentreX > tolerance)
+                        tailLine = new Line(new Point3d(-lbCentreX, 0, 0), new Point3d(lbCentreX, 0, 0));
+                }
+                else
+                {
+                    // The arc passes through the origin heading sideways, so its centre is on the Y axis above it. It
+                    // wraps each primary circle and touches it from outside: |arcCentre - circleCentre| = arcRadius - lbRadius.
+                    // The tangent point sits below the lower bout line only while lbCentreX > lbOffset.
+                    if (lbCentreX < lbOffset)
+                    {
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                            $"The tail arc meets the lower bout radius above its centre, so it would run wider than the lower bout width. " +
+                            $"The lower bout radius centre's distance from the centerline ({lbCentreX:0.###}) must be at least the lower bout offset ({lbOffset:0.###}). " +
+                            "Reduce the lower bout offset or the lower bout primary radius, or widen the lower bout.");
+                        return;
+                    }
+                    double arcRadius = (lbCentreX * lbCentreX + lbY * lbY - lbRadius * lbRadius) / (2 * lbOffset);
+
+                    var arcCentre = new Point3d(0, arcRadius, 0);
+                    var circleCentre = new Point3d(lbCentreX, lbY, 0);
+                    var toCircle = circleCentre - arcCentre;
+                    toCircle.Unitize();
+                    var tangentPoint = circleCentre + toCircle * lbRadius;
+
+                    tailArc = new Arc(new Point3d(-tangentPoint.X, tangentPoint.Y, 0), Point3d.Origin, tangentPoint);
+                }
             }
             else if (hasLbWidth || hasLbOffset || hasLbRadius)
             {
@@ -385,6 +426,8 @@ namespace GuitarForm.Components
             }
 
             outlineLines.AddRange(waistTangents);
+            if (tailLine.HasValue) outlineLines.Add(tailLine.Value);
+            if (tailArc.HasValue) arcs.Add(tailArc.Value);
 
             _constructionLines.AddRange(lines);
             _outlineCircles.AddRange(circles);
