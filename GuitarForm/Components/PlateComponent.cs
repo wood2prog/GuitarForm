@@ -28,18 +28,35 @@ namespace GuitarForm.Components
         {
         }
 
+        // Input positions. These must match the registration order in RegisterInputParams.
+        const int InBodyLength = 0;
+        const int InUbWidth = 1;
+        const int InUbOffset = 2;
+        const int InUbRadius = 3;
+        const int InUbSecondaryOffset = 4;
+        const int InWaistRadius = 5;
+        const int InWaistWidth = 6;
+        const int InWaistOffset = 7;
+        const int InLbWidth = 8;
+        const int InLbOffset = 9;
+        const int InLbRadius = 10;
+        const int InLbSecondaryOffset = 11;
+        const int InHeelWidth = 12;
+
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
             pManager.AddNumberParameter("Body Length", "L", "Overall length of the guitar body", GH_ParamAccess.item);
             pManager.AddNumberParameter("Upper Bout Width", "UbW", "Width of the upper bout", GH_ParamAccess.item);
             pManager.AddNumberParameter("Upper Bout Offset", "UbO", "Offset of the upper bout line down the Y axis from the upper bout primary radius centre", GH_ParamAccess.item);
             pManager.AddNumberParameter("Upper Bout Primary Radius", "UbR", "Primary radius of the upper bout. Its centre sits one radius below the top of the body length line", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Upper Bout Secondary Offset", "UbSO", "Moves the upper bout secondary radius centre toward the body centre and grows its radius by the same amount, keeping its outer edge on the primary radius. 0 = same as the primary radius", GH_ParamAccess.item);
             pManager.AddNumberParameter("Waist Radius", "WR", "Radius of the waist curve. Its centre sits on the waist center line, one radius outside the waist width", GH_ParamAccess.item);
             pManager.AddNumberParameter("Waist Width", "WW", "Width of the body at the waist", GH_ParamAccess.item);
             pManager.AddNumberParameter("Waist Offset", "WO", "Distance of the waist center line up the Y axis from the tail end (the origin)", GH_ParamAccess.item);
             pManager.AddNumberParameter("Lower Bout Width", "LbW", "Width of the lower bout", GH_ParamAccess.item);
             pManager.AddNumberParameter("Lower Bout Offset", "LbO", "Offset of the lower bout center line up the Y axis from the lower bout primary radius centre", GH_ParamAccess.item);
             pManager.AddNumberParameter("Lower Bout Primary Radius", "LbR", "Primary radius of the lower bout. Its centre sits one radius above the tail end (the origin)", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Lower Bout Secondary Offset", "LbSO", "Moves the lower bout secondary radius centre toward the body centre and grows its radius by the same amount, keeping its outer edge on the primary radius. 0 = same as the primary radius", GH_ParamAccess.item);
             pManager.AddNumberParameter("Heel Width", "HW", "Width of the flat at the top of the body where the heel of the neck attaches", GH_ParamAccess.item);
             for (int i = 1; i < pManager.ParamCount; i++)
                 pManager[i].Optional = true;
@@ -48,7 +65,7 @@ namespace GuitarForm.Components
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
             pManager.AddLineParameter("Construction Lines", "CL", "Construction lines for the plate", GH_ParamAccess.list);
-            pManager.AddCircleParameter("Outline Radii", "OR", "Circles for the upper bout, waist and lower bout radii, right side then left side for each", GH_ParamAccess.list);
+            pManager.AddCircleParameter("Outline Radii", "OR", "Circles for the upper bout primary and secondary, waist, and lower bout primary and secondary radii, right side then left side for each", GH_ParamAccess.list);
             pManager.AddArcParameter("Outline Arcs", "OA", "Shoulder arcs from the heel flat ends to the upper bout radii, right side then left side", GH_ParamAccess.list);
             pManager.AddLineParameter("Outline Lines", "OL", "Straight parts of the final body outline (the heel flat)", GH_ParamAccess.list);
         }
@@ -68,10 +85,45 @@ namespace GuitarForm.Components
             circles.Add(new Circle(new Point3d(-centreX, y, 0), radius));
         }
 
+        // Secondary radius: shares the primary's centre line, centre moved toward the body centre by the offset and
+        // radius grown by the same amount, so its outer edge stays on the primary's. Returns the right-side circle,
+        // or null if the offset isn't connected or is invalid (check RuntimeMessageLevel).
+        Circle? AddSecondaryCircles(IGH_DataAccess DA, int inputIndex, string boutName,
+            List<Circle> circles, double primaryCentreX, double y, double primaryRadius)
+        {
+            double secondaryOffset = 0;
+            if (!DA.GetData(inputIndex, ref secondaryOffset)) return null;
+
+            if (secondaryOffset < 0)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"{boutName} secondary offset can't be negative.");
+                return null;
+            }
+
+            double centreX = primaryCentreX - secondaryOffset;
+            double radius = primaryRadius + secondaryOffset;
+            AddMirroredCircles(circles, centreX, y, radius);
+            return new Circle(new Point3d(centreX, y, 0), radius);
+        }
+
+        // A secondary radius can't overlap the waist radius on the same side: the bout curve must meet the waist
+        // curve tangentially, so the centres must be at least the two radii apart. Returns false and adds an error
+        // if they overlap.
+        bool CheckSecondaryClearsWaist(Circle secondary, Circle waist, string boutName, string inputName)
+        {
+            double gap = secondary.Center.DistanceTo(waist.Center) - (secondary.Radius + waist.Radius);
+            if (gap >= -DocumentTolerance()) return true;
+
+            AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                $"The {boutName.ToLowerInvariant()} secondary radius overlaps the waist radius by {-gap:0.###}, which is an impossible shape. " +
+                $"Reduce the {inputName}, or adjust the waist radius, width or offset.");
+            return false;
+        }
+
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             double length = 0;
-            if (!DA.GetData(0, ref length)) return;
+            if (!DA.GetData(InBodyLength, ref length)) return;
 
             if (length <= 0)
             {
@@ -87,13 +139,14 @@ namespace GuitarForm.Components
             var circles = new List<Circle>();
             double? ubCentreX = null;
             double ubCentreY = 0;
+            Circle? ubSecondary = null, lbSecondary = null, waistCircle = null;
 
             // Upper bout: horizontal line centred on the Y axis. The primary radius centre sits one radius below the
             // top of the body; Upper Bout Offset moves the line down from there.
             double ubWidth = 0, ubOffset = 0, ubRadius = 0;
-            bool hasUbWidth = DA.GetData(1, ref ubWidth);
-            bool hasUbOffset = DA.GetData(2, ref ubOffset);
-            bool hasUbRadius = DA.GetData(3, ref ubRadius);
+            bool hasUbWidth = DA.GetData(InUbWidth, ref ubWidth);
+            bool hasUbOffset = DA.GetData(InUbOffset, ref ubOffset);
+            bool hasUbRadius = DA.GetData(InUbRadius, ref ubRadius);
             if (hasUbWidth && hasUbOffset && hasUbRadius)
             {
                 if (ubWidth <= 0)
@@ -119,6 +172,9 @@ namespace GuitarForm.Components
                 ubCentreX = half - ubRadius;
                 ubCentreY = ubY;
                 AddMirroredCircles(circles, ubCentreX.Value, ubY, ubRadius);
+
+                ubSecondary = AddSecondaryCircles(DA, InUbSecondaryOffset, "Upper bout", circles, ubCentreX.Value, ubY, ubRadius);
+                if (RuntimeMessageLevel == GH_RuntimeMessageLevel.Error) return;
             }
             else if (hasUbWidth || hasUbOffset || hasUbRadius)
             {
@@ -127,8 +183,8 @@ namespace GuitarForm.Components
 
             // Waist: horizontal center line centred on the Y axis, Waist Offset up from the tail end.
             double waistWidth = 0, waistOffset = 0;
-            bool hasWaistWidth = DA.GetData(5, ref waistWidth);
-            bool hasWaistOffset = DA.GetData(6, ref waistOffset);
+            bool hasWaistWidth = DA.GetData(InWaistWidth, ref waistWidth);
+            bool hasWaistOffset = DA.GetData(InWaistOffset, ref waistOffset);
             if (hasWaistWidth && hasWaistOffset)
             {
                 if (waistWidth <= 0)
@@ -144,7 +200,7 @@ namespace GuitarForm.Components
 
                 // Radius centre is one radius outside the width, so the circle touches the waist from outside the body.
                 double waistRadius = 0;
-                if (DA.GetData(4, ref waistRadius))
+                if (DA.GetData(InWaistRadius, ref waistRadius))
                 {
                     if (waistRadius <= 0)
                     {
@@ -152,6 +208,7 @@ namespace GuitarForm.Components
                         return;
                     }
                     AddMirroredCircles(circles, half + waistRadius, waistOffset, waistRadius);
+                    waistCircle = new Circle(new Point3d(half + waistRadius, waistOffset, 0), waistRadius);
                 }
             }
             else if (hasWaistWidth || hasWaistOffset)
@@ -162,9 +219,9 @@ namespace GuitarForm.Components
             // Lower bout: horizontal center line centred on the Y axis. The primary radius centre sits one radius above
             // the tail end; Lower Bout Offset moves the line up from there.
             double lbWidth = 0, lbOffset = 0, lbRadius = 0;
-            bool hasLbWidth = DA.GetData(7, ref lbWidth);
-            bool hasLbOffset = DA.GetData(8, ref lbOffset);
-            bool hasLbRadius = DA.GetData(9, ref lbRadius);
+            bool hasLbWidth = DA.GetData(InLbWidth, ref lbWidth);
+            bool hasLbOffset = DA.GetData(InLbOffset, ref lbOffset);
+            bool hasLbRadius = DA.GetData(InLbRadius, ref lbRadius);
             if (hasLbWidth && hasLbOffset && hasLbRadius)
             {
                 if (lbWidth <= 0)
@@ -188,10 +245,23 @@ namespace GuitarForm.Components
                 if (lbRadius > half)
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Lower bout primary radius is larger than half the lower bout width.");
                 AddMirroredCircles(circles, half - lbRadius, lbY, lbRadius);
+
+                lbSecondary = AddSecondaryCircles(DA, InLbSecondaryOffset, "Lower bout", circles, half - lbRadius, lbY, lbRadius);
+                if (RuntimeMessageLevel == GH_RuntimeMessageLevel.Error) return;
             }
             else if (hasLbWidth || hasLbOffset || hasLbRadius)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Lower bout width, offset and primary radius are all needed to draw the lower bout center line.");
+            }
+
+            if (waistCircle.HasValue)
+            {
+                if (ubSecondary.HasValue &&
+                    !CheckSecondaryClearsWaist(ubSecondary.Value, waistCircle.Value, "Upper bout", "upper bout secondary offset"))
+                    return;
+                if (lbSecondary.HasValue &&
+                    !CheckSecondaryClearsWaist(lbSecondary.Value, waistCircle.Value, "Lower bout", "lower bout secondary offset"))
+                    return;
             }
 
             // Heel flat: horizontal line at the top of the body, Heel Width long. When the upper bout circle tops are level
@@ -201,7 +271,7 @@ namespace GuitarForm.Components
             var arcs = new List<Arc>();
             var outlineLines = new List<Line>();
             double heelWidth = 0;
-            if (DA.GetData(10, ref heelWidth))
+            if (DA.GetData(InHeelWidth, ref heelWidth))
             {
                 if (heelWidth <= 0)
                 {

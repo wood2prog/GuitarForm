@@ -24,6 +24,6 @@ dotnet build GuitarForm/GuitarForm.csproj
 ## Component conventions
 
 - The guitar is drawn vertically: the origin is the starting point and the body length runs along +Y. Lengths are in the Rhino document's units, with no conversion.
-- `SolveInstance` reads inputs by index (`DA.GetData(n, ...)`). The user sometimes reorders inputs in `RegisterInputParams` by hand, so whenever the input order changes, re-check every `GetData` index and the README input table.
+- `SolveInstance` reads inputs by position through the `In*` constants above `RegisterInputParams`. The user sometimes reorders inputs by hand, so whenever the registration order changes, update those constants and the README input table to match.
 - Components live in `GuitarForm/Components/`, use category `GuitarForm`, and each needs its own permanent `ComponentGuid`. Never change an existing GUID, because saved .gh files reference it.
 - Geometry is output as plain geometry, so its display style isn't part of it. Each component draws its geometry in `DrawViewportWires` and applies colour and linetype when baking by overriding `BakeGeometry`. Construction geometry (construction lines, outline radii circles) is solid red. Final outline geometry (Outline Lines and Outline Arcs) uses the default Grasshopper preview colour (`args.WireColour`) and bakes with the default attributes. See `PlateComponent` for the pattern.

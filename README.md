@@ -56,12 +56,14 @@ Construction geometry (construction lines and outline radii) is previewed **soli
 | Input | Upper Bout Width (`UbW`) | Number | *Optional.* Width of the upper bout. Must be greater than 0. |
 | Input | Upper Bout Offset (`UbO`) | Number | *Optional.* Offset of the upper bout line down Y from the upper bout primary radius centre. A warning appears if the line falls outside 0–L. |
 | Input | Upper Bout Primary Radius (`UbR`) | Number | *Optional.* Primary radius of the upper bout. Must be greater than 0. A warning appears if it's more than half of UbW. |
+| Input | Upper Bout Secondary Offset (`UbSO`) | Number | *Optional.* Moves the upper bout secondary radius centre toward the body centre and grows its radius by the same amount. 0 = same as the primary radius. Can't be negative. |
 | Input | Waist Radius (`WR`) | Number | *Optional.* Radius of the waist curve. Must be greater than 0. |
 | Input | Waist Width (`WW`) | Number | *Optional.* Width of the body at the waist. Must be greater than 0. |
 | Input | Waist Offset (`WO`) | Number | *Optional.* Distance of the waist center line up Y from the tail end (the origin). A warning appears if it's outside 0–L. |
 | Input | Lower Bout Width (`LbW`) | Number | *Optional.* Width of the lower bout. Must be greater than 0. |
 | Input | Lower Bout Offset (`LbO`) | Number | *Optional.* Offset of the lower bout center line up Y from the lower bout primary radius centre. A warning appears if the line falls outside 0–L. |
 | Input | Lower Bout Primary Radius (`LbR`) | Number | *Optional.* Primary radius of the lower bout. Must be greater than 0. A warning appears if it's more than half of LbW. |
+| Input | Lower Bout Secondary Offset (`LbSO`) | Number | *Optional.* Same as UbSO, for the lower bout. |
 | Input | Heel Width (`HW`) | Number | *Optional.* Width of the flat at the top of the body where the heel of the neck attaches. Must be greater than 0, and no more than the distance between the upper bout circle centres. |
 | Output | Construction Lines (`CL`) | Lines (list) | Construction lines for the plate (see below). |
 | Output | Outline Radii (`OR`) | Circles (list) | Circles for the body outline radii (see below). |
@@ -89,9 +91,13 @@ When Upper Bout Offset is more than 0, the upper bout circle tops sit below the 
 
 The outline radii are drawn as full circles, a mirrored pair for each region. They're output in this order, right side (+X) then left side (−X) for each pair:
 
-1. **Upper bout pair:** radius UbR. Each centre is on the upper bout line, one radius **inside** the width, at (±(UbW/2 − UbR), L − UbR − UbO). Each circle touches the end of the upper bout line. The pair is drawn whenever the upper bout line is drawn.
-2. **Waist pair:** radius WR. Each centre is on the waist center line, one radius **outside** the width, at (±(WW/2 + WR), WO). Each circle touches the end of the waist line from outside the body. The pair is drawn when the waist line is drawn and Waist Radius is connected.
-3. **Lower bout pair:** radius LbR. Each centre is on the lower bout center line, one radius **inside** the width, at (±(LbW/2 − LbR), LbR + LbO). Each circle touches the end of the lower bout line. The pair is drawn whenever the lower bout line is drawn.
+1. **Upper bout primary pair:** radius UbR. Each centre is on the upper bout line, one radius **inside** the width, at (±(UbW/2 − UbR), L − UbR − UbO). Each circle touches the end of the upper bout line. The pair is drawn whenever the upper bout line is drawn.
+2. **Upper bout secondary pair:** radius UbR + UbSO. Each centre is on the upper bout line, UbSO closer to the body centre than the primary centre, at (±(UbW/2 − UbR − UbSO), L − UbR − UbO). Its outer edge stays locked to the primary circle's at ±UbW/2. At UbSO = 0 it's the same as the primary circle. The pair is drawn when the upper bout line is drawn and Upper Bout Secondary Offset is connected.
+3. **Waist pair:** radius WR. Each centre is on the waist center line, one radius **outside** the width, at (±(WW/2 + WR), WO). Each circle touches the end of the waist line from outside the body. The pair is drawn when the waist line is drawn and Waist Radius is connected.
+4. **Lower bout primary pair:** radius LbR. Each centre is on the lower bout center line, one radius **inside** the width, at (±(LbW/2 − LbR), LbR + LbO). Each circle touches the end of the lower bout line. The pair is drawn whenever the lower bout line is drawn.
+5. **Lower bout secondary pair:** radius LbR + LbSO. Each centre is on the lower bout center line, LbSO closer to the body centre than the primary centre, at (±(LbW/2 − LbR − LbSO), LbR + LbO). Its outer edge stays locked to the primary circle's at ±LbW/2. The pair is drawn when the lower bout line is drawn and Lower Bout Secondary Offset is connected.
+
+A secondary offset can't be negative. A secondary circle also can't overlap the waist circle on the same side, because the bout curve has to meet the waist curve tangentially. They may touch, but if they overlap, the component fails with an error and outputs nothing.
 
 The outline radii circles are construction geometry and are drawn red.
 
@@ -105,6 +111,9 @@ The outline radii circles are construction geometry and are drawn red.
 | LbW, LbO, LbR | 380, 10, 120 | Lower bout line 380 wide at y = 130. Circles of radius 120 centred at x = ±70. |
 | HW | 56 | Heel flat from x = −28 to 28 at y = 600, with marks at x = ±28. Shoulder arcs of radius 116.9 run from (±28, 600) to about (±111.0, 565.4) on the upper bout circles. |
 | UbO | change to 0 | The shoulder arcs disappear and the heel flat lengthens to run from x = −40 to 40. |
+| UbSO | 30 | Upper bout secondary circles of radius 130 centred at x = ±10, with outer edges still at x = ±140. |
+| LbSO | 40 | Lower bout secondary circles of radius 160 centred at x = ±30, with outer edges still at x = ±190. |
+| LbSO | change to 70 | Error: the lower bout secondary circle overlaps the waist circle. With these values, the most LbSO can be is about 61.4. |
 
 ## Troubleshooting
 
