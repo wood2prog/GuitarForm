@@ -1,0 +1,14 @@
+# Build output
+bin/
+obj/
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Rhino / Grasshopper backups
+*.3dmbak
+*.rhl
+*.ghbak
