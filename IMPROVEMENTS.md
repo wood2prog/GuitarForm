@@ -22,11 +22,11 @@ Every component draws construction geometry light grey and the final outline in 
 
 `PlateComponent.cs` is 570 lines, and `SolveInstance` alone is about 325 of them. It mixes reading inputs, validating them, the geometry maths and setting outputs.
 
-- [ ] Move the geometry into a plain class (e.g. `Geometry/PlateGeometry.cs`) that takes the dimensions and returns the construction lines, circles, outline arcs and outline lines, plus errors, warnings and remarks.
-- [ ] The component then reads inputs, calls it, reports its messages and sets outputs.
-- [ ] Add `Out*` constants for output positions, the same way inputs use `In*` constants (the code currently calls `SetDataList(0..3, …)`).
-- [ ] Replace the repeated "must be greater than zero" checks (about 7) with one helper.
-- [ ] Make tolerance use consistent: `AddMirroredSegment` uses a hard-coded `1e-9`, and the rest of the code uses `DocumentTolerance()`.
+- [x] Move the geometry into a plain class (e.g. `Geometry/PlateGeometry.cs`) that takes the dimensions and returns the construction lines, circles, outline arcs and outline lines, plus errors, warnings and remarks.
+- [x] The component then reads inputs, calls it, reports its messages and sets outputs.
+- [x] Add `Out*` constants for output positions, the same way inputs use `In*` constants (the code currently calls `SetDataList(0..3, …)`).
+- [x] Replace the repeated "must be greater than zero" checks (about 7) with one helper.
+- [x] Make tolerance use consistent: `AddMirroredSegment` uses a hard-coded `1e-9`, and the rest of the code uses `DocumentTolerance()`.
 
 ## 4. Automated tests
 

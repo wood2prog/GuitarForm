@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using Grasshopper.Kernel;
+using GuitarForm.Geometry;
 using Rhino;
 using Rhino.DocObjects;
 using Rhino.Geometry;
@@ -29,6 +30,28 @@ namespace GuitarForm
         protected void AddConstruction(IEnumerable<Curve> curves) => _construction.AddRange(curves);
 
         protected void AddOutline(IEnumerable<Curve> curves) => _outline.AddRange(curves);
+
+        // Reads an optional number input: null when it isn't connected or has no data.
+        protected static double? GetOptionalNumber(IGH_DataAccess DA, int index)
+        {
+            double value = 0;
+            return DA.GetData(index, ref value) ? value : null;
+        }
+
+        // Shows messages from building geometry as runtime messages of the same level.
+        protected void AddMessages(IEnumerable<GeometryMessage> messages)
+        {
+            foreach (var message in messages)
+            {
+                var level = message.Level switch
+                {
+                    MessageLevel.Error => GH_RuntimeMessageLevel.Error,
+                    MessageLevel.Warning => GH_RuntimeMessageLevel.Warning,
+                    _ => GH_RuntimeMessageLevel.Remark,
+                };
+                AddRuntimeMessage(level, message.Text);
+            }
+        }
 
         protected override void BeforeSolveInstance()
         {
