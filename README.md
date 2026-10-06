@@ -67,7 +67,7 @@ Construction geometry (construction lines and outline radii) is previewed **soli
 | Input | Heel Width (`HW`) | Number | *Optional.* Width of the flat at the top of the body where the heel of the neck attaches. Must be greater than 0, and no more than the distance between the upper bout circle centres. |
 | Output | Construction Lines (`CL`) | Lines (list) | Construction lines for the plate (see below). |
 | Output | Outline Radii (`OR`) | Circles (list) | Circles for the body outline radii (see below). |
-| Output | Outline Arcs (`OA`) | Arcs (list) | Final outline arcs: the shoulder arcs, then the tail arc (see below). |
+| Output | Outline Arcs (`OA`) | Arcs (list) | Final outline arcs: the shoulder arcs, the bout and waist circle segments, then the tail arc (see below). |
 | Output | Outline Lines (`OL`) | Lines (list) | Straight parts of the final outline: the heel flat, the waist tangent lines, then the straight tail (see below). |
 
 The construction lines are output in this order:
@@ -112,6 +112,25 @@ A secondary offset can't be negative. A secondary circle also can't overlap the 
   - Its centre is on the Y axis at (0, ρ), and it wraps each circle, touching it from outside.
   - Its radius is ρ = (cx² + cy² − LbR²) / (2·LbO), where cx = LbW/2 − LbR and cy = LbR + LbO.
 - **Errors:** the component fails and outputs nothing if Lower Bout Offset is negative, or if cx is less than LbO. In the second case, the arc would meet the circle above its centre and swing wider than the lower bout width.
+
+**Outline segments of the circles** (on Outline Arcs): the parts of the bout and waist circles that form the outside of the body. Following the right side from top to bottom:
+
+| Segment | Circle | From | To |
+|---|---|---|---|
+| Upper bout primary | UbR | the shoulder arc's touch point, or the circle top (x = UbW/2 − UbR, y = L) when UbO = 0 | the widest point (UbW/2, upper bout line), which it shares with the secondary circle |
+| Upper bout secondary | UbR + UbSO | the widest point | the start of the upper waist tangent line |
+| Waist | WR, around its inner side | the end of the upper waist tangent line | the end of the lower waist tangent line |
+| Lower bout secondary | LbR + LbSO | the start of the lower waist tangent line | the widest point (LbW/2, lower bout line) |
+| Lower bout primary | LbR | the widest point | the tail arc's touch point, or the circle bottom (x = LbW/2 − LbR, y = 0) when LbO = 0 |
+
+Each segment is output as a right-side arc then its left-side mirror. Segments go on Outline Arcs in the order above, after the shoulder arcs and before the tail arc. A segment is drawn only when both of its ends exist:
+- the upper bout primary segment needs Heel Width
+- the secondary segments need their secondary offset and Waist Radius
+- the waist segment needs both secondary offsets
+
+If the circles touch so that a waist tangent line shrinks to a point, the segments meet at that point.
+
+Together with the heel flat, shoulder arcs, waist tangent lines and tail, these make one continuous outline.
 
 The outline radii circles are construction geometry and are drawn red.
 

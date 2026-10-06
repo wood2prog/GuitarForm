@@ -66,7 +66,7 @@ namespace GuitarForm.Components
         {
             pManager.AddLineParameter("Construction Lines", "CL", "Construction lines for the plate", GH_ParamAccess.list);
             pManager.AddCircleParameter("Outline Radii", "OR", "Circles for the upper bout primary and secondary, waist, and lower bout primary and secondary radii, right side then left side for each", GH_ParamAccess.list);
-            pManager.AddArcParameter("Outline Arcs", "OA", "Final outline arcs: the shoulder arcs from the heel flat ends to the upper bout radii (right, then left), then the tail arc", GH_ParamAccess.list);
+            pManager.AddArcParameter("Outline Arcs", "OA", "Final outline arcs, right then left for each: the shoulder arcs, the upper bout primary and secondary, waist, and lower bout secondary and primary circle segments, then the tail arc", GH_ParamAccess.list);
             pManager.AddLineParameter("Outline Lines", "OL", "Straight parts of the final body outline: the heel flat, the waist tangent lines (upper bout right, left, lower bout right, left), then the straight tail", GH_ParamAccess.list);
         }
 
@@ -122,16 +122,20 @@ namespace GuitarForm.Components
 
         // Straight outline line from a bout secondary circle to the waist circle on the right side. It is the internal
         // (crossing) tangent: it touches the bout circle on its outer side and the waist circle on its inner side, so
-        // the two circles sit on opposite sides of it. Returns null once the circles touch (the line has shrunk to a
-        // point) or overlap.
-        static Line? WaistTangentLine(Circle bout, Circle waist, double tolerance)
+        // the two circles sit on opposite sides of it. Once the circles touch, the line shrinks to their contact point
+        // (From == To). The caller has already rejected overlapping circles.
+        static Line WaistTangentLine(Circle bout, Circle waist, double tolerance)
         {
             Vector3d toWaist = waist.Center - bout.Center;
             double distance = toWaist.Length;
             double radiusSum = bout.Radius + waist.Radius;
-            if (distance - radiusSum <= tolerance) return null;
-
             toWaist.Unitize();
+            if (distance - radiusSum <= tolerance)
+            {
+                var contact = bout.Center + toWaist * bout.Radius;
+                return new Line(contact, contact);
+            }
+
             double angle = Math.Acos(radiusSum / distance);
 
             // Of the two internal tangents, take the one touching the bout circle further from the body centre.
@@ -145,11 +149,30 @@ namespace GuitarForm.Components
                 if (!best.HasValue || boutPoint.X > best.Value.From.X)
                     best = new Line(boutPoint, waistPoint);
             }
-            return best;
+            return best.Value;
         }
 
-        static Line MirrorX(Line line) =>
-            new Line(new Point3d(-line.From.X, line.From.Y, 0), new Point3d(-line.To.X, line.To.Y, 0));
+        static Point3d MirrorX(Point3d point) => new Point3d(-point.X, point.Y, point.Z);
+
+        static Line MirrorX(Line line) => new Line(MirrorX(line.From), MirrorX(line.To));
+
+        // Adds the outline segment of a right-side circle from one point on it to another, plus its mirror on the left.
+        // Clockwise follows the outside of a bout circle from top to bottom; counter-clockwise follows the inner side of
+        // the waist circle. Nothing is added if the two points coincide.
+        static void AddMirroredSegment(List<Arc> arcs, Circle circle, Point3d from, Point3d to, bool clockwise)
+        {
+            double startAngle = Math.Atan2(from.Y - circle.Center.Y, from.X - circle.Center.X);
+            double endAngle = Math.Atan2(to.Y - circle.Center.Y, to.X - circle.Center.X);
+            double sweep = clockwise ? startAngle - endAngle : endAngle - startAngle;
+            sweep = ((sweep % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+            if (sweep < 1e-9 || sweep > 2 * Math.PI - 1e-9) return;
+
+            double midAngle = clockwise ? startAngle - sweep / 2 : startAngle + sweep / 2;
+            var mid = circle.Center + new Vector3d(Math.Cos(midAngle), Math.Sin(midAngle), 0) * circle.Radius;
+
+            arcs.Add(new Arc(from, mid, to));
+            arcs.Add(new Arc(MirrorX(from), MirrorX(mid), MirrorX(to)));
+        }
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
@@ -171,6 +194,10 @@ namespace GuitarForm.Components
             double? ubCentreX = null;
             double ubCentreY = 0;
             Circle? ubSecondary = null, lbSecondary = null, waistCircle = null;
+            // Right-side primary circles, where the outline joins the upper primary (from the heel end) and leaves the
+            // lower primary (to the tail).
+            Circle? ubPrimary = null, lbPrimary = null;
+            Point3d? ubOutlineStart = null, lbOutlineEnd = null;
 
             // Upper bout: horizontal line centred on the Y axis. The primary radius centre sits one radius below the
             // top of the body; Upper Bout Offset moves the line down from there.
@@ -203,6 +230,7 @@ namespace GuitarForm.Components
                 ubCentreX = half - ubRadius;
                 ubCentreY = ubY;
                 AddMirroredCircles(circles, ubCentreX.Value, ubY, ubRadius);
+                ubPrimary = new Circle(new Point3d(ubCentreX.Value, ubY, 0), ubRadius);
 
                 ubSecondary = AddSecondaryCircles(DA, InUbSecondaryOffset, "Upper bout", circles, ubCentreX.Value, ubY, ubRadius);
                 if (RuntimeMessageLevel == GH_RuntimeMessageLevel.Error) return;
@@ -278,6 +306,7 @@ namespace GuitarForm.Components
                 if (lbRadius > half)
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Lower bout primary radius is larger than half the lower bout width.");
                 AddMirroredCircles(circles, half - lbRadius, lbY, lbRadius);
+                lbPrimary = new Circle(new Point3d(half - lbRadius, lbY, 0), lbRadius);
 
                 lbSecondary = AddSecondaryCircles(DA, InLbSecondaryOffset, "Lower bout", circles, half - lbRadius, lbY, lbRadius);
                 if (RuntimeMessageLevel == GH_RuntimeMessageLevel.Error) return;
@@ -294,6 +323,7 @@ namespace GuitarForm.Components
                 }
                 if (lbOffset <= tolerance)
                 {
+                    lbOutlineEnd = new Point3d(lbCentreX, 0, 0);
                     if (lbCentreX > tolerance)
                         tailLine = new Line(new Point3d(-lbCentreX, 0, 0), new Point3d(lbCentreX, 0, 0));
                 }
@@ -319,6 +349,7 @@ namespace GuitarForm.Components
                     var tangentPoint = circleCentre + toCircle * lbRadius;
 
                     tailArc = new Arc(new Point3d(-tangentPoint.X, tangentPoint.Y, 0), Point3d.Origin, tangentPoint);
+                    lbOutlineEnd = tangentPoint;
                 }
             }
             else if (hasLbWidth || hasLbOffset || hasLbRadius)
@@ -327,7 +358,10 @@ namespace GuitarForm.Components
             }
 
             // Waist tangent lines: final outline from each bout secondary circle to the waist circle, right then left.
+            // The right-side tangents are kept for the bout and waist outline segments. A tangent that has shrunk to a
+            // point (circles touching) is not drawn as a line.
             var waistTangents = new List<Line>();
+            Line? ubWaistTangent = null, lbWaistTangent = null;
             if (waistCircle.HasValue)
             {
                 if (ubSecondary.HasValue &&
@@ -337,11 +371,14 @@ namespace GuitarForm.Components
                     !CheckSecondaryClearsWaist(lbSecondary.Value, waistCircle.Value, "Lower bout", "lower bout secondary offset"))
                     return;
 
-                foreach (var secondary in new[] { ubSecondary, lbSecondary })
+                if (ubSecondary.HasValue)
+                    ubWaistTangent = WaistTangentLine(ubSecondary.Value, waistCircle.Value, DocumentTolerance());
+                if (lbSecondary.HasValue)
+                    lbWaistTangent = WaistTangentLine(lbSecondary.Value, waistCircle.Value, DocumentTolerance());
+
+                foreach (var tangent in new[] { ubWaistTangent, lbWaistTangent })
                 {
-                    if (!secondary.HasValue) continue;
-                    var tangent = WaistTangentLine(secondary.Value, waistCircle.Value, DocumentTolerance());
-                    if (!tangent.HasValue) continue;
+                    if (!tangent.HasValue || tangent.Value.Length <= DocumentTolerance()) continue;
                     waistTangents.Add(tangent.Value);
                     waistTangents.Add(MirrorX(tangent.Value));
                 }
@@ -387,6 +424,7 @@ namespace GuitarForm.Components
                     {
                         // Circle tops are level with the top of the body: the flat runs out to them.
                         flatHalf = ubCentreX.Value;
+                        ubOutlineStart = new Point3d(ubCentreX.Value, length, 0);
                     }
                     else
                     {
@@ -413,6 +451,7 @@ namespace GuitarForm.Components
                         var tangentPoint = circleCentre + toCircle * ubRadius;
 
                         arcs.Add(new Arc(new Point3d(heelHalf, length, 0), Vector3d.XAxis, tangentPoint));
+                        ubOutlineStart = tangentPoint;
                         arcs.Add(new Arc(new Point3d(-heelHalf, length, 0), -Vector3d.XAxis,
                             new Point3d(-tangentPoint.X, tangentPoint.Y, 0)));
                     }
@@ -427,6 +466,28 @@ namespace GuitarForm.Components
 
             outlineLines.AddRange(waistTangents);
             if (tailLine.HasValue) outlineLines.Add(tailLine.Value);
+
+            // Outline segments of the bout and waist circles, top to bottom, right then left for each. Each segment runs
+            // between two points where the outline meets that circle, and is skipped if either point isn't known.
+            if (ubPrimary.HasValue)
+            {
+                var ubWidest = ubPrimary.Value.Center + Vector3d.XAxis * ubPrimary.Value.Radius;
+                if (ubOutlineStart.HasValue)
+                    AddMirroredSegment(arcs, ubPrimary.Value, ubOutlineStart.Value, ubWidest, clockwise: true);
+                if (ubSecondary.HasValue && ubWaistTangent.HasValue)
+                    AddMirroredSegment(arcs, ubSecondary.Value, ubWidest, ubWaistTangent.Value.From, clockwise: true);
+            }
+            if (waistCircle.HasValue && ubWaistTangent.HasValue && lbWaistTangent.HasValue)
+                AddMirroredSegment(arcs, waistCircle.Value, ubWaistTangent.Value.To, lbWaistTangent.Value.To, clockwise: false);
+            if (lbPrimary.HasValue)
+            {
+                var lbWidest = lbPrimary.Value.Center + Vector3d.XAxis * lbPrimary.Value.Radius;
+                if (lbSecondary.HasValue && lbWaistTangent.HasValue)
+                    AddMirroredSegment(arcs, lbSecondary.Value, lbWaistTangent.Value.From, lbWidest, clockwise: true);
+                if (lbOutlineEnd.HasValue)
+                    AddMirroredSegment(arcs, lbPrimary.Value, lbWidest, lbOutlineEnd.Value, clockwise: true);
+            }
+
             if (tailArc.HasValue) arcs.Add(tailArc.Value);
 
             _constructionLines.AddRange(lines);
