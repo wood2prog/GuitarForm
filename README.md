@@ -76,14 +76,14 @@ The construction lines are output in this order:
 5. **Heel flat:** a horizontal line at the top of the body (y = L), from −HW/2 to HW/2. It's lengthened only when Upper Bout Offset is 0, which means the upper bout circle tops are level with the top of the body. It then runs from −(UbW/2 − UbR) to (UbW/2 − UbR), directly above the two upper bout circle centres.
 6. **Heel width marks:** two vertical lines 0.25 long (in document units) at x = ±HW/2, centred on y = L. Right mark first, then left.
 
-The heel flat and marks are drawn when Heel Width is connected. The component fails with an error and outputs nothing if the upper bout circle centres are closer together than the heel width. It also fails if Upper Bout Offset is negative, which would put the circles above the top of the body.
+The heel flat and marks are drawn when Heel Width is connected. The component fails with an error and outputs nothing if the upper bout circle centres are closer together than the heel width. It also fails if Upper Bout Offset is negative, which would put the circles above the top of the body, or if the shoulder arc would meet the circle below its centre (see below).
 
 When Upper Bout Offset is more than 0, the upper bout circle tops sit below the top of the body. The heel flat then stays HW long, and a **shoulder arc** joins each end of the flat to its upper bout circle. The arcs are output on **Outline Arcs**, right side then left side:
 
 - The arc starts at (±HW/2, L), heading straight outward, so it joins the flat smoothly (G1). Its centre is directly below that point.
 - It touches the upper bout circle from outside, wrapping around it.
 - Its radius is (dx² + t² − UbR²) / (2·UbO), where dx = UbW/2 − UbR − HW/2 and t = UbR + UbO.
-- A warning appears if dx isn't more than UbO. In that case the arc meets the circle below the upper bout line and swings wider than the upper bout width.
+- The component fails with an error and outputs nothing if dx is less than UbO. The arc would then meet the circle below its centre and swing wider than the upper bout width.
 
 The outline radii are drawn as full circles, a mirrored pair for each region. They're output in this order, right side (+X) then left side (−X) for each pair:
 

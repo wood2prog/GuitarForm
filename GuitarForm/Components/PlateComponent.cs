@@ -237,10 +237,15 @@ namespace GuitarForm.Components
                         // point. It wraps the upper bout circle and touches it from outside:
                         // |arcCentre - circleCentre| = arcRadius - ubRadius.
                         double dx = ubCentreX.Value - heelHalf;
-                        if (dx <= ubOffset)
-                            AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
-                                "The shoulder arc meets the upper bout radius below the upper bout line, so it runs wider than the upper bout width. " +
-                                "Reduce the upper bout offset or the heel width.");
+                        // The tangent point sits above the upper bout radius centre only while dx > ubOffset.
+                        if (dx < ubOffset)
+                        {
+                            AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
+                                $"The shoulder arc meets the upper bout radius below its centre, so it would run wider than the upper bout width. " +
+                                $"The gap from the heel flat end to the upper bout radius centre ({dx:0.###}) must be at least the upper bout offset ({ubOffset:0.###}). " +
+                                "Reduce the upper bout offset or the heel width, or widen the upper bout.");
+                            return;
+                        }
                         double t = length - ubCentreY; // = ubRadius + ubOffset
                         double arcRadius = (dx * dx + t * t - ubRadius * ubRadius) / (2 * (t - ubRadius));
 
