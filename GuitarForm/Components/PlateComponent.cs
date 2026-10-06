@@ -26,9 +26,11 @@ namespace GuitarForm.Components
         {
             pManager.AddNumberParameter("Body Length", "L", "Overall length of the guitar body", GH_ParamAccess.item);
             pManager.AddNumberParameter("Upper Bout Width", "UbW", "Width of the upper bout", GH_ParamAccess.item);
-            pManager.AddNumberParameter("Upper Bout Position", "UbP", "Distance of the upper bout line from the top of the body length line, measured down the Y axis", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Upper Bout Position", "UbP", "Offset of the upper bout line down the Y axis from the upper bout primary radius centre", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Upper Bout Primary Radius", "UbR", "Primary radius of the upper bout. Its centre sits one radius below the top of the body length line", GH_ParamAccess.item);
             pManager[1].Optional = true;
             pManager[2].Optional = true;
+            pManager[3].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
@@ -58,27 +60,34 @@ namespace GuitarForm.Components
                 new Line(Point3d.Origin, new Point3d(0, length, 0))
             };
 
-            // Upper bout: horizontal line centred on the Y axis, Upper Bout Position below the top of the body.
-            double ubWidth = 0, ubPosition = 0;
+            // Upper bout: horizontal line centred on the Y axis. The primary radius centre sits one radius below the
+            // top of the body; Upper Bout Position offsets the line down from there.
+            double ubWidth = 0, ubPosition = 0, ubRadius = 0;
             bool hasUbWidth = DA.GetData(1, ref ubWidth);
             bool hasUbPosition = DA.GetData(2, ref ubPosition);
-            if (hasUbWidth && hasUbPosition)
+            bool hasUbRadius = DA.GetData(3, ref ubRadius);
+            if (hasUbWidth && hasUbPosition && hasUbRadius)
             {
                 if (ubWidth <= 0)
                 {
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Upper bout width must be greater than zero.");
                     return;
                 }
-                if (ubPosition < 0 || ubPosition > length)
-                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Upper bout position is outside the body length.");
+                if (ubRadius <= 0)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Upper bout primary radius must be greater than zero.");
+                    return;
+                }
+                double ubY = length - ubRadius - ubPosition;
+                if (ubY < 0 || ubY > length)
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Upper bout line is outside the body length.");
 
                 double half = ubWidth / 2;
-                double ubY = length - ubPosition;
                 lines.Add(new Line(new Point3d(-half, ubY, 0), new Point3d(half, ubY, 0)));
             }
-            else if (hasUbWidth || hasUbPosition)
+            else if (hasUbWidth || hasUbPosition || hasUbRadius)
             {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Upper bout width and upper bout position are both needed to draw the upper bout line.");
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Upper bout width, position and primary radius are all needed to draw the upper bout line.");
             }
 
             _constructionLines.AddRange(lines);
