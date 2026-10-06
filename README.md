@@ -40,6 +40,10 @@ After this, each rebuild is picked up the next time you start Rhino.
 
 Grasshopper locks the `.gha` while Rhino is running, so close Rhino before you rebuild.
 
+## Debugging
+
+Open `GuitarForm.sln` in Visual Studio and press **F5**. The **Rhino 8** launch profile (`GuitarForm/Properties/launchSettings.json`) builds the plug-in, then starts Rhino 8 with Grasshopper open and the debugger attached. It loads the plug-in from the build folder, so set up **Option A** above first. If Rhino is installed somewhere other than `C:\Program Files\Rhino 8`, change `executablePath` in the launch profile.
+
 ## Using the components
 
 The components are on the **GuitarForm** tab of the Grasshopper toolbar.
@@ -134,7 +138,7 @@ Together with the heel flat, shoulder arcs, waist tangent lines and tail, these 
 
 The outline radii circles are construction geometry and are drawn light grey.
 
-**Quick test:** put a **Plate** component on the canvas and connect **Number Sliders** with these values:
+**Quick test:** open `Examples/Plate.gh`, which is already set up with the first values below. Or put a **Plate** component on the canvas and connect **Number Sliders** with these values:
 
 | Input | Value | Result |
 |---|---|---|
