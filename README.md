@@ -46,7 +46,7 @@ The components are on the **GuitarForm** tab of the Grasshopper toolbar.
 
 The guitar is drawn **vertically**: it starts at the origin and the body length runs up the **+Y** axis. All lengths are in the Rhino document's units.
 
-Construction geometry (construction lines and outline radii) is previewed **solid red**, and bakes red with the Continuous (solid) linetype. The **final outline** (heel flat and shoulder arcs) uses the default Grasshopper preview colour, and bakes with the default attributes so it takes its layer's colour.
+Construction geometry (construction lines, heel width marks and outline radii) is previewed **light grey**, so the outline stands out. It bakes light grey with the Continuous (solid) linetype. The **final outline** (Outline Lines and Outline Arcs) uses the default Grasshopper preview colour, and bakes with the default attributes so it takes its layer's colour.
 
 ### Plate (GuitarForm › Body)
 
@@ -132,7 +132,7 @@ If the circles touch so that a waist tangent line shrinks to a point, the segmen
 
 Together with the heel flat, shoulder arcs, waist tangent lines and tail, these make one continuous outline.
 
-The outline radii circles are construction geometry and are drawn red.
+The outline radii circles are construction geometry and are drawn light grey.
 
 **Quick test:** put a **Plate** component on the canvas and connect **Number Sliders** with these values:
 

@@ -10,8 +10,8 @@ namespace GuitarForm.Components
 {
     public class PlateComponent : GH_Component
     {
-        // Construction lines are drawn as solid red lines.
-        static readonly Color ConstructionColor = Color.Red;
+        // Construction geometry is drawn in light grey so the final outline stands out.
+        static readonly Color ConstructionColor = Color.FromArgb(200, 200, 200);
 
         // Length of the vertical marks at each end of the heel width, centred on the top of the body.
         const double HeelMarkLength = 0.25;
@@ -517,7 +517,7 @@ namespace GuitarForm.Components
             }
         }
 
-        // Construction geometry is drawn red; the final outline (heel flat and shoulder arcs) uses the default
+        // Construction geometry is drawn light grey; the final outline (Outline Lines and Outline Arcs) uses the default
         // Grasshopper preview colour.
         public override void DrawViewportWires(IGH_PreviewArgs args)
         {
@@ -532,7 +532,7 @@ namespace GuitarForm.Components
                 args.Display.DrawLine(line, args.WireColour, args.DefaultCurveThickness);
         }
 
-        // Baking keeps construction geometry red with a solid (Continuous) linetype; the final outline bakes with the
+        // Baking keeps construction geometry light grey with a solid (Continuous) linetype; the final outline bakes with the
         // default attributes.
         public override bool IsBakeCapable =>
             _constructionLines.Count > 0 || _outlineCircles.Count > 0 || _outlineArcs.Count > 0 || _outlineLines.Count > 0;
