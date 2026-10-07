@@ -51,6 +51,12 @@ Every component draws construction geometry light grey and the final outline in 
 - [ ] Move per-component detail out of the README into `docs/Plate.md`, `docs/Neck.md`, etc. Keep the README for requirements, build, loading and an overview.
 - [ ] Fold `Spec.txt` into the README or `docs/`.
 
+## Considerations for later components
+
+Not decided yet; settle these when designing the component that needs them (probably the neck).
+
+- [ ] **(decision)** Placing parts with planes. Plate stays fixed at the origin, since it's the starting point. A component that attaches to another part (e.g. the neck at the heel) would take an optional Plane input, defaulting to World XY, fed from an upstream output (e.g. a Heel Plane output on Plate at (0, L)). The neck would then follow the body when L changes, and the plane can carry a neck angle (tilt out of XY). Each component would still build its geometry in simple local coordinates, with the origin at its attachment point, and move the finished geometry onto the plane at the end. A plane input added to Plate later would go at the end of its inputs, as optional, so existing .gh files still work.
+
 ## 8. Later
 
 - [ ] GitHub Actions workflow that builds the plug-in on each push.
