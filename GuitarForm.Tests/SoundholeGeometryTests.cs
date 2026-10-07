@@ -4,13 +4,13 @@ using Rhino.Testing.Fixtures;
 
 namespace GuitarForm.Tests
 {
-    // Checks SoundholeGeometry against the README Quick Test values.
+    // Checks SoundholeGeometry against the Quick Test values in docs/Soundhole.md.
     [RhinoTestFixture]
     public class SoundholeGeometryTests
     {
         const double Tolerance = 0.001;
 
-        // The README Quick Test inputs, before any of its "change to" rows.
+        // The docs/Soundhole.md Quick Test inputs, before any of its "change to" rows.
         static readonly SoundholeDimensions QuickTest = new SoundholeDimensions
         {
             Diameter = 100,

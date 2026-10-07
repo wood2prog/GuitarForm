@@ -5,7 +5,7 @@ using Rhino.Testing.Fixtures;
 
 namespace GuitarForm.Tests
 {
-    // Checks CustomSoundholeGeometry against the README Quick Test values.
+    // Checks CustomSoundholeGeometry against the Quick Test values in docs/Soundhole.md.
     [RhinoTestFixture]
     public class CustomSoundholeGeometryTests
     {

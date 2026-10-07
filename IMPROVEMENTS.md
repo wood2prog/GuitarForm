@@ -48,7 +48,7 @@ Every component draws construction geometry light grey and the final outline in 
 
 ## 7. Documentation layout (when the second component is added)
 
-- [ ] Move per-component detail out of the README into `docs/Plate.md`, `docs/Neck.md`, etc. Keep the README for requirements, build, loading and an overview.
+- [x] Move per-component detail out of the README into `docs/Plate.md`, `docs/Neck.md`, etc. Keep the README for requirements, build, loading and an overview. *(`docs/Plate.md` and `docs/Soundhole.md`, which holds both soundhole components; one page per toolbar group. The README links to them from a components table.)*
 - [ ] Fold `Spec.txt` into the README or `docs/`.
 
 ## Considerations for later components
