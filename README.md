@@ -1,5 +1,7 @@
 # GuitarForm
 
+<img src="GuitarForm/Resources/Source/GuitarForm.png" alt="GuitarForm logo" width="280">
+
 A guitar designer built as Grasshopper components for **Rhino 8**. Each component draws one part of the guitar, such as the body plate, neck, fretboard or strings.
 
 ## Requirements

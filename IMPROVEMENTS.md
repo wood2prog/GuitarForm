@@ -40,7 +40,7 @@ Every component draws construction geometry light grey and the final outline in 
 - [x] **(decision)** `HeelMarkLength = 0.25` is in document units: visible in inches, tiny in millimetres. Keep it, scale it to the body length, or make it an input? *(Scaled: 1% of the body length.)*
 - [x] **(decision)** Also output the whole body outline as one closed, joined curve (useful for offsetting, extruding or kerfing downstream)? *(Yes: Outline (O) output, empty until the outline is complete.)*
 - [x] **(decision)** Plug-in metadata in `GuitarFormInfo.cs`: author name and contact. *(Contact set to the user's email; name left blank.)*
-- [ ] Plug-in icon (`GuitarFormInfo.Icon` is `null`). *(Waiting on artwork from the user, to go in `Resources/Source/`.)*
+- [x] Plug-in icon (`GuitarFormInfo.Icon` is `null`). *(From the user's logo; also used for the toolbar tab and the README.)*
 
 ## 6. How components share data (before the second component)
 
