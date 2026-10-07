@@ -9,7 +9,6 @@ GuitarForm is a guitar designer implemented as a set of Grasshopper (Rhino) comp
 ## Working agreement
 
 - The user gives the design direction for each component's C# code. Implement what they describe, and ask instead of guessing at guitar geometry or component inputs and outputs that haven't been specified.
-- `Spec.txt` holds the original project brief.
 - `IMPROVEMENTS.md` is the ordered checklist of project-organisation work. Tick items off as they're done.
 
 ## Build

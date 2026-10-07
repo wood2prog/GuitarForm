@@ -1,3 +1,0 @@
-GuitarForm is a guitar designer realized in a handful of grasshopper components. each component describes a particular part of the guitar...body shape, strings, freboard, neck, etc.
-
-- I will provide guidance and direction for creating the c# code for each of the components.
