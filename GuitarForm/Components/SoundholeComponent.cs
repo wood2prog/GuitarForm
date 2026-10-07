@@ -62,8 +62,9 @@ namespace GuitarForm.Components
             DA.SetData(OutCenter, soundhole.Center);
         }
 
-        // No icon yet; Grasshopper shows its default.
-        protected override Bitmap Icon => null;
+        static readonly Bitmap SoundholeIcon = Icons.Load("Soundhole.png");
+
+        protected override Bitmap Icon => SoundholeIcon;
 
         public override Guid ComponentGuid => new Guid("b1065328-8bfb-4ca9-b2ae-bf428bda37cb");
     }
