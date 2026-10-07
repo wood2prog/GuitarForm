@@ -44,7 +44,7 @@ Every component draws construction geometry light grey and the final outline in 
 
 ## 6. How components share data (before the second component)
 
-- [ ] **(decision)** Will downstream components (neck, fretboard, strings) take plain numbers wired by hand (body length, heel width, …), or will Plate output a "Body" object that they read? This shapes every later component's inputs and outputs.
+- [x] **(decision)** Will downstream components (neck, fretboard, strings) take plain numbers wired by hand (body length, heel width, …), or will Plate output a "Body" object that they read? This shapes every later component's inputs and outputs. *(Plain wiring: each component works on its own with its own inputs. Shared values come from one slider wired to each component that needs it, or from an upstream component's output. No settings component or custom data type. See CLAUDE.md.)*
 
 ## 7. Documentation layout (when the second component is added)
 
