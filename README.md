@@ -157,6 +157,26 @@ The outline radii circles are construction geometry and are drawn light grey.
 | LbSO | change to 70 | Error: the lower bout secondary circle overlaps the waist circle. With these values, the most LbSO can be is about 61.4. Just below that, the lower waist tangent lines become very short. |
 | LbSO, LbO | change LbSO back to 40, and LbO to 0 | The tail arc disappears and the tail becomes a straight line from (−70, 0) to (70, 0). |
 
+### Soundhole (GuitarForm › Soundhole)
+
+A round soundhole. The circle is the final outline, so it uses the default preview colour.
+
+| | Name | Type | Description |
+|---|---|---|---|
+| Input | Diameter (`D`) | Number | Diameter of the soundhole. Must be greater than 0. |
+| Input | Horizontal Offset (`HO`) | Number | *Optional.* Distance of the soundhole centre from the body centreline along X (+X is right). Defaults to 0, which centres the hole. |
+| Input | Tail Offset (`TO`) | Number | Distance of the soundhole centre up Y from the tail end (the origin). |
+| Output | Circle (`C`) | Circle | The soundhole outline: radius D/2, centred at (HO, TO, 0). |
+| Output | Center (`Pt`) | Point | Centre of the soundhole, (HO, TO, 0). |
+
+**Quick test:** put a **Soundhole** component on the canvas and connect **Number Sliders** with these values:
+
+| Input | Value | Result |
+|---|---|---|
+| D, TO | 100, 420 | Circle of radius 50 centred at (0, 420). |
+| HO | −20 | The circle moves left, centred at (−20, 420). |
+| D | change to 0 | Error: the diameter must be greater than zero. |
+
 ## Tests
 
 The geometry is tested with NUnit and [Rhino.Testing](https://github.com/mcneel/Rhino.Testing), which loads the installed Rhino 8 into the test run, so Rhino 8 must be installed. From the repository folder:
