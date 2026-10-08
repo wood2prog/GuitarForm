@@ -2,7 +2,7 @@
 
 <img src="GuitarForm/Resources/Source/GuitarForm.png" alt="GuitarForm logo" width="280">
 
-A guitar designer built as Grasshopper components for **Rhino 8**. Each component draws one part of the guitar, such as the body plate, soundhole, neck, fretboard or strings. Each one works on its own with plain inputs (numbers, points, curves), so a value several parts share, such as the heel width, comes from one slider wired to each of them.
+A guitar designer built as Grasshopper components for **Rhino 8**. Each component draws one part of the guitar, such as the body plate, soundhole, neck, fretboard or strings. Each one works on its own with plain inputs (numbers, points, curves), so a value several parts share, such as the heel width, comes from one slider wired to each of them. Values for the whole instrument, such as the scale length, come from the **Instrument** component as one object.
 
 ## Requirements
 
@@ -58,6 +58,7 @@ Each component's inputs, outputs, geometry and a quick test are described in `do
 
 | Component | Toolbar group | What it draws | Details |
 |---|---|---|---|
+| Instrument | Instrument | Nothing: it collects values for the whole instrument (scale length, neck join fret) into one Instrument object for other components. | [docs/Instrument.md](docs/Instrument.md) |
 | Plate | Body | The body outline, from its bouts, waist, tail and heel dimensions. | [docs/Plate.md](docs/Plate.md) |
 | Soundhole | Soundhole | A round soundhole. | [docs/Soundhole.md](docs/Soundhole.md#soundhole) |
 | Custom Soundhole | Soundhole | A soundhole of any closed shape, placed by its area centroid. | [docs/Soundhole.md](docs/Soundhole.md#custom-soundhole) |
