@@ -10,6 +10,7 @@ GuitarForm is a guitar designer implemented as a set of Grasshopper (Rhino) comp
 
 - The user gives the design direction for each component's C# code. Implement what they describe, and ask instead of guessing at guitar geometry or component inputs and outputs that haven't been specified.
 - `IMPROVEMENTS.md` is the ordered checklist of project-organisation work. Tick items off as they're done.
+- The project is moving from Grasshopper components to a Rhino plug-in with a dockable editor panel and a SQLite design database (IMPROVEMENTS.md section 8, which lists the decisions made). Don't add new Grasshopper components; new parts go into the design model and the panel. The component conventions below still describe the existing code until section 8g rewrites them.
 
 ## Build
 

@@ -57,7 +57,65 @@ Not decided yet; settle these when designing the component that needs them (prob
 
 - [ ] **(decision)** Placing parts with planes. Plate stays fixed at the origin, since it's the starting point. A component that attaches to another part (e.g. the neck at the heel) would take an optional Plane input, defaulting to World XY, fed from an upstream output (e.g. a Heel Plane output on Plate at (0, L)). The neck would then follow the body when L changes, and the plane can carry a neck angle (tilt out of XY). Each component would still build its geometry in simple local coordinates, with the origin at its attachment point, and move the finished geometry onto the plane at the end. A plane input added to Plate later would go at the end of its inputs, as optional, so existing .gh files still work.
 
-## 8. Later
+## 8. Move from Grasshopper to a Rhino plug-in with a design database
+
+Replaces the Grasshopper components with a Rhino plug-in. A dockable panel has a tab for each area of the guitar, the whole design is stored in a SQLite database, and the design is drawn in Rhino live. The geometry classes in `Geometry/` carry over; the components, `GH_Instrument`, `InstrumentParameter` and `GuitarFormComponent` go.
+
+Decided:
+
+- **Grasshopper is dropped.** Keeping track of many wired values, and saving a copy of them, was the problem. In the plug-in every part reads shared values from the one design.
+- **SQLite holds everything.** Opening a previous design rebuilds the model from the database.
+- **A design owns copies of its sections.** Each area (Instrument, Body, Soundhole, String set, …) can also be saved as a named library preset. Loading a preset copies its values into the design, so editing a design never changes the library or other designs.
+- **The first edit after loading a design asks: overwrite it, or save a copy and edit that.** After that, changes are written to the database as you make them.
+- **Lengths are stored in millimetres** and converted to the Rhino document's units when drawn.
+- **Live preview while editing, plus a Build command.** The preview is drawn, not added to the document. Build writes real objects to GuitarForm layers and replaces those from the previous build of that design.
+- **One library database**, `%APPDATA%\GuitarForm\GuitarForm.db` by default. Its location can be changed in Settings, e.g. to a synced folder.
+- **A design can be exported** as a structured JSON document that other programs can read.
+
+### 8a. Risks first
+
+- [ ] Plug-in shell: a `.rhp` project (RhinoCommon package, `PlugIn` class) with a `GuitarForm` command that opens an empty dockable Eto panel. Builds and loads in Rhino 8 alongside the existing `.gha`.
+- [ ] Spike: `Microsoft.Data.Sqlite` loads and opens a database from inside Rhino 8. The native `e_sqlite3` library has to be found from the plug-in folder.
+
+### 8b. Model
+
+- [ ] **(decision)** The sections and their fields. Proposed: **Instrument** (scale length, neck join fret); **Body** (Plate's dimensions plus tail and neck depth, so Plate and Side View share one body length); **Soundhole** (round or custom). Side View's drawing offset places the drawing; it doesn't describe the guitar. Does it become a design setting, or is the side view laid out automatically?
+- [ ] **(decision)** Custom soundhole shape: how it's provided (picked from the Rhino document? imported?) and stored (e.g. the curve serialised into the database).
+- [ ] Add a `GuitarForm.Model` project with no Rhino dependency: a `GuitarDesign` record holding a record for each section, lengths in mm, optional values nullable. `Instrument` and `GeometryMessage` move there. Section validation can be tested without Rhino.
+- [ ] JSON export and import of a whole design, with `schemaVersion` and `"units": "mm"`.
+
+### 8c. Geometry
+
+- [ ] The geometry classes take the model's section records instead of their own `*Dimensions` records, and solve in mm. The plug-in scales the result to document units (`RhinoMath.UnitScale`) and converts the document tolerance to mm. Update the tests.
+
+### 8d. Database
+
+- [ ] Schema: a `designs` table and one table per section. Each section row belongs to either a design or the library (as a named preset). Typed columns. Schema version kept in `PRAGMA user_version`, with a migration for each version.
+- [ ] Storage class: create, list, load, overwrite, copy and delete designs; save a section as a preset; list presets; copy a preset into a design. Tested against a temporary database.
+- [ ] Settings: the database path (default above), changeable from the panel.
+
+### 8e. Editor panel
+
+- [ ] Design list: new, open, copy, rename, delete.
+- [ ] One tab per section, with number fields (blank means not set, for optional values), the section's errors and warnings, and **Load preset** / **Save as preset**.
+- [ ] The overwrite-or-copy prompt on the first edit after loading, then saving as you edit.
+- [ ] Live preview with a display conduit: construction geometry light grey, outline in the default preview colour, redrawn on every change.
+- [ ] Build: writes the geometry to GuitarForm layers, tagged with the design's id, replacing that design's previous build. Construction geometry is light grey with a solid linetype.
+- [ ] Export: saves the design as JSON.
+
+### 8f. String sets
+
+- [ ] **(decision)** What a string set holds (per string: gauge, plain or wound, material, …?), and whether tension is calculated from it with the scale length and tuning.
+
+### 8g. Remove Grasshopper
+
+Done last, once the panel covers every component, so the project stays usable throughout.
+
+- [ ] Remove the components, `Types/`, `GuitarFormComponent`, `GuitarFormPriority`, the component icons and `Examples/Plate.gh`; drop the Grasshopper package. Point the launch profile at Rhino without Grasshopper.
+- [ ] Rewrite the README (loading the `.rhp`, using the panel), `docs/` (one page per tab instead of per component) and CLAUDE.md's conventions.
+- [ ] Revisit "Considerations for later components" (placing parts with planes) for the plug-in.
+
+## 9. Later
 
 - [ ] GitHub Actions workflow that builds the plug-in on each push.
 - [ ] Yak package for distribution through Rhino's Package Manager.
