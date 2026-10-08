@@ -69,7 +69,7 @@ Decided:
 - **The first edit after loading a design asks: overwrite it, or save a copy and edit that.** After that, changes are written to the database as you make them.
 - **Lengths are stored in millimetres** and converted to the Rhino document's units when drawn.
 - **Live preview while editing, plus a Build command.** The preview is drawn, not added to the document. Build writes real objects to GuitarForm layers and replaces those from the previous build of that design.
-- **One library database**, `%APPDATA%\GuitarForm\GuitarForm.db` by default. Its location can be changed in Settings, e.g. to a synced folder.
+- **One library database**, `Documents\GuitarForm\GuitarForm.db` by default, so it's easy to find, back up and move. Its location can be changed in Settings.
 - **A design can be exported** as a structured JSON document that other programs can read.
 
 ### 8a. Risks first

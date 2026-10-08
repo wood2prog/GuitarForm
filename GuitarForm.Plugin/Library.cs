@@ -11,7 +11,7 @@ namespace GuitarForm.Plugin
         public const long ApplicationId = 0x4774466D;
 
         public static string DefaultPath =>
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GuitarForm", "GuitarForm.db");
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "GuitarForm", "GuitarForm.db");
 
         // Opens the library, creating it if the file doesn't exist. Throws if the file is a database that isn't a
         // GuitarForm library.
