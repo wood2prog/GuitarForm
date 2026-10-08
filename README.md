@@ -60,6 +60,7 @@ Each component's inputs, outputs, geometry and a quick test are described in `do
 |---|---|---|---|
 | Instrument | Instrument | Nothing: it collects values for the whole instrument (scale length, neck join fret) into one Instrument object for other components. | [docs/Instrument.md](docs/Instrument.md) |
 | Plate | Body | The body outline, from its bouts, waist, tail and heel dimensions. | [docs/Plate.md](docs/Plate.md) |
+| Side View | Body | The side view of the body, moved right by a drawing offset so it sits beside the plate. | [docs/SideView.md](docs/SideView.md) |
 | Soundhole | Soundhole | A round soundhole. | [docs/Soundhole.md](docs/Soundhole.md#soundhole) |
 | Custom Soundhole | Soundhole | A soundhole of any closed shape, placed by its area centroid. | [docs/Soundhole.md](docs/Soundhole.md#custom-soundhole) |
 
