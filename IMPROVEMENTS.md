@@ -74,8 +74,8 @@ Decided:
 
 ### 8a. Risks first
 
-- [ ] Plug-in shell: a `.rhp` project (RhinoCommon package, `PlugIn` class) with a `GuitarForm` command that opens an empty dockable Eto panel. Builds and loads in Rhino 8 alongside the existing `.gha`.
-- [ ] Spike: `Microsoft.Data.Sqlite` loads and opens a database from inside Rhino 8. The native `e_sqlite3` library has to be found from the plug-in folder.
+- [x] Plug-in shell: a `.rhp` project (RhinoCommon package, `PlugIn` class) with a `GuitarForm` command that opens an empty dockable Eto panel. Builds and loads in Rhino 8 alongside the existing `.gha`. *(`GuitarForm.Plugin/`. The panel shows the library's path and SQLite version. The launch profile loads the plug-in through `RHINO_PACKAGE_DIRS`, so it doesn't need installing.)*
+- [x] Spike: `Microsoft.Data.Sqlite` loads and opens a database from inside Rhino 8. The native `e_sqlite3` library has to be found from the plug-in folder. *(Rhino doesn't search `runtimes/<platform>/native/`, so the plug-in builds for `win-x64` only, which puts `e_sqlite3.dll` next to the `.rhp`. The library file gets `PRAGMA application_id` "GtFm", and a database without it is refused.)*
 
 ### 8b. Model
 
