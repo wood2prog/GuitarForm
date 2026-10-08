@@ -69,7 +69,7 @@ Decided:
 - **The first edit after loading a design asks: overwrite it, or save a copy and edit that.** After that, changes are written to the database as you make them.
 - **Lengths are stored in millimetres** and converted to the Rhino document's units when drawn.
 - **Live preview while editing, plus a Build command.** The preview is drawn, not added to the document. Build writes real objects to GuitarForm layers and replaces those from the previous build of that design.
-- **One library database**, `Documents\GuitarForm\GuitarForm.db` by default, so it's easy to find, back up and move. Its location can be changed in Settings.
+- **One library database, kept locally, with backups to a synced folder.** The main copy is `%LOCALAPPDATA%\GuitarForm\GuitarForm.db` by default, which isn't synced, so OneDrive never sees a half-written file. Backups are written with SQLite's backup API to `Documents\GuitarForm\Backups` by default, which OneDrive syncs. Both locations are set on a Settings page, and kept in Rhino's plug-in settings rather than the database, since they're needed before it's opened.
 - **A design can be exported** as a structured JSON document that other programs can read.
 
 ### 8a. Risks first
@@ -92,7 +92,10 @@ Decided:
 
 - [ ] Schema: a `designs` table and one table per section. Each section row belongs to either a design or the library (as a named preset). Typed columns. Schema version kept in `PRAGMA user_version`, with a migration for each version.
 - [ ] Storage class: create, list, load, overwrite, copy and delete designs; save a section as a preset; list presets; copy a preset into a design. Tested against a temporary database.
-- [ ] Settings: the database path (default above), changeable from the panel.
+- [ ] **(decision)** When backups are made and how many are kept. Proposed: when Rhino closes and every 15 minutes while there are unsaved-to-backup changes, as dated files (`GuitarForm 2026-10-08 1830.db`), keeping the last 20 plus one per day for 30 days.
+- [ ] Backup: writes a complete copy of the library to the backup folder with SQLite's backup API, at the times decided above, plus a **Back up now** button.
+- [ ] Restore: replaces the main copy with a chosen backup, after backing up the current main copy first. Also used to start on another computer.
+- [ ] Settings page in the panel: main library location and backup folder (defaults above). Changing the main location offers to move the existing library there or open the one already at the new place.
 
 ### 8e. Editor panel
 
