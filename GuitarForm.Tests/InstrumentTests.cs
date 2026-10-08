@@ -1,4 +1,4 @@
-using GuitarForm.Geometry;
+using GuitarForm.Model;
 using NUnit.Framework;
 
 namespace GuitarForm.Tests

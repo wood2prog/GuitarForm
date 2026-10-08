@@ -1,4 +1,4 @@
-namespace GuitarForm.Geometry
+namespace GuitarForm.Model
 {
     public enum MessageLevel
     {
@@ -7,6 +7,6 @@ namespace GuitarForm.Geometry
         Error,
     }
 
-    // A message from building geometry, shown on the component as a runtime message of the same level.
+    // A problem with a design's values or with building its geometry: an error stops the geometry being built.
     public readonly record struct GeometryMessage(MessageLevel Level, string Text);
 }

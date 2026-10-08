@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using Grasshopper.Kernel;
 using GuitarForm.Geometry;
+using GuitarForm.Model;
 using Rhino;
 using Rhino.DocObjects;
 using Rhino.Geometry;

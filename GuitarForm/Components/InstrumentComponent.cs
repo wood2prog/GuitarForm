@@ -1,6 +1,6 @@
 using System;
 using Grasshopper.Kernel;
-using GuitarForm.Geometry;
+using GuitarForm.Model;
 using GuitarForm.Types;
 
 namespace GuitarForm.Components

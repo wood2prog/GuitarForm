@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The design model: plain records with no Rhino dependency, so they can be saved, exported and tested anywhere.
+       Lengths are in millimetres. -->
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <NoWarn>NETSDK1138</NoWarn>
+  </PropertyGroup>
+
+</Project>

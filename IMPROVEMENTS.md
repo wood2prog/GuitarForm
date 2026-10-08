@@ -79,10 +79,10 @@ Decided:
 
 ### 8b. Model
 
-- [ ] **(decision)** The sections and their fields. Proposed: **Instrument** (scale length, neck join fret); **Body** (Plate's dimensions plus tail and neck depth, so Plate and Side View share one body length); **Soundhole** (round or custom). Side View's drawing offset places the drawing; it doesn't describe the guitar. Does it become a design setting, or is the side view laid out automatically?
-- [ ] **(decision)** Custom soundhole shape: how it's provided (picked from the Rhino document? imported?) and stored (e.g. the curve serialised into the database).
-- [ ] Add a `GuitarForm.Model` project with no Rhino dependency: a `GuitarDesign` record holding a record for each section, lengths in mm, optional values nullable. `Instrument` and `GeometryMessage` move there. Section validation can be tested without Rhino.
-- [ ] JSON export and import of a whole design, with `schemaVersion` and `"units": "mm"`.
+- [x] **(decision)** The sections and their fields. Proposed: **Instrument** (scale length, neck join fret); **Body** (Plate's dimensions plus tail and neck depth, so Plate and Side View share one body length); **Soundhole** (round or custom). Side View's drawing offset places the drawing; it doesn't describe the guitar. Does it become a design setting, or is the side view laid out automatically? *(As proposed, with one round soundhole per design, or none. The side view is laid out automatically, so the drawing offset isn't part of the design. The tail and neck depths are optional, so the outline can be drawn before the side view.)*
+- [x] **(decision)** Custom soundhole shape: how it's provided (picked from the Rhino document? imported?) and stored (e.g. the curve serialised into the database). *(Dropped for now: round soundholes only. See "Later".)*
+- [x] Add a `GuitarForm.Model` project with no Rhino dependency: a `GuitarDesign` record holding a record for each section, lengths in mm, optional values nullable. `Instrument` and `GeometryMessage` move there. *(`Body` and `Soundhole` are plain values; their checks stay in the geometry classes, so they aren't written twice. The Grasshopper project references the model project until it's removed.)*
+- [x] JSON export and import of a whole design, with `schemaVersion` and `"units": "mm"`. *(`DesignDocument`. Values not set are left out. Import rejects a newer schema version, other units, and a design without an instrument or body.)*
 
 ### 8c. Geometry
 
@@ -102,6 +102,7 @@ Decided:
 - [ ] Design list: new, open, copy, rename, delete.
 - [ ] One tab per section, with number fields (blank means not set, for optional values), the section's errors and warnings, and **Load preset** / **Save as preset**.
 - [ ] The overwrite-or-copy prompt on the first edit after loading, then saving as you edit.
+- [ ] Lay the drawings out automatically: the side view sits to the right of the plate, at half the lower bout width plus a gap. Later views (neck, fretboard) are placed the same way.
 - [ ] Live preview with a display conduit: construction geometry light grey, outline in the default preview colour, redrawn on every change.
 - [ ] Build: writes the geometry to GuitarForm layers, tagged with the design's id, replacing that design's previous build. Construction geometry is light grey with a solid linetype.
 - [ ] Export: saves the design as JSON.
@@ -119,6 +120,8 @@ Done last, once the panel covers every component, so the project stays usable th
 - [ ] Revisit "Considerations for later components" (placing parts with planes) for the plug-in.
 
 ## 9. Later
+
+- [ ] Custom soundhole shapes, as the Custom Soundhole component draws them, in the Soundhole section. Decide how the shape is provided (picked from the Rhino document? imported?) and stored.
 
 - [ ] GitHub Actions workflow that builds the plug-in on each push.
 - [ ] Yak package for distribution through Rhino's Package Manager.

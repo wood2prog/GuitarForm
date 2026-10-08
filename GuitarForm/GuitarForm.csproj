@@ -20,5 +20,8 @@
   <ItemGroup>
     <EmbeddedResource Include="Resources\Icons\*.png" LogicalName="GuitarForm.Icons.%(Filename)%(Extension)" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GuitarForm.Model\GuitarForm.Model.csproj" />
+  </ItemGroup>
 
 </Project>

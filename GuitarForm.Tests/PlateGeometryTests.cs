@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using GuitarForm.Geometry;
+using GuitarForm.Model;
 using NUnit.Framework;
 using Rhino.Geometry;
 using Rhino.Testing.Fixtures;

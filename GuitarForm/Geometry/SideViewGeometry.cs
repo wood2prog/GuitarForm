@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using GuitarForm.Model;
 using Rhino.Geometry;
 
 namespace GuitarForm.Geometry

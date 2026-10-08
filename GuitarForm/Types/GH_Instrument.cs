@@ -1,5 +1,5 @@
 using Grasshopper.Kernel.Types;
-using GuitarForm.Geometry;
+using GuitarForm.Model;
 
 namespace GuitarForm.Types
 {

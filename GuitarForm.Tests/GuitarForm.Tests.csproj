@@ -26,11 +26,11 @@
        .dll files, so the .gha is copied next to the tests as GuitarForm.dll instead of through the reference. -->
   <ItemGroup>
     <ProjectReference Include="..\GuitarForm\GuitarForm.csproj" Private="false" />
+    <ProjectReference Include="..\GuitarForm.Model\GuitarForm.Model.csproj" />
   </ItemGroup>
 
   <Target Name="CopyPluginAsDll" AfterTargets="Build">
-    <Copy SourceFiles="..\GuitarForm\bin\$(Configuration)\net7.0-windows\GuitarForm.gha"
-          DestinationFiles="$(OutDir)GuitarForm.dll" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="..\GuitarForm\bin\$(Configuration)\net7.0-windows\GuitarForm.gha" DestinationFiles="$(OutDir)GuitarForm.dll" SkipUnchangedFiles="true" />
   </Target>
 
 </Project>
