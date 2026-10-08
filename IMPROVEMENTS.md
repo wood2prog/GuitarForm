@@ -86,7 +86,7 @@ Decided:
 
 ### 8c. Geometry
 
-- [ ] The geometry classes take the model's section records instead of their own `*Dimensions` records, and solve in mm. The plug-in scales the result to document units (`RhinoMath.UnitScale`) and converts the document tolerance to mm. Update the tests.
+- [x] The geometry classes take the model's section records instead of their own `*Dimensions` records, and solve in mm. The plug-in scales the result to document units (`RhinoMath.UnitScale`) and converts the document tolerance to mm. Update the tests. *(The geometry classes moved to a `GuitarForm.Geometry` project shared by the plug-in, the components and the tests; the tests now reference it instead of copying the `.gha`. Plate takes a `Body`, Soundhole a `Soundhole`, and Side View a `Body` plus a drawing offset, which the layout will supply. Side View draws nothing, with a remark, until both depths are set. `DesignUnits` does the unit conversions. Custom Soundhole keeps its own record until custom shapes come back.)*
 
 ### 8d. Database
 

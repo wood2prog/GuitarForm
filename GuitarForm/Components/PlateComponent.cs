@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Linq;
 using Grasshopper.Kernel;
 using GuitarForm.Geometry;
+using GuitarForm.Model;
 using Rhino.Geometry;
 
 namespace GuitarForm.Components
@@ -72,7 +73,7 @@ namespace GuitarForm.Components
             double length = 0;
             if (!DA.GetData(InBodyLength, ref length)) return;
 
-            var dimensions = new PlateDimensions
+            var body = new Body
             {
                 BodyLength = length,
                 UbWidth = GetOptionalNumber(DA, InUbWidth),
@@ -89,7 +90,7 @@ namespace GuitarForm.Components
                 HeelWidth = GetOptionalNumber(DA, InHeelWidth),
             };
 
-            var plate = PlateGeometry.Solve(dimensions, DocumentTolerance());
+            var plate = PlateGeometry.Solve(body, DocumentTolerance());
             AddMessages(plate.Messages);
             if (plate.Failed) return;
 

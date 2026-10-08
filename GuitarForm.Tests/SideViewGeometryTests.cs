@@ -13,7 +13,7 @@ namespace GuitarForm.Tests
         const double Tolerance = 0.001;
 
         // The docs/SideView.md Quick Test inputs, before any of its "change to" rows.
-        static readonly SideViewDimensions QuickTest = new SideViewDimensions
+        static readonly Body QuickTest = new Body
         {
             BodyLength = 500,
             TailDepth = 120,
@@ -31,7 +31,7 @@ namespace GuitarForm.Tests
         [Test]
         public void QuickTest_OutlineAtOrigin()
         {
-            var side = SideViewGeometry.Solve(QuickTest);
+            var side = SideViewGeometry.Solve(QuickTest, 0);
 
             Assert.That(side.Failed, Is.False);
             Assert.That(side.Messages, Is.Empty);
@@ -45,7 +45,7 @@ namespace GuitarForm.Tests
         [Test]
         public void DrawingOffset_MovesRight()
         {
-            var side = SideViewGeometry.Solve(QuickTest with { DrawingOffset = 600 });
+            var side = SideViewGeometry.Solve(QuickTest, 600);
 
             Assert.That(side.Failed, Is.False);
             AssertLine(side.OutlineLines[0], 600, 0, 720, 0);
@@ -60,11 +60,23 @@ namespace GuitarForm.Tests
         [TestCase(500, 120, -5)]
         public void NonPositiveDimension_Fails(double length, double tailDepth, double neckDepth)
         {
-            var side = SideViewGeometry.Solve(QuickTest with { BodyLength = length, TailDepth = tailDepth, NeckDepth = neckDepth });
+            var side = SideViewGeometry.Solve(QuickTest with { BodyLength = length, TailDepth = tailDepth, NeckDepth = neckDepth }, 0);
 
             Assert.That(side.Failed, Is.True);
             Assert.That(side.Messages, Has.Count.EqualTo(1));
             Assert.That(side.Messages[0].Level, Is.EqualTo(MessageLevel.Error));
+        }
+
+        [TestCase(null, 95.0)]
+        [TestCase(120.0, null)]
+        public void DepthNotSet_DrawsNothingWithARemark(double? tailDepth, double? neckDepth)
+        {
+            var side = SideViewGeometry.Solve(QuickTest with { TailDepth = tailDepth, NeckDepth = neckDepth }, 0);
+
+            Assert.That(side.Failed, Is.False);
+            Assert.That(side.OutlineLines, Is.Empty);
+            Assert.That(side.Messages, Has.Count.EqualTo(1));
+            Assert.That(side.Messages[0].Level, Is.EqualTo(MessageLevel.Remark));
         }
     }
 }

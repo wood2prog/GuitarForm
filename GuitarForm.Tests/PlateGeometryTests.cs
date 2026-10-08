@@ -15,7 +15,7 @@ namespace GuitarForm.Tests
         const double Tolerance = 0.001;
 
         // The docs/Plate.md Quick Test inputs, before any of its "change to" rows.
-        static readonly PlateDimensions QuickTest = new PlateDimensions
+        static readonly Body QuickTest = new Body
         {
             BodyLength = 600,
             UbWidth = 280,
@@ -32,7 +32,7 @@ namespace GuitarForm.Tests
             HeelWidth = 56,
         };
 
-        static PlateGeometry Solve(PlateDimensions dimensions) => PlateGeometry.Solve(dimensions, Tolerance);
+        static PlateGeometry Solve(Body dimensions) => PlateGeometry.Solve(dimensions, Tolerance);
 
         static void AssertPoint(Point3d actual, double x, double y, double within = 0.05)
         {
@@ -269,7 +269,7 @@ namespace GuitarForm.Tests
         [Test]
         public void PartialUpperBoutInputs_GiveARemarkAndNoUpperBout()
         {
-            var plate = Solve(new PlateDimensions { BodyLength = 600, UbWidth = 280 });
+            var plate = Solve(new Body { BodyLength = 600, UbWidth = 280 });
 
             Assert.That(plate.Failed, Is.False);
             Assert.That(plate.Messages.Single().Level, Is.EqualTo(MessageLevel.Remark));

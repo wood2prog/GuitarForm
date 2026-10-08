@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The geometry maths, shared by the Rhino plug-in, the Grasshopper components and the tests. It depends on
+       RhinoCommon but not on Grasshopper or any UI. -->
+  <PropertyGroup>
+    <TargetFramework>net7.0-windows</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <NoWarn>NU1701;NETSDK1086;NETSDK1138</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="RhinoCommon" Version="8.0.23304.9001" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GuitarForm.Model\GuitarForm.Model.csproj" />
+  </ItemGroup>
+
+</Project>

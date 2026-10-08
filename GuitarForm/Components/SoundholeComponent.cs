@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using Grasshopper.Kernel;
 using GuitarForm.Geometry;
+using GuitarForm.Model;
 using Rhino.Geometry;
 
 namespace GuitarForm.Components
@@ -45,7 +46,7 @@ namespace GuitarForm.Components
             if (!DA.GetData(InDiameter, ref diameter)) return;
             if (!DA.GetData(InTailOffset, ref tailOffset)) return;
 
-            var dimensions = new SoundholeDimensions
+            var dimensions = new Soundhole
             {
                 Diameter = diameter,
                 HorizontalOffset = GetOptionalNumber(DA, InHorizontalOffset),

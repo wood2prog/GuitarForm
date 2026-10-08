@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Grasshopper.Kernel;
 using GuitarForm.Geometry;
+using GuitarForm.Model;
 using Rhino.Geometry;
 
 namespace GuitarForm.Components
@@ -46,15 +47,14 @@ namespace GuitarForm.Components
             if (!DA.GetData(InTailDepth, ref tailDepth)) return;
             if (!DA.GetData(InNeckDepth, ref neckDepth)) return;
 
-            var dimensions = new SideViewDimensions
+            var body = new Body
             {
                 BodyLength = length,
                 TailDepth = tailDepth,
                 NeckDepth = neckDepth,
-                DrawingOffset = GetOptionalNumber(DA, InDrawingOffset),
             };
 
-            var side = SideViewGeometry.Solve(dimensions);
+            var side = SideViewGeometry.Solve(body, GetOptionalNumber(DA, InDrawingOffset) ?? 0);
             AddMessages(side.Messages);
             if (side.Failed) return;
 

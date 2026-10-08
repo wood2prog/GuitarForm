@@ -12,7 +12,7 @@ namespace GuitarForm.Tests
         const double Tolerance = 0.001;
 
         // The docs/Soundhole.md Quick Test inputs, before any of its "change to" rows.
-        static readonly SoundholeDimensions QuickTest = new SoundholeDimensions
+        static readonly Soundhole QuickTest = new Soundhole
         {
             Diameter = 100,
             TailOffset = 420,

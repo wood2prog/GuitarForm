@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GuitarForm.Plugin", "Guitar
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GuitarForm.Model", "GuitarForm.Model\GuitarForm.Model.csproj", "{977E519C-4612-4B15-8E20-D0AE7D441D3A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GuitarForm.Geometry", "GuitarForm.Geometry\GuitarForm.Geometry.csproj", "{FC764FD8-A881-48B0-B88F-5F2789EFB498}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,6 +71,18 @@ Global
 		{977E519C-4612-4B15-8E20-D0AE7D441D3A}.Release|x64.Build.0 = Release|Any CPU
 		{977E519C-4612-4B15-8E20-D0AE7D441D3A}.Release|x86.ActiveCfg = Release|Any CPU
 		{977E519C-4612-4B15-8E20-D0AE7D441D3A}.Release|x86.Build.0 = Release|Any CPU
+		{FC764FD8-A881-48B0-B88F-5F2789EFB498}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FC764FD8-A881-48B0-B88F-5F2789EFB498}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FC764FD8-A881-48B0-B88F-5F2789EFB498}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{FC764FD8-A881-48B0-B88F-5F2789EFB498}.Debug|x64.Build.0 = Debug|Any CPU
+		{FC764FD8-A881-48B0-B88F-5F2789EFB498}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{FC764FD8-A881-48B0-B88F-5F2789EFB498}.Debug|x86.Build.0 = Debug|Any CPU
+		{FC764FD8-A881-48B0-B88F-5F2789EFB498}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FC764FD8-A881-48B0-B88F-5F2789EFB498}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FC764FD8-A881-48B0-B88F-5F2789EFB498}.Release|x64.ActiveCfg = Release|Any CPU
+		{FC764FD8-A881-48B0-B88F-5F2789EFB498}.Release|x64.Build.0 = Release|Any CPU
+		{FC764FD8-A881-48B0-B88F-5F2789EFB498}.Release|x86.ActiveCfg = Release|Any CPU
+		{FC764FD8-A881-48B0-B88F-5F2789EFB498}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

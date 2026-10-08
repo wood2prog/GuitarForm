@@ -4,14 +4,6 @@ using Rhino.Geometry;
 
 namespace GuitarForm.Geometry
 {
-    // Soundhole inputs. The horizontal offset is optional (null when not connected) and defaults to 0, the body centre.
-    public sealed record SoundholeDimensions
-    {
-        public double Diameter { get; init; }
-        public double? HorizontalOffset { get; init; }
-        public double TailOffset { get; init; }
-    }
-
     // Round soundhole: a circle centred HorizontalOffset across from the body centreline (+X is right) and TailOffset up
     // the Y axis from the tail end (the origin).
     public sealed class SoundholeGeometry
@@ -24,18 +16,18 @@ namespace GuitarForm.Geometry
         // True when an error stopped the solution. The geometry is then incomplete and shouldn't be output.
         public bool Failed { get; private set; }
 
-        readonly SoundholeDimensions _d;
+        readonly Soundhole _d;
 
-        SoundholeGeometry(SoundholeDimensions dimensions)
+        SoundholeGeometry(Soundhole soundhole)
         {
-            _d = dimensions;
+            _d = soundhole;
         }
 
-        public static SoundholeGeometry Solve(SoundholeDimensions dimensions)
+        public static SoundholeGeometry Solve(Soundhole soundhole)
         {
-            var soundhole = new SoundholeGeometry(dimensions);
-            soundhole.Failed = !soundhole.Build();
-            return soundhole;
+            var geometry = new SoundholeGeometry(soundhole);
+            geometry.Failed = !geometry.Build();
+            return geometry;
         }
 
         bool Build()

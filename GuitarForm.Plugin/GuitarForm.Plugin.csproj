@@ -26,5 +26,8 @@
   <ItemGroup>
     <EmbeddedResource Include="..\GuitarForm\Resources\Icons\GuitarForm.png" LogicalName="GuitarForm.Plugin.GuitarForm.png" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GuitarForm.Geometry\GuitarForm.Geometry.csproj" />
+  </ItemGroup>
 
 </Project>

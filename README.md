@@ -36,7 +36,7 @@ After this, each rebuild is picked up the next time you start Rhino.
 
 **Option B: copy the plug-in**
 
-1. Copy `GuitarForm.gha` into `%APPDATA%\Grasshopper\Libraries`.
+1. Copy `GuitarForm.gha`, `GuitarForm.Model.dll` and `GuitarForm.Geometry.dll` into `%APPDATA%\Grasshopper\Libraries`.
 2. If Windows marks the file as blocked, right-click it, open **Properties** and tick **Unblock**.
 3. Restart Rhino and open Grasshopper.
 

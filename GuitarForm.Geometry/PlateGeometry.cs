@@ -5,27 +5,10 @@ using Rhino.Geometry;
 
 namespace GuitarForm.Geometry
 {
-    // Plate inputs. Everything except the body length is optional (null when not connected).
-    public sealed record PlateDimensions
-    {
-        public double BodyLength { get; init; }
-        public double? UbWidth { get; init; }
-        public double? UbOffset { get; init; }
-        public double? UbRadius { get; init; }
-        public double? UbSecondaryOffset { get; init; }
-        public double? WaistRadius { get; init; }
-        public double? WaistWidth { get; init; }
-        public double? WaistOffset { get; init; }
-        public double? LbWidth { get; init; }
-        public double? LbOffset { get; init; }
-        public double? LbRadius { get; init; }
-        public double? LbSecondaryOffset { get; init; }
-        public double? HeelWidth { get; init; }
-    }
-
     // Guitar body plate outline, drawn vertically from the tail end at the origin up +Y. Each region of the body (upper
     // bout, waist, lower bout and tail, heel) adds its construction geometry and the parts of the outline it owns; the
-    // circle segments that join them are added last, once every point where the outline meets a circle is known.
+    // circle segments that join them are added last, once every point where the outline meets a circle is known. It
+    // uses the body's outline dimensions; values not set (null) leave out the parts of the outline that need them.
     public sealed class PlateGeometry
     {
         // Length of the vertical marks at each end of the heel width, as a fraction of the body length, so they're visible
@@ -46,7 +29,7 @@ namespace GuitarForm.Geometry
         // True when an error stopped the solution. The geometry is then incomplete and shouldn't be output.
         public bool Failed { get; private set; }
 
-        readonly PlateDimensions _d;
+        readonly Body _d;
         readonly double _tolerance;
 
         // Right-side circles, where the outline joins the upper primary (from the heel end) and leaves the lower primary
@@ -57,15 +40,15 @@ namespace GuitarForm.Geometry
         Line? _tailLine;
         Arc? _tailArc;
 
-        PlateGeometry(PlateDimensions dimensions, double tolerance)
+        PlateGeometry(Body body, double tolerance)
         {
-            _d = dimensions;
+            _d = body;
             _tolerance = tolerance;
         }
 
-        public static PlateGeometry Solve(PlateDimensions dimensions, double tolerance)
+        public static PlateGeometry Solve(Body body, double tolerance)
         {
-            var plate = new PlateGeometry(dimensions, tolerance);
+            var plate = new PlateGeometry(body, tolerance);
             plate.Failed = !plate.Build();
             return plate;
         }
