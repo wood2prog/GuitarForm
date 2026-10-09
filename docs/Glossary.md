@@ -141,6 +141,9 @@ The diameter of the position dots on the bass edge of the fretboard.
 **Side Dot Offset (SDO)**
 The distance from the fretboard's bottom face to the center of the side dots.
 
+**Side Double Dot Spacing (SDDS)**
+For a fret with two side dots, the distance between the centers of the two dots.
+
 **Marker Fret (MKF)**
 In the marker list, the fret a marker sits at.
 
