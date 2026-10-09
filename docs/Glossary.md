@@ -102,3 +102,9 @@ The number of strings in the set.
 
 **String Description (STD)**
 A short label for the string, e.g. its note (E4) or the manufacturer's part number.
+
+**String Diameter (STDI)**
+The string's outside diameter (its gauge).
+
+**String Construction (STC)**
+Whether the string is plain or wound.
