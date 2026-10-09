@@ -125,6 +125,7 @@ Done last, once the panel covers every component, so the project stays usable th
 
 - [ ] Name every setting in the user's notes and define it in `docs/Glossary.md` (name, abbreviation, short definition), one at a time with the user. Then delete `variables and settings.txt`. Implementation details that come up along the way:
   - Scale Length (SL): the field offers a list of common scale lengths to pick from, and also takes any value.
+  - Compound fretboard radius (FRN, FRE) is planned for later; until then the fretboard uses the single Fretboard Radius (FBR).
 - [ ] Work the user's notes (`variables and settings.txt`) into the plan: the sections, their fields, which have their own tables of choices (string sets, fretwire, string action, dot marker layouts), and the order to build them in. This also settles 8f (string sets).
 - [ ] UI polish: alignment and positioning in the panel. The user will describe or screenshot what looks off.
 
