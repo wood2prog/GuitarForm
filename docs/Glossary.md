@@ -108,3 +108,6 @@ The string's outside diameter (its gauge).
 
 **String Construction (STC)**
 Whether the string is plain or wound.
+
+**String Unit Weight (STUW)**
+The string's mass per unit length, as published by the manufacturer. Used to calculate string tension.

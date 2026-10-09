@@ -127,6 +127,7 @@ Done last, once the panel covers every component, so the project stays usable th
   - Scale Length (SL): the field offers a list of common scale lengths to pick from, and also takes any value.
   - Compound fretboard radius (FBRN, FBRE) is planned for later; until then the fretboard uses the single Fretboard Radius (FBR).
   - String action (TSA, BSA): beside each value, also show the action measured from the fretboard surface, calculated from the chosen fretwire's height.
+  - String Unit Weight (STUW): stored in kg/m. Shown in the document's unit system (kg/m or lb/in), with a check box in the dialog that pins it to lb/in, since most manufacturers publish lb/in.
 - [ ] Work the user's notes (`variables and settings.txt`) into the plan: the sections, their fields, which have their own tables of choices (string sets, fretwire, string action, dot marker layouts), and the order to build them in. This also settles 8f (string sets).
 - [ ] Convert the existing British spellings (colour, grey, centre, millimetre, organisation, …) to American English in the docs, UI text, code and CLAUDE.md. Rhino API names such as `DisplayColor` aren't affected.
 - [ ] UI polish: alignment and positioning in the panel. The user will describe or screenshot what looks off.
