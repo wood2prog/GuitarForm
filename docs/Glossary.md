@@ -63,3 +63,9 @@ The nut's total height, from its base to its top.
 
 **Nut Reveal (NTR)**
 The height of the nut's top above the fretboard's playing surface, measured at the centerline.
+
+**Bass String Setback (BSS)**
+At the nut, the distance from the bass edge of the fretboard to the centerline of the outermost bass string.
+
+**Treble String Setback (TSS)**
+At the nut, the distance from the treble edge of the fretboard to the centerline of the outermost treble string.
