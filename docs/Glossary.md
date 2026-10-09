@@ -54,3 +54,6 @@ The slight forward bow built into the fretboard's playing surface along its leng
 
 **Fretboard Relief Fret (FBRF)**
 Optional. The fret at which the Fretboard Relief is measured.
+
+**Nut Thickness (NTT)**
+The nut's thickness along the length of the neck, from its fretboard face to its headstock face.
