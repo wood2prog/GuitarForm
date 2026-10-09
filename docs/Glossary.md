@@ -111,3 +111,15 @@ Whether the string is plain or wound.
 
 **String Unit Weight (STUW)**
 The string's mass per unit length, as published by the manufacturer. Used to calculate string tension.
+
+**String Hex Core (STHC)**
+For a wound string, whether its core is hexagonal (true) or round (false).
+
+**String Core Material (STCM)**
+For a wound string, what its core is made of: not specified, solid nylon, nylon floss, steel or gut.
+
+**String Core Modulus (STCE)**
+The core's modulus of elasticity (MOE), in GPa. Given only when the core material is not specified.
+
+**String Core Strength (STCS)**
+The core's ultimate tensile strength (UTS), in MPa. Given only when the core material is not specified.
