@@ -23,3 +23,6 @@ The fret at which the neck meets the body, e.g. 12 or 14.
 
 **Fret Count (FC)**
 The total number of frets on the fretboard.
+
+**Last Fret Overhang (LFO)**
+The length of fretboard beyond the last fret, measured from the last fret to the body end of the fretboard.
