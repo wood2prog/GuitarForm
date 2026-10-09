@@ -229,3 +229,30 @@ At the heel end, the radius of the arc that blends the shoulder line into the bo
 
 **Profile Side Length at Heel End (PSLE)**
 At the heel end, the length of the heel's straight sides, running out from the heel/body joint before the profile's curves start.
+
+**Heel Section Thickness (HLCT)**
+At the heel section, the distance from the heel/body joint to the front of the heel's profile.
+
+**Heel Section Offset from Heel End (HLCO)**
+The distance from the heel end to the heel section, toward the neck.
+
+**Heel Outline Straight Sides (HLOS)**
+Seen from the heel end, whether the heel's sides run straight from the neck's edge at the fretboard to the heel end. When checked, the Heel Section Width is calculated from that line instead of being typed in.
+
+**Heel Section Width (HLCW)**
+The heel's width at the heel section. Calculated when Heel Outline Straight Sides is checked.
+
+**Profile Uses First Fret at Heel Section (PUFH)**
+Whether the heel section profile uses the first fret's bottom radius, shoulder angle and midshoulder radius instead of its own.
+
+**Profile Bottom Radius at Heel Section (PBRH)**
+At the heel section, the radius of the arc that forms the front of the heel's profile.
+
+**Profile Shoulder Angle at Heel Section (PSAH)**
+At the heel section, the angle of the straight shoulder line that runs from the end of the heel's straight sides, measured from a flat line straight across the heel's width.
+
+**Profile Midshoulder Radius at Heel Section (PMRH)**
+At the heel section, the radius of the arc that blends the shoulder line into the bottom arc, tangent to both.
+
+**Profile Side Length at Heel Section (PSLH)**
+At the heel section, the length of the heel's straight sides, running out from the heel/body joint before the profile's curves start.
