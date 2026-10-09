@@ -18,3 +18,8 @@ The vibrating string length from the nut to the saddle. Fret positions are compu
 
 **Neck Join Fret (NJF)**
 The fret at which the neck meets the body, e.g. 12 or 14.
+
+## Fretboard
+
+**Fret Count (FC)**
+The total number of frets on the fretboard.
