@@ -88,3 +88,11 @@ At the 12th fret, the gap between the fret crown and the bottom of the first (tr
 
 **Bass String Action (BSA)**
 At the 12th fret, the gap between the fret crown and the bottom of the last (bass) string.
+
+## String Sets
+
+**String Set Manufacturer (SSM)**
+The company that makes the string set.
+
+**String Set Name (SSN)**
+The manufacturer's name or product code for the set, e.g. EJ16.
