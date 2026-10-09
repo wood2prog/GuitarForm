@@ -90,9 +90,9 @@ Decided:
 
 ### 8d. Database
 
-- [ ] Schema: a `designs` table and one table per section. Each section row belongs to either a design or the library (as a named preset). Typed columns. Schema version kept in `PRAGMA user_version`, with a migration for each version.
-- [ ] Storage class: create, list, load, overwrite, copy and delete designs; save a section as a preset; list presets; copy a preset into a design. Tested against a temporary database.
-- [ ] **(decision)** When backups are made and how many are kept. Proposed: when Rhino closes and every 15 minutes while there are changes since the last backup, as dated files (`GuitarForm 2026-10-08 1830.db`), keeping the last 20 plus one per day for 30 days.
+- [x] Schema: a `designs` table and one table per section. Each section row belongs to either a design or the library (as a named preset). Typed columns. Schema version kept in `PRAGMA user_version`, with a migration for each version. *(`GuitarForm.Data/Schema.cs`. Design names and each section's preset names are unique, ignoring case. Deleting a design deletes its sections.)*
+- [x] Storage class: create, list, load, overwrite, copy and delete designs; save a section as a preset; list presets; copy a preset into a design. Tested against a temporary database. *(`Library` in the new `GuitarForm.Data` project, which has no Rhino dependency. A copy is named "OM copy", "OM copy 2", …. A preset is copied into a design by loading it and saving the design.)*
+- [x] **(decision)** When backups are made and how many are kept. Proposed: when Rhino closes and every 15 minutes while there are changes since the last backup, as dated files (`GuitarForm 2026-10-08 1830.db`), keeping the last 20 plus one per day for 30 days. *(As proposed, as defaults: the interval and both numbers can be changed on the Settings page.)*
 - [ ] Backup: writes a complete copy of the library to the backup folder with SQLite's backup API, at the times decided above, plus a **Back up now** button.
 - [ ] Restore: replaces the main copy with a chosen backup, after backing up the current main copy first. Also used to start on another computer.
 - [ ] Settings page in the panel: main library location and backup folder (defaults above). Changing the main location offers to move the existing library there or open the one already at the new place.

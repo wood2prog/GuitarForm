@@ -19,7 +19,6 @@
 
   <ItemGroup>
     <PackageReference Include="RhinoCommon" Version="8.0.23304.9001" ExcludeAssets="runtime" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
   </ItemGroup>
 
   <!-- Panel icon. Shared with the Grasshopper plug-in until it's removed. -->
@@ -28,6 +27,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GuitarForm.Geometry\GuitarForm.Geometry.csproj" />
+    <ProjectReference Include="..\GuitarForm.Data\GuitarForm.Data.csproj" />
   </ItemGroup>
 
 </Project>

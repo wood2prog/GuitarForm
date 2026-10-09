@@ -1,6 +1,8 @@
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
 using Eto.Forms;
+using GuitarForm.Data;
 using Rhino;
 
 namespace GuitarForm.Plugin
@@ -9,6 +11,9 @@ namespace GuitarForm.Plugin
     [Guid("b27065af-ab08-4c16-aeef-415d7616b93c")]
     public class GuitarFormPanel : Panel
     {
+        static string DefaultLibraryPath =>
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GuitarForm", "GuitarForm.db");
+
         public GuitarFormPanel()
         {
             Content = new StackLayout
@@ -22,13 +27,12 @@ namespace GuitarForm.Plugin
 
         static string LibraryStatus()
         {
-            string path = Library.DefaultPath;
+            string path = DefaultLibraryPath;
             try
             {
-                using var connection = Library.Open(path);
-                string status = $"Library: {path}\nSQLite {connection.ServerVersion}";
-                RhinoApp.WriteLine($"GuitarForm: opened library {path} (SQLite {connection.ServerVersion}).");
-                return status;
+                using var library = Library.Open(path);
+                RhinoApp.WriteLine($"GuitarForm: opened library {path} (SQLite {library.SqliteVersion}).");
+                return $"Library: {path}\nSQLite {library.SqliteVersion}";
             }
             catch (Exception e)
             {
