@@ -4,7 +4,7 @@ The name and abbreviation of every design setting. The plug-in uses these everyw
 
 - Each abbreviation is 2–4 capital letters and unique across the whole plug-in.
 - Words that recur are always abbreviated the same way:
-  - A part the setting is about has a subject code: Fretboard is FB, Neck is NK, Nut is NT, String (one string of a set) is ST (e.g. NTW, FBTN, STD).
+  - A part the setting is about has a subject code: Fretboard is FB, Heel is HL, Neck is NK, Nut is NT, String (one string of a set) is ST (e.g. NTW, FBTN, STD).
   - A position the setting is measured at has a one-letter suffix: at Nut is N, at End is E, at Bridge is B (e.g. FBRN, FBTE, SSB).
 - A setting that appears in more than one place (e.g. a neck profile radius at the first fret and at the heel) gets its own name and abbreviation for each place.
 
@@ -199,3 +199,9 @@ At the Neck Thickness Fret, how far the bottom arc is shifted from the neck's ce
 
 **Profile Includes Fretboard at Selected Fret (PIFS)**
 At the Neck Thickness Fret, whether the shoulder line starts at the top of the fretboard edge (true) or at its underside (false).
+
+**Heel Shaft Radius (HLSR)**
+The radius of the curve that runs from the back of the neck shaft down into the heel, tangent to the back of the neck.
+
+**Heel Shaft Offset (HLSO)**
+How far the center of the Heel Shaft Radius is moved toward the peghead, measured parallel to the neck shaft so the curve stays tangent to the back of the neck. At 0, a straight line tangent to the curve joins it to the heel end. Above 0, a tangent arc joins it instead. The center can't move past the Neck Thickness Fret.
