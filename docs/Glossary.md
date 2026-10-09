@@ -4,7 +4,7 @@ The name and abbreviation of every design setting. The plug-in uses these everyw
 
 - Each abbreviation is 2–4 capital letters and unique across the whole plug-in.
 - Words that recur are always abbreviated the same way:
-  - A part the setting is about has a subject code: Fretboard is FB, Nut is NT (e.g. NTW, FBTN).
+  - A part the setting is about has a subject code: Fretboard is FB, Nut is NT, String (one string of a set) is ST (e.g. NTW, FBTN, STD).
   - A position the setting is measured at has a one-letter suffix: at Nut is N, at End is E, at Bridge is B (e.g. FBRN, FBTE, SSB).
 - A setting that appears in more than one place (e.g. a neck profile radius at the first fret and at the heel) gets its own name and abbreviation for each place.
 
@@ -99,3 +99,6 @@ The manufacturer's name or product code for the set, e.g. EJ16.
 
 **String Count (SC)**
 The number of strings in the set.
+
+**String Description (STD)**
+A short label for the string, e.g. its note (E4) or the manufacturer's part number.
