@@ -57,3 +57,9 @@ Optional. The fret at which the Fretboard Relief is measured.
 
 **Nut Thickness (NTT)**
 The nut's thickness along the length of the neck, from its fretboard face to its headstock face.
+
+**Nut Height (NTH)**
+The nut's total height, from its base to its top.
+
+**Nut Reveal (NTR)**
+The height of the nut's top above the fretboard's playing surface, measured at the centerline.
