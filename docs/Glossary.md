@@ -3,7 +3,7 @@
 The name and abbreviation of every design setting. The plug-in uses these everywhere it refers to a setting: field labels, messages, the docs and the setting search.
 
 - Each abbreviation is 2–4 capital letters and unique across the whole plug-in.
-- Words that recur are always abbreviated the same way: Nut is NT.
+- Words that recur are always abbreviated the same way: Fretboard is FB, Nut is NT.
 - A setting that appears in more than one place (e.g. a neck profile radius at the first fret and at the heel) gets its own name and abbreviation for each place.
 
 ## Instrument
@@ -31,17 +31,26 @@ The length of fretboard beyond the last fret, measured from the last fret to the
 **Fretboard Radius (FBR)**
 The radius of the fretboard's playing surface across its width, constant along its length.
 
-**Fretboard Radius at Nut (FRN)** *(planned)*
+**Fretboard Radius at Nut (FBRN)** *(planned)*
 For a compound radius: the radius of the fretboard's playing surface at the nut. The radius changes evenly along the fretboard to the Fretboard Radius at End.
 
-**Fretboard Radius at End (FRE)** *(planned)*
+**Fretboard Radius at End (FBRE)** *(planned)*
 For a compound radius: the radius of the fretboard's playing surface at the body end of the fretboard.
 
-**Fretboard Thickness at Nut (FTN)**
+**Fretboard Thickness at Nut (FBTN)**
 The fretboard's thickness at the nut end, measured at the crown (the centerline).
 
-**Fretboard Thickness at End (FTE)**
+**Fretboard Thickness at End (FBTE)**
 The fretboard's thickness at the body end, measured at the crown (the centerline).
 
 **Nut Width (NTW)**
 The fretboard's width at the nut.
+
+**String Spacing at Bridge (SSB)**
+The distance between the centerlines of the first and last strings at the saddle. With the Nut Width, it sets the fretboard's taper.
+
+**Fretboard Relief (FBRL)**
+The slight forward bow built into the fretboard's playing surface along its length: the gap between the surface and a straight line from the nut to the end of the fretboard. It's measured at the Fretboard Relief Fret when one is given, and is otherwise the greatest gap.
+
+**Fretboard Relief Fret (FBRF)**
+Optional. The fret at which the Fretboard Relief is measured.
