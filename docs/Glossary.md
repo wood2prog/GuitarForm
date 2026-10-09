@@ -80,3 +80,11 @@ For courses of two strings, the distance between the centerlines of the two stri
 
 **Course String Spacing at Bridge (CSB)**
 For courses of two strings, the distance between the centerlines of the two strings in a course at the saddle.
+
+## String Action
+
+**Treble String Action (TSA)**
+At the 12th fret, the gap between the fret crown and the bottom of the first (treble) string.
+
+**Bass String Action (BSA)**
+At the 12th fret, the gap between the fret crown and the bottom of the last (bass) string.
