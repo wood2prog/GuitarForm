@@ -12,3 +12,6 @@ A short name that identifies this instrument design.
 
 **Designer (DSG)**
 The name of the person who designed this instrument.
+
+**Scale Length (SL)**
+The vibrating string length from the nut to the saddle. Fret positions are computed from it.
