@@ -126,3 +126,23 @@ The core's ultimate tensile strength (UTS), in MPa. Given only when the core mat
 
 **String Used in Saddle Compensation (STSC)**
 Whether the string's compensated position is used to fit the straight saddle line.
+
+## Dot Markers
+
+**Face Dot Diameter (FDD)**
+The diameter of the position dots on the fretboard's playing surface.
+
+**Double Dot Edge Distance (DDED)**
+For a fret with two face dots, the distance from each fretboard edge to the near edge of the nearer dot.
+
+**Side Dot Diameter (SDD)**
+The diameter of the position dots on the bass edge of the fretboard.
+
+**Side Dot Offset (SDO)**
+The distance from the fretboard's bottom face to the center of the side dots.
+
+**Marker Fret (MKF)**
+In the marker list, the fret a marker sits at.
+
+**Marker Dot Count (MKDC)**
+In the marker list, the number of dots at that fret, 1 or 2, on both the face and the bass edge.
