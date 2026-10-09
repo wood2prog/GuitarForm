@@ -99,13 +99,13 @@ Decided:
 
 ### 8e. Editor panel
 
-- [ ] Design list: new, open, copy, rename, delete. New asks for the name, body length, scale length and neck join fret (the required values); optional values start blank, with no soundhole.
-- [ ] One tab per section, with number fields (blank means not set, for optional values), the section's errors and warnings, and **Load preset** / **Save as preset**.
-- [ ] The overwrite-or-copy prompt on the first edit after loading, then saving as you edit.
+- [x] Design list: new, open, copy, rename, delete. New asks for the name, body length, scale length and neck join fret (the required values); optional values start blank, with no soundhole. *(A drop-down of designs with New…, Copy, Rename…, Delete, Import… and Export… buttons.)*
+- [x] One tab per section, with number fields (blank means not set, for optional values), the section's errors and warnings, and **Load preset** / **Save as preset**. *(Fields are declared in `GuitarForm.Plugin/Sections.cs` and shown by `SectionEditor`. A blank required box or text that isn't a number is reported and doesn't change the design. Presets can also be deleted. The Soundhole tab has a box to say whether the design has one.)*
+- [x] The overwrite-or-copy prompt on the first edit after loading, then saving as you edit. *(Yes overwrites, No saves the change in a copy, Cancel undoes it. Designs just made by New, Copy or Import don't ask.)*
 - [x] Lay the drawings out automatically: the side view sits to the right of the plate, at half the lower bout width plus a gap. Later views (neck, fretboard) are placed the same way. *(`DesignDrawing` in `GuitarForm.Geometry` draws a whole design in mm. The side view sits the gap right of the plate's widest point (its outline and construction lines). The gap is a setting, 50 mm by default. Messages are kept per section.)*
-- [ ] Live preview with a display conduit: construction geometry light grey, outline in Rhino's feedback colour (so it doesn't look like a built object), redrawn on every change.
-- [ ] Build: writes the geometry to the `GuitarForm::Outline` and `GuitarForm::Construction` layers, tagged with the design's id, replacing that design's previous build. Construction geometry is light grey with a solid linetype.
-- [ ] Export: saves the design as JSON. Import: adds a design from a JSON file.
+- [x] Live preview with a display conduit: construction geometry light grey, outline in Rhino's feedback colour (so it doesn't look like a built object), redrawn on every change. *(`DesignPreview`, shown while the panel is visible and Preview is ticked.)*
+- [x] Build: writes the geometry to the `GuitarForm::Outline` and `GuitarForm::Construction` layers, tagged with the design's id, replacing that design's previous build. Construction geometry is light grey with a solid linetype. *(`DesignBuilder`. The Construction layer is light grey; objects take their layer's colour and linetype. One undo step.)*
+- [x] Export: saves the design as JSON. Import: adds a design from a JSON file.
 
 ### 8f. String sets
 
