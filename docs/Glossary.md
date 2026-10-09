@@ -171,7 +171,7 @@ The fret at which the Neck Thickness at Selected Fret is set.
 At the first fret, the radius of the arc that forms the back of the neck.
 
 **Profile Shoulder Angle at First Fret (PSAF)**
-At the first fret, the angle of the straight shoulder line that runs down from the fretboard edge, measured from the fretboard's playing surface.
+At the first fret, the angle of the straight shoulder line that runs down from the fretboard edge, measured from a flat line straight across the neck's width (perpendicular to its center plane), not from the radiused fretboard surface.
 
 **Profile Midshoulder Radius at First Fret (PMRF)**
 At the first fret, the radius of the arc that blends the shoulder line into the bottom arc, tangent to both.
@@ -181,3 +181,21 @@ At the first fret, how far the bottom arc is shifted from the neck's centerline:
 
 **Profile Includes Fretboard at First Fret (PIFF)**
 At the first fret, whether the shoulder line starts at the top of the fretboard edge (true) or at its underside (false).
+
+**Profile Uses First Fret at Selected Fret (PUFS)**
+Whether the profile at the Neck Thickness Fret uses all five of the first fret's profile settings instead of its own.
+
+**Profile Bottom Radius at Selected Fret (PBRS)**
+At the Neck Thickness Fret, the radius of the arc that forms the back of the neck.
+
+**Profile Shoulder Angle at Selected Fret (PSAS)**
+At the Neck Thickness Fret, the angle of the straight shoulder line that runs down from the fretboard edge, measured from a flat line straight across the neck's width (perpendicular to its center plane), not from the radiused fretboard surface.
+
+**Profile Midshoulder Radius at Selected Fret (PMRS)**
+At the Neck Thickness Fret, the radius of the arc that blends the shoulder line into the bottom arc, tangent to both.
+
+**Profile Center Offset at Selected Fret (PCOS)**
+At the Neck Thickness Fret, how far the bottom arc is shifted from the neck's centerline: positive toward the treble side, negative toward the bass side.
+
+**Profile Includes Fretboard at Selected Fret (PIFS)**
+At the Neck Thickness Fret, whether the shoulder line starts at the top of the fretboard edge (true) or at its underside (false).
