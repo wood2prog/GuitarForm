@@ -4,7 +4,7 @@ The name and abbreviation of every design setting. The plug-in uses these everyw
 
 - Each abbreviation is 2–4 capital letters and unique across the whole plug-in.
 - Words that recur are always abbreviated the same way:
-  - A part the setting is about has a subject code: Fretboard is FB, Nut is NT, String (one string of a set) is ST (e.g. NTW, FBTN, STD).
+  - A part the setting is about has a subject code: Fretboard is FB, Neck is NK, Nut is NT, String (one string of a set) is ST (e.g. NTW, FBTN, STD).
   - A position the setting is measured at has a one-letter suffix: at Nut is N, at End is E, at Bridge is B (e.g. FBRN, FBTE, SSB).
 - A setting that appears in more than one place (e.g. a neck profile radius at the first fret and at the heel) gets its own name and abbreviation for each place.
 
@@ -149,3 +149,20 @@ In the marker list, the fret a marker sits at.
 
 **Marker Dot Count (MKDC)**
 In the marker list, the number of dots at that fret, 1 or 2, on both the face and the bass edge.
+
+## Neck
+
+**Neck Angle (NKA)**
+The angle between the plane of the fretboard's playing surface and the plane of the top plate, taken as flat (ignoring any arching).
+
+**Overstand (OVS)**
+The height of the fretboard's underside above the top plate, at the body joint.
+
+**Neck Thickness at First Fret (NKTF)**
+At the first fret, the neck's thickness from the fretboard's playing surface to the back of the neck.
+
+**Neck Thickness at Selected Fret (NKTS)**
+At the Neck Thickness Fret, the neck's thickness from the fretboard's playing surface to the back of the neck.
+
+**Neck Thickness Fret (NKSF)**
+The fret at which the Neck Thickness at Selected Fret is set.
