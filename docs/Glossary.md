@@ -3,7 +3,9 @@
 The name and abbreviation of every design setting. The plug-in uses these everywhere it refers to a setting: field labels, messages, the docs and the setting search.
 
 - Each abbreviation is 2–4 capital letters and unique across the whole plug-in.
-- Words that recur are always abbreviated the same way: Fretboard is FB, Nut is NT.
+- Words that recur are always abbreviated the same way:
+  - A part the setting is about has a subject code: Fretboard is FB, Nut is NT (e.g. NTW, FBTN).
+  - A position the setting is measured at has a one-letter suffix: at Nut is N, at End is E, at Bridge is B (e.g. FBRN, FBTE, SSB).
 - A setting that appears in more than one place (e.g. a neck profile radius at the first fret and at the heel) gets its own name and abbreviation for each place.
 
 ## Instrument
@@ -72,3 +74,9 @@ At the nut, the distance from the treble edge of the fretboard to the centerline
 
 **Strings per Course (SPC)**
 The number of strings in each course, 1 or 2, the same for every course: 1 for a standard six-string, 2 for a twelve-string.
+
+**Course String Spacing at Nut (CSN)**
+For courses of two strings, the distance between the centerlines of the two strings in a course at the nut.
+
+**Course String Spacing at Bridge (CSB)**
+For courses of two strings, the distance between the centerlines of the two strings in a course at the saddle.
