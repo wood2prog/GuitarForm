@@ -4,7 +4,7 @@ The name and abbreviation of every design setting. The plug-in uses these everyw
 
 - Each abbreviation is 2–4 capital letters and unique across the whole plug-in.
 - Words that recur are always abbreviated the same way:
-  - A part the setting is about has a subject code: Fretboard is FB, Heel is HL, Neck is NK, Nut is NT, String (one string of a set) is ST (e.g. NTW, FBTN, STD).
+  - A part the setting is about has a subject code: Fretboard is FB, Heel is HL, Heel Cap is HCP, Neck is NK, Nut is NT, String (one string of a set) is ST (e.g. NTW, FBTN, STD).
   - A position the setting is measured at has a one-letter suffix: at Nut is N, at End is E, at Bridge is B (e.g. FBRN, FBTE, SSB).
 - A setting that appears in more than one place (e.g. a neck profile radius at the first fret and at the heel) gets its own name and abbreviation for each place.
 
@@ -213,7 +213,13 @@ At the heel end, the distance from the heel/body joint to the front of the heel'
 The distance from the back plate to the heel end. At 0 the heel end is flush with the back; a positive value moves it toward the top plate.
 
 **Heel End Width (HLEW)**
-The heel's width at the heel end.
+The heel's width at the heel end, measured at the heel/body joint.
+
+**Heel Cap (HCP)**
+Whether a heel cap, a thin piece of wood glued onto the heel end, is included. It doesn't change the heel end: every heel end setting still refers to the end of the heel itself.
+
+**Heel Cap Thickness (HCPT)**
+The heel cap's thickness, added beyond the heel end on the back plate side.
 
 **Profile Uses First Fret at Heel End (PUFE)**
 Whether the heel end profile uses the first fret's bottom radius, shoulder angle and midshoulder radius instead of its own.
