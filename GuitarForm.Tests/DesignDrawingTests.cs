@@ -13,7 +13,7 @@ namespace GuitarForm.Tests
         const double Tolerance = 0.001;
         const double Gap = 50;
 
-        // The docs/Plate.md Quick Test body, with the docs/SideView.md depths. Its widest point is the lower bout, 380
+        // The docs/Body.md Quick Test body, with its side view depths. Its widest point is the lower bout, 380
         // wide, so 190 right of the centreline.
         static readonly GuitarDesign Design = new GuitarDesign
         {
@@ -57,6 +57,18 @@ namespace GuitarForm.Tests
             return count;
         }
 
+        static bool HasLine(DesignDrawing drawing, double fromX, double fromY, double toX, double toY)
+        {
+            foreach (var curve in drawing.Outline)
+            {
+                if (curve is LineCurve line &&
+                    System.Math.Abs(line.Line.From.X - fromX) < Tolerance && System.Math.Abs(line.Line.From.Y - fromY) < Tolerance &&
+                    System.Math.Abs(line.Line.To.X - toX) < Tolerance && System.Math.Abs(line.Line.To.Y - toY) < Tolerance)
+                    return true;
+            }
+            return false;
+        }
+
         [Test]
         public void SideView_SitsTheGapRightOfThePlatesWidestPoint()
         {
@@ -64,6 +76,7 @@ namespace GuitarForm.Tests
 
             Assert.That(drawing.SideViewOffset, Is.EqualTo(240).Within(Tolerance));
             Assert.That(CountVerticalLinesAt(drawing, 240), Is.EqualTo(1), "side view bottom line");
+            Assert.That(HasLine(drawing, 360, 0, 335, 600), "side view top line");
             Assert.That(drawing.BodyMessages, Is.Empty);
         }
 

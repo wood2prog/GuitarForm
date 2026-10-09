@@ -1,6 +1,6 @@
 namespace GuitarForm.Model
 {
-    // The body: its outline (see docs/Plate.md) and its depths (see docs/SideView.md). Body length is required; the
+    // The body: its outline and its depths (see docs/Body.md). Body length is required; the
     // rest are optional (null when not set). The outline is drawn as far as the values set allow, and the side view
     // once both depths are set.
     public sealed record Body

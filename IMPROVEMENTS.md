@@ -51,11 +51,11 @@ Every component draws construction geometry light grey and the final outline in 
 - [x] Move per-component detail out of the README into `docs/Plate.md`, `docs/Neck.md`, etc. Keep the README for requirements, build, loading and an overview. *(`docs/Plate.md` and `docs/Soundhole.md`, which holds both soundhole components; one page per toolbar group. The README links to them from a components table.)*
 - [x] Fold `Spec.txt` into the README or `docs/`. *(Its brief is in the README intro and its working agreement in CLAUDE.md; the file was deleted.)*
 
-## Considerations for later components
+## Considerations for later sections
 
-Not decided yet; settle these when designing the component that needs them (probably the neck).
+Not decided yet; settle these when designing the section that needs them (probably the neck).
 
-- [ ] **(decision)** Placing parts with planes. Plate stays fixed at the origin, since it's the starting point. A component that attaches to another part (e.g. the neck at the heel) would take an optional Plane input, defaulting to World XY, fed from an upstream output (e.g. a Heel Plane output on Plate at (0, L)). The neck would then follow the body when L changes, and the plane can carry a neck angle (tilt out of XY). Each component would still build its geometry in simple local coordinates, with the origin at its attachment point, and move the finished geometry onto the plane at the end. A plane input added to Plate later would go at the end of its inputs, as optional, so existing .gh files still work.
+- [ ] **(decision)** Placing parts with planes. The plate stays fixed at the origin, since it's the starting point. A part that attaches to another (e.g. the neck at the heel) would be built in simple local coordinates, with the origin at its attachment point, then moved onto a plane that `DesignDrawing` works out from the part it attaches to (e.g. a heel plane at (0, L) on the body). The neck then follows the body when L changes, and the plane can carry a neck angle (tilt out of XY). Separate views (like the side view) are placed by `DesignDrawing`'s layout. *(Rewritten for the plug-in: with every section in one design, the plane comes from the design rather than from a wire.)*
 
 ## 8. Move from Grasshopper to a Rhino plug-in with a design database
 
@@ -117,13 +117,18 @@ Deferred: string sets are covered by the user's notes on every section's variabl
 
 Done last, once the panel covers every component, so the project stays usable throughout.
 
-- [ ] Remove the components, `Types/`, `GuitarFormComponent`, `GuitarFormPriority`, the component icons and `Examples/Plate.gh`; drop the Grasshopper package. Point the launch profile at Rhino without Grasshopper.
-- [ ] Rewrite the README (loading the `.rhp`, using the panel), `docs/` (one page per tab instead of per component) and CLAUDE.md's conventions.
-- [ ] Revisit "Considerations for later components" (placing parts with planes) for the plug-in.
+- [x] Remove the components, `Types/`, `GuitarFormComponent`, `GuitarFormPriority`, the component icons and `Examples/Plate.gh`; drop the Grasshopper package. Point the launch profile at Rhino without Grasshopper. *(The Grasshopper project is gone, and the plug-in project took over its name: `GuitarForm/GuitarForm.csproj`, building `GuitarForm.rhp`, namespace `GuitarForm`. The plug-in and panel GUIDs are unchanged. The artwork moved to `GuitarForm/Resources/`. `CustomSoundholeGeometry` and its tests stay for when custom shapes come back.)*
+- [x] Rewrite the README (loading the `.rhp`, using the panel), `docs/` (one page per tab instead of per component) and CLAUDE.md's conventions. *(`docs/Instrument.md`, `docs/Body.md` (Plate and Side View), `docs/Soundhole.md` and the new `docs/Settings.md`. The Quick Tests are typed into the tabs; the Body side view row is checked in `DesignDrawingTests`.)*
+- [x] Revisit "Considerations for later components" (placing parts with planes) for the plug-in. *(Rewritten above as "Considerations for later sections".)*
 
-## 9. Later
+## 9. Next
 
-- [ ] Custom soundhole shapes, as the Custom Soundhole component draws them, in the Soundhole section. Decide how the shape is provided (picked from the Rhino document? imported?) and stored.
+- [ ] Work the user's notes (`variables and settings.txt`) into the plan: the sections, their fields, which have their own tables of choices (string sets, fretwire, string action, dot marker layouts), and the order to build them in. This also settles 8f (string sets).
+- [ ] UI polish: alignment and positioning in the panel. The user will describe or screenshot what looks off.
+
+## 10. Later
+
+- [ ] Custom soundhole shapes, as the old Custom Soundhole component drew them, in the Soundhole section. Decide how the shape is provided (picked from the Rhino document? imported?) and stored.
 
 - [ ] GitHub Actions workflow that builds the plug-in on each push.
 - [ ] Yak package for distribution through Rhino's Package Manager.

@@ -3,8 +3,8 @@ using GuitarForm.Model;
 namespace GuitarForm
 {
     // The fields shown on each section's tab, in order. Lengths are stored in mm and shown in the document's units.
-    // Descriptions are shown as tooltips. See docs/Plate.md,
-    // docs/SideView.md, docs/Soundhole.md and docs/Instrument.md for what each value does.
+    // Descriptions are shown as tooltips. See docs/Instrument.md,
+    // docs/Body.md and docs/Soundhole.md for what each value does.
     static class Sections
     {
         public static readonly NumberField<Instrument>[] Instrument =

@@ -8,13 +8,13 @@ using Rhino.Testing.Fixtures;
 
 namespace GuitarForm.Tests
 {
-    // Checks PlateGeometry against the Quick Test values in docs/Plate.md.
+    // Checks PlateGeometry against the Quick Test values in docs/Body.md.
     [RhinoTestFixture]
     public class PlateGeometryTests
     {
         const double Tolerance = 0.001;
 
-        // The docs/Plate.md Quick Test inputs, before any of its "change to" rows.
+        // The docs/Body.md Quick Test inputs, before any of its "change to" rows.
         static readonly Body QuickTest = new Body
         {
             BodyLength = 600,
@@ -198,7 +198,7 @@ namespace GuitarForm.Tests
         [Test]
         public void LowerSecondaryOffset_LimitIsWhereItTouchesTheWaist()
         {
-            // docs/Plate.md says the most LbSO can be with these values is about 61.4.
+            // docs/Body.md says the most LbSO can be with these values is about 61.4.
             Assert.That(Solve(QuickTest with { LbSecondaryOffset = 61.4 }).Failed, Is.False);
 
             var plate = Solve(QuickTest with { LbSecondaryOffset = 70 });

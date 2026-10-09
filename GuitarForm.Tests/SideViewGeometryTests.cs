@@ -6,13 +6,13 @@ using Rhino.Testing.Fixtures;
 
 namespace GuitarForm.Tests
 {
-    // Checks SideViewGeometry against the Quick Test values in docs/SideView.md.
+    // Checks SideViewGeometry on its own: at the origin, and moved right by a drawing offset. The docs/Body.md Quick Test,
+    // with the side view laid out beside the plate, is checked in DesignDrawingTests.
     [RhinoTestFixture]
     public class SideViewGeometryTests
     {
         const double Tolerance = 0.001;
 
-        // The docs/SideView.md Quick Test inputs, before any of its "change to" rows.
         static readonly Body QuickTest = new Body
         {
             BodyLength = 500,
