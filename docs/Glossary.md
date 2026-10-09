@@ -96,3 +96,6 @@ The company that makes the string set.
 
 **String Set Name (SSN)**
 The manufacturer's name or product code for the set, e.g. EJ16.
+
+**String Count (SC)**
+The number of strings in the set.
