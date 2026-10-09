@@ -4,8 +4,8 @@ The name and abbreviation of every design setting. The plug-in uses these everyw
 
 - Each abbreviation is 2–4 capital letters and unique across the whole plug-in.
 - Words that recur are always abbreviated the same way:
-  - A part the setting is about has a subject code: Fretboard is FB, Heel is HL, Heel Cap is HCP, Neck is NK, Nut is NT, String (one string of a set) is ST (e.g. NTW, FBTN, STD).
-  - A position the setting is measured at has a one-letter suffix: at Nut is N, at End is E, at Bridge is B (e.g. FBRN, FBTE, SSB).
+  - A part the setting is about has a subject code: Body is BD, Fretboard is FB, Heel is HL, Heel Cap is HCP, Neck is NK, Nut is NT, String (one string of a set) is ST (e.g. NTW, FBTN, STD).
+  - A position the setting is measured at has a one-letter suffix: at Nut is N, at End is E, at Bridge is B, at Neck End is N, at Tail End is T (e.g. FBRN, FBTE, SSB, BDDT). Nut and neck end never apply to the same part, so they share N.
 - A setting that appears in more than one place (e.g. a neck profile radius at the first fret and at the heel) gets its own name and abbreviation for each place.
 
 ## Instrument
@@ -210,7 +210,7 @@ How far the center of the Heel Shaft Radius is moved toward the peghead, measure
 At the heel end, the distance from the heel/body joint to the front of the heel's profile.
 
 **Heel End Offset from Back (HLEO)**
-The distance from the back plate to the heel end. At 0 the heel end is flush with the back; a positive value moves it toward the top plate.
+The distance from the back plate to the outer end of the heel: the heel cap's outer face when there is a heel cap, otherwise the heel end. At 0 it's flush with the back; a positive value moves it toward the top plate.
 
 **Heel End Width (HLEW)**
 The heel's width at the heel end, measured at the heel/body joint.
@@ -219,7 +219,7 @@ The heel's width at the heel end, measured at the heel/body joint.
 Whether a heel cap, a thin piece of wood glued onto the heel end, is included. It doesn't change the heel end: every heel end setting still refers to the end of the heel itself.
 
 **Heel Cap Thickness (HCPT)**
-The heel cap's thickness, added beyond the heel end on the back plate side.
+The heel cap's thickness. The cap's outer face stays at the Heel End Offset from Back, and the heel end moves toward the fretboard by this thickness.
 
 **Profile Uses First Fret at Heel End (PUFE)**
 Whether the heel end profile uses the first fret's bottom radius, shoulder angle and midshoulder radius instead of its own.
@@ -262,3 +262,17 @@ At the heel section, the radius of the arc that blends the shoulder line into th
 
 **Profile Side Length at Heel Section (PSLH)**
 At the heel section, the length of the heel's straight sides, running out from the heel/body joint before the profile's curves start.
+
+## Body
+
+**Body Length (BDL)**
+The body's overall length, from the tail end to the neck end, along the centerline.
+
+**Body Depth at Neck End (BDDN)**
+The body's depth at the neck end, from the top plate to the back plate.
+
+**Body Depth at Tail End (BDDT)**
+The body's depth at the tail end, from the top plate to the back plate.
+
+**Body Profile Skew (BDPS)**
+In the side view, how far the neck end is shifted sideways relative to the tail end, slanting the body into a parallelogram. The tail end and neck end stay square to the centerline. At 0 the top runs parallel to the centerline and the back takes whatever slant the two depths give. A positive value shifts the neck end toward the top's side, a negative value toward the back's side, and the back follows it.
