@@ -35,3 +35,9 @@ For a compound radius: the radius of the fretboard's playing surface at the nut.
 
 **Fretboard Radius at End (FRE)** *(planned)*
 For a compound radius: the radius of the fretboard's playing surface at the body end of the fretboard.
+
+**Fretboard Thickness at Nut (FTN)**
+The fretboard's thickness at the nut end, measured at the crown (the centreline).
+
+**Fretboard Thickness at End (FTE)**
+The fretboard's thickness at the body end, measured at the crown (the centreline).
