@@ -15,3 +15,6 @@ The name of the person who designed this instrument.
 
 **Scale Length (SL)**
 The vibrating string length from the nut to the saddle. Fret positions are computed from it.
+
+**Neck Join Fret (NJF)**
+The fret at which the neck meets the body, e.g. 12 or 14.
