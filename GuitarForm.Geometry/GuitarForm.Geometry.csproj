@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- The geometry maths, shared by the Rhino plug-in, the Grasshopper components and the tests. It depends on
-       RhinoCommon but not on Grasshopper or any UI. -->
+  <!-- The geometry maths, shared by the Rhino plug-in and the tests. It depends on RhinoCommon but not on any UI. -->
   <PropertyGroup>
     <TargetFramework>net7.0-windows</TargetFramework>
     <LangVersion>latest</LangVersion>

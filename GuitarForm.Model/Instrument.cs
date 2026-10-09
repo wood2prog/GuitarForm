@@ -3,8 +3,7 @@ using System.Collections.Generic;
 
 namespace GuitarForm.Model
 {
-    // Values that apply to the whole instrument. Lengths are in millimetres in a design. The Grasshopper Instrument
-    // component also uses this record, with lengths in the Rhino document's units, until it's removed.
+    // Values that apply to the whole instrument. Lengths are in millimetres.
     public sealed record Instrument
     {
         // Distance from the nut to the saddle (the vibrating string length).

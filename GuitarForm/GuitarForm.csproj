@@ -4,25 +4,31 @@
     <TargetFramework>net7.0-windows</TargetFramework>
     <Version>0.1.0</Version>
     <Title>GuitarForm</Title>
-    <Description>Guitar designer components for Grasshopper</Description>
-    <TargetExt>.gha</TargetExt>
+    <Description>Guitar designer for Rhino</Description>
+    <TargetExt>.rhp</TargetExt>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <LangVersion>latest</LangVersion>
     <UseWindowsForms>true</UseWindowsForms>
     <NoWarn>NU1701;NETSDK1086;NETSDK1138</NoWarn>
+    <!-- Builds for Windows x64 only, so SQLite's native e_sqlite3.dll is copied next to the .rhp, where Rhino finds it.
+         Without this it goes into runtimes/<platform>/native/, which Rhino doesn't search for a plug-in. -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Grasshopper" Version="8.0.23304.9001" ExcludeAssets="runtime" />
+    <PackageReference Include="RhinoCommon" Version="8.0.23304.9001" ExcludeAssets="runtime" />
   </ItemGroup>
 
-  <!-- 24x24 component icons, loaded by file name through Icons.Load. Resources/Source holds the original artwork. -->
+  <!-- Panel icon (24x24). Resources/Source holds the full-size artwork. -->
   <ItemGroup>
-    <EmbeddedResource Include="Resources\Icons\*.png" LogicalName="GuitarForm.Icons.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Resources\Icons\GuitarForm.png" LogicalName="GuitarForm.GuitarForm.png" />
   </ItemGroup>
+
   <ItemGroup>
-    <ProjectReference Include="..\GuitarForm.Model\GuitarForm.Model.csproj" />
     <ProjectReference Include="..\GuitarForm.Geometry\GuitarForm.Geometry.csproj" />
+    <ProjectReference Include="..\GuitarForm.Data\GuitarForm.Data.csproj" />
   </ItemGroup>
 
 </Project>

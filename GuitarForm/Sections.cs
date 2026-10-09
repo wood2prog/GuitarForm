@@ -1,6 +1,6 @@
 using GuitarForm.Model;
 
-namespace GuitarForm.Plugin
+namespace GuitarForm
 {
     // The fields shown on each section's tab, in order. Lengths are stored in mm and shown in the document's units.
     // Descriptions are shown as tooltips. See docs/Plate.md,

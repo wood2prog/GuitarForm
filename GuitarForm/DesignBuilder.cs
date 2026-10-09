@@ -6,7 +6,7 @@ using Rhino;
 using Rhino.DocObjects;
 using Rhino.Geometry;
 
-namespace GuitarForm.Plugin
+namespace GuitarForm
 {
     // Writes a design's drawing into the document on the GuitarForm::Outline and GuitarForm::Construction layers. Each
     // object is tagged with the design's id, so building the design again replaces only its own objects. One undo step.

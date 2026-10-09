@@ -2,7 +2,7 @@ using Rhino;
 using Rhino.Commands;
 using Rhino.UI;
 
-namespace GuitarForm.Plugin
+namespace GuitarForm
 {
     // Opens the GuitarForm panel.
     public class GuitarFormCommand : Command

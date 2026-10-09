@@ -4,7 +4,7 @@ using GuitarForm.Data;
 using Rhino.PlugIns;
 using Rhino.UI;
 
-namespace GuitarForm.Plugin
+namespace GuitarForm
 {
     public class GuitarFormPlugin : PlugIn
     {
@@ -63,7 +63,7 @@ namespace GuitarForm.Plugin
 
         static System.Drawing.Icon LoadIcon()
         {
-            using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("GuitarForm.Plugin.GuitarForm.png");
+            using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("GuitarForm.GuitarForm.png");
             using var bitmap = new Bitmap(stream);
             return System.Drawing.Icon.FromHandle(bitmap.GetHicon());
         }

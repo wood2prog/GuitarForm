@@ -7,7 +7,7 @@
     <NoWarn>NU1701;NETSDK1138</NoWarn>
   </PropertyGroup>
 
-  <!-- Rhino.Testing loads the installed Rhino 8 into the test process, so RhinoCommon works as it does in Grasshopper.
+  <!-- Rhino.Testing loads the installed Rhino 8 into the test process, so RhinoCommon works as it does in Rhino.
        Test classes that use RhinoCommon types need the [RhinoTestFixture] attribute. -->
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />

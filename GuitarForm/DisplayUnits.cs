@@ -2,7 +2,7 @@ using System.Globalization;
 using GuitarForm.Geometry;
 using Rhino;
 
-namespace GuitarForm.Plugin
+namespace GuitarForm
 {
     // Lengths are stored in millimetres and shown, and typed, in the active document's units.
     sealed record DisplayUnits(UnitSystem System)

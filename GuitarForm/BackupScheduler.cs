@@ -3,7 +3,7 @@ using System.IO;
 using GuitarForm.Data;
 using Rhino;
 
-namespace GuitarForm.Plugin
+namespace GuitarForm
 {
     // Backs up the library every few minutes while it has changed since the last backup, and when Rhino closes, then
     // deletes old backups. Everything that writes the library file as a whole (backing up, restoring, moving) runs

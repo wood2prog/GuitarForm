@@ -3,7 +3,7 @@ using System.Linq;
 using Eto.Drawing;
 using Eto.Forms;
 
-namespace GuitarForm.Plugin
+namespace GuitarForm
 {
     // A small dialog with labelled text boxes and OK / Cancel. Validate returns an error to show, keeping the dialog
     // open, or null to accept.

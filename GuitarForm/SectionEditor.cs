@@ -6,7 +6,7 @@ using Eto.Drawing;
 using Eto.Forms;
 using GuitarForm.Model;
 
-namespace GuitarForm.Plugin
+namespace GuitarForm
 {
     // One number in a section: how to read it from the section record and how to make a record with it changed.
     // A length is stored in mm and shown in the document's units; other numbers (counts) are shown as they are.

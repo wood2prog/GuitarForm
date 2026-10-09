@@ -7,7 +7,7 @@ using Rhino.ApplicationSettings;
 using Rhino.Display;
 using Rhino.Geometry;
 
-namespace GuitarForm.Plugin
+namespace GuitarForm
 {
     // Draws the open design in the viewports without adding it to the document: construction geometry light grey,
     // the outline in Rhino's feedback colour so it doesn't look like a built object.

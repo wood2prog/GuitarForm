@@ -6,7 +6,7 @@ using Eto.Drawing;
 using Eto.Forms;
 using GuitarForm.Data;
 
-namespace GuitarForm.Plugin
+namespace GuitarForm
 {
     // The Settings tab: where the library and its backups are kept, how often backups are made and how many are kept,
     // backing up and restoring by hand, and the drawing gap.

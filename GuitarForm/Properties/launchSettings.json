@@ -2,8 +2,11 @@
   "profiles": {
     "Rhino 8": {
       "commandName": "Executable",
-      "executablePath": "C:\\Program Files\\Rhino 8\\System\\Rhino.exe",
-      "commandLineArgs": "/netcore /runscript=\"_Grasshopper\""
+      "executablePath": "C:\Program Files\Rhino 8\System\Rhino.exe",
+      "commandLineArgs": "/netcore /runscript=\"_GuitarForm\"",
+      "environmentVariables": {
+        "RHINO_PACKAGE_DIRS": "$(ProjectDir)$(OutputPath)\\"
+      }
     }
   }
 }

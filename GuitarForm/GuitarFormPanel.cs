@@ -12,7 +12,7 @@ using Rhino;
 using IPanel = Rhino.UI.IPanel;
 using ShowPanelReason = Rhino.UI.ShowPanelReason;
 
-namespace GuitarForm.Plugin
+namespace GuitarForm
 {
     // The dockable GuitarForm panel: the list of designs, a tab for each section of the open design, the Settings tab,
     // and Preview / Build. The first edit after a design is opened asks whether to overwrite it or save the change as a
