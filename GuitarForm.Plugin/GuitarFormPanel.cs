@@ -36,6 +36,7 @@ namespace GuitarForm.Plugin
 
         long? _designId;
         GuitarDesign _design;
+        DisplayUnits _units = DisplayUnits.Current;
         bool _editConfirmed;
         bool _showing;
         bool _panelVisible = true;
@@ -54,6 +55,11 @@ namespace GuitarForm.Plugin
             _designs.SelectedIndexChanged += (_, _) => OnDesignSelected();
             _showPreview.CheckedChanged += (_, _) => Redraw();
             _settings.DrawingChanged += Redraw;
+
+            // Lengths are shown in the active document's units, which change with its properties or another document.
+            RhinoDoc.DocumentPropertiesChanged += (_, _) => Application.Instance.AsyncInvoke(OnUnitsMaybeChanged);
+            RhinoDoc.EndOpenDocument += (_, _) => Application.Instance.AsyncInvoke(OnUnitsMaybeChanged);
+            RhinoDoc.NewDocument += (_, _) => Application.Instance.AsyncInvoke(OnUnitsMaybeChanged);
             _settings.LibraryChanged += () =>
             {
                 CloseDesign();
@@ -268,14 +274,23 @@ namespace GuitarForm.Plugin
             ShowDesign();
         }
 
+        void OnUnitsMaybeChanged()
+        {
+            if (DisplayUnits.Current == _units)
+                return;
+            ShowDesign();
+            _settings.ShowSettings();
+        }
+
         // Fills every tab from the open design, enables what needs one, and redraws.
         void ShowDesign()
         {
+            _units = DisplayUnits.Current;
             _showing = true;
-            _instrument.Show(_design?.Instrument);
-            _body.Show(_design?.Body);
+            _instrument.Show(_design?.Instrument, _units);
+            _body.Show(_design?.Body, _units);
             _hasSoundhole.Checked = _design?.Soundhole != null;
-            _soundhole.Show(_design?.Soundhole);
+            _soundhole.Show(_design?.Soundhole, _units);
             _showing = false;
 
             foreach (var control in _needDesign)
@@ -343,7 +358,7 @@ namespace GuitarForm.Plugin
                 Apply(d => d with { Soundhole = null });
             }
             _showing = true;
-            _soundhole.Show(_design.Soundhole);
+            _soundhole.Show(_design.Soundhole, _units);
             _showing = false;
             _soundhole.Enabled = _design.Soundhole != null;
         }
@@ -354,7 +369,7 @@ namespace GuitarForm.Plugin
         {
             var doc = RhinoDoc.ActiveDoc;
             double tolerance = doc == null ? 0.01 : DesignUnits.ToleranceInMillimetres(doc.ModelAbsoluteTolerance, doc.ModelUnitSystem);
-            return DesignDrawing.Draw(_design, tolerance, Plugin.GuitarFormSettings.DrawingGap);
+            return DesignDrawing.Draw(_design, tolerance, Plugin.GuitarFormSettings.DrawingGap, _units.FormatLength);
         }
 
         // Shows each section's messages and updates the preview.
@@ -393,8 +408,9 @@ namespace GuitarForm.Plugin
         {
             double length = 0, scale = 0;
             int fret = 0;
+            var units = DisplayUnits.Current;
             var values = FieldsDialog.Ask(this, "New design",
-                new[] { ("Name", ""), ("Body length (mm)", ""), ("Scale length (mm)", ""), ("Neck join fret", "") },
+                new[] { ("Name", ""), ($"Body length ({units.Abbreviation})", ""), ($"Scale length ({units.Abbreviation})", ""), ("Neck join fret", "") },
                 v =>
                 {
                     if (v[0].Length == 0)
@@ -415,8 +431,8 @@ namespace GuitarForm.Plugin
             var design = new GuitarDesign
             {
                 Name = values[0],
-                Instrument = new Instrument { ScaleLength = scale, NeckJoinFret = fret },
-                Body = new Body { BodyLength = length },
+                Instrument = new Instrument { ScaleLength = units.ToMillimetres(scale), NeckJoinFret = fret },
+                Body = new Body { BodyLength = units.ToMillimetres(length) },
             };
             Open(WithLibrary(library => library.CreateDesign(design)), true);
         }

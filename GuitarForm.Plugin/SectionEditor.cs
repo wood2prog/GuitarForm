@@ -9,10 +9,11 @@ using GuitarForm.Model;
 namespace GuitarForm.Plugin
 {
     // One number in a section: how to read it from the section record and how to make a record with it changed.
+    // A length is stored in mm and shown in the document's units; other numbers (counts) are shown as they are.
     // A required number can't be left blank; a whole number can't have a fraction.
     sealed record NumberField<T>(
         string Label,
-        string Unit,
+        bool IsLength,
         string Description,
         Func<T, double?> Get,
         Func<T, double?, T> Set,
@@ -26,10 +27,12 @@ namespace GuitarForm.Plugin
     {
         readonly NumberField<T>[] _fields;
         readonly TextBox[] _boxes;
+        readonly Label[] _unitLabels;
         readonly string[] _inputErrors;
         readonly Label _messages = new Label { Wrap = WrapMode.Word };
         IReadOnlyList<GeometryMessage> _geometryMessages = Array.Empty<GeometryMessage>();
         T _value;
+        DisplayUnits _units = DisplayUnits.Current;
         bool _showing;
 
         public event Action<T> Changed;
@@ -40,6 +43,7 @@ namespace GuitarForm.Plugin
         {
             _fields = fields.ToArray();
             _boxes = new TextBox[_fields.Length];
+            _unitLabels = new Label[_fields.Length];
             _inputErrors = new string[_fields.Length];
 
             var layout = new TableLayout { Spacing = new Size(6, 4) };
@@ -54,10 +58,11 @@ namespace GuitarForm.Plugin
                     PlaceholderText = field.Required ? "required" : "",
                 };
                 _boxes[i].TextChanged += (_, _) => OnTextChanged(index);
+                _unitLabels[i] = new Label { VerticalAlignment = VerticalAlignment.Center };
                 layout.Rows.Add(new TableRow(
                     new TableCell(new Label { Text = field.Label, ToolTip = field.Description, VerticalAlignment = VerticalAlignment.Center }, true),
                     _boxes[i],
-                    new Label { Text = field.Unit, VerticalAlignment = VerticalAlignment.Center }));
+                    _unitLabels[i]));
             }
 
             Control = new StackLayout
@@ -78,14 +83,19 @@ namespace GuitarForm.Plugin
             }
         }
 
-        // Fills the boxes from the record (null leaves them all blank) and clears any input errors.
-        public void Show(T value)
+        // Fills the boxes from the record (null leaves them all blank), with lengths in the given units, and clears any
+        // input errors.
+        public void Show(T value, DisplayUnits units)
         {
             _value = value;
+            _units = units;
             _showing = true;
             for (int i = 0; i < _fields.Length; i++)
             {
-                _boxes[i].Text = value == null ? "" : Format(_fields[i].Get(value));
+                var field = _fields[i];
+                double? number = value == null ? null : field.Get(value);
+                _boxes[i].Text = number == null ? "" : field.IsLength ? units.FormatNumber(number.Value) : Format(number.Value);
+                _unitLabels[i].Text = field.IsLength ? units.Abbreviation : "";
                 _inputErrors[i] = null;
             }
             _showing = false;
@@ -120,7 +130,7 @@ namespace GuitarForm.Plugin
             else if (field.Whole && parsed != Math.Round(parsed))
                 _inputErrors[index] = $"{field.Label} must be a whole number.";
             else
-                number = parsed;
+                number = field.IsLength ? _units.ToMillimetres(parsed) : parsed;
 
             ShowAllMessages();
             if (_inputErrors[index] != null)
@@ -150,7 +160,6 @@ namespace GuitarForm.Plugin
             _ => "Note",
         };
 
-        static string Format(double? value) =>
-            value?.ToString("0.#####", CultureInfo.CurrentCulture) ?? "";
+        static string Format(double value) => value.ToString("0.#####", CultureInfo.CurrentCulture);
     }
 }

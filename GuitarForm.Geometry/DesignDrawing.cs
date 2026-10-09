@@ -22,19 +22,20 @@ namespace GuitarForm.Geometry
         // Where the side view's bottom line was drawn, or null if it wasn't.
         public double? SideViewOffset { get; private set; }
 
-        public static DesignDrawing Draw(GuitarDesign design, double tolerance, double gap)
+        // Lengths in messages are written with formatLength; see PlateGeometry.Solve.
+        public static DesignDrawing Draw(GuitarDesign design, double tolerance, double gap, Func<double, string> formatLength = null)
         {
             var drawing = new DesignDrawing();
             drawing.InstrumentMessages.AddRange(design.Instrument.Validate());
-            drawing.DrawBody(design.Body, tolerance, gap);
+            drawing.DrawBody(design.Body, tolerance, gap, formatLength);
             if (design.Soundhole != null)
                 drawing.DrawSoundhole(design.Soundhole);
             return drawing;
         }
 
-        void DrawBody(Body body, double tolerance, double gap)
+        void DrawBody(Body body, double tolerance, double gap, Func<double, string> formatLength)
         {
-            var plate = PlateGeometry.Solve(body, tolerance);
+            var plate = PlateGeometry.Solve(body, tolerance, formatLength);
             BodyMessages.AddRange(plate.Messages);
             if (plate.Failed)
                 return;

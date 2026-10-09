@@ -67,7 +67,7 @@ Decided:
 - **SQLite holds everything.** Opening a previous design rebuilds the model from the database.
 - **A design owns copies of its sections.** Each area (Instrument, Body, Soundhole, String set, …) can also be saved as a named library preset. Loading a preset copies its values into the design, so editing a design never changes the library or other designs.
 - **The first edit after loading a design asks: overwrite it, or save a copy and edit that.** After that, changes are written to the database as you make them.
-- **Lengths are stored in millimetres** and converted to the Rhino document's units when drawn.
+- **Lengths are stored in millimetres** (database, presets, JSON, geometry) **and shown and typed in the Rhino document's units** everywhere in GuitarForm: the tab fields, dialogs, settings and messages. They're converted when drawn, too.
 - **Live preview while editing, plus a Build command.** The preview is drawn, not added to the document. Build writes real objects to GuitarForm layers and replaces those from the previous build of that design.
 - **One library database, kept locally, with backups to a synced folder.** The main copy is `%LOCALAPPDATA%\GuitarForm\GuitarForm.db` by default, which isn't synced, so OneDrive never sees a half-written file. Backups are written with SQLite's backup API to `Documents\GuitarForm\Backups` by default, which OneDrive syncs. Both locations are set on a Settings page, and kept in Rhino's plug-in settings rather than the database, since they're needed before it's opened.
 - **A design can be exported** as a structured JSON document that other programs can read.

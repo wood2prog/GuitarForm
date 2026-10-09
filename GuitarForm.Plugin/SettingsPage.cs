@@ -17,7 +17,8 @@ namespace GuitarForm.Plugin
         readonly NumericStepper _interval = Stepper(1, 24 * 60, 0);
         readonly NumericStepper _keepLast = Stepper(1, 1000, 0);
         readonly NumericStepper _keepDays = Stepper(0, 3650, 0);
-        readonly NumericStepper _drawingGap = Stepper(0, 10000, 1);
+        readonly NumericStepper _drawingGap = Stepper(0, 10000, 2);
+        readonly Label _drawingGapLabel = new Label { VerticalAlignment = VerticalAlignment.Center };
         readonly Label _status = new Label { Wrap = WrapMode.Word };
 
         // True while the controls are being filled from the settings, so their change events don't save them back.
@@ -33,15 +34,10 @@ namespace GuitarForm.Plugin
 
         public SettingsPage()
         {
-            _interval.ValueChanged += (_, _) => SaveNumbers();
-            _keepLast.ValueChanged += (_, _) => SaveNumbers();
-            _keepDays.ValueChanged += (_, _) => SaveNumbers();
-            _drawingGap.ValueChanged += (_, _) =>
-            {
-                SaveNumbers();
-                if (!_showing)
-                    DrawingChanged?.Invoke();
-            };
+            _interval.ValueChanged += (_, _) => SaveBackupNumbers();
+            _keepLast.ValueChanged += (_, _) => SaveBackupNumbers();
+            _keepDays.ValueChanged += (_, _) => SaveBackupNumbers();
+            _drawingGap.ValueChanged += (_, _) => SaveDrawingGap();
 
             Content = new TableLayout
             {
@@ -68,7 +64,7 @@ namespace GuitarForm.Plugin
                         },
                     },
                     _status,
-                    Row(new Label { Text = "Gap between plate and side view (mm)" }, _drawingGap),
+                    Row(_drawingGapLabel, _drawingGap),
                     new TableRow { ScaleHeight = true },
                 },
             };
@@ -110,7 +106,9 @@ namespace GuitarForm.Plugin
             _interval.Value = settings.BackupIntervalMinutes;
             _keepLast.Value = settings.KeepLastBackups;
             _keepDays.Value = settings.KeepDailyBackupsDays;
-            _drawingGap.Value = settings.DrawingGap;
+            var units = DisplayUnits.Current;
+            _drawingGapLabel.Text = $"Gap between plate and side view ({units.Abbreviation})";
+            _drawingGap.Value = units.FromMillimetres(settings.DrawingGap);
             _showing = false;
             _status.Text = Status(settings);
         }
@@ -134,7 +132,7 @@ namespace GuitarForm.Plugin
             return library + "\n" + backup;
         }
 
-        void SaveNumbers()
+        void SaveBackupNumbers()
         {
             if (_showing)
                 return;
@@ -143,8 +141,19 @@ namespace GuitarForm.Plugin
                 BackupIntervalMinutes = (int)_interval.Value,
                 KeepLastBackups = (int)_keepLast.Value,
                 KeepDailyBackupsDays = (int)_keepDays.Value,
-                DrawingGap = _drawingGap.Value,
             });
+        }
+
+        // The gap is stored in mm and shown in the document's units.
+        void SaveDrawingGap()
+        {
+            if (_showing)
+                return;
+            Plugin.UpdateSettings(Plugin.GuitarFormSettings with
+            {
+                DrawingGap = DisplayUnits.Current.ToMillimetres(_drawingGap.Value),
+            });
+            DrawingChanged?.Invoke();
         }
 
         // A library already in the chosen folder is opened; otherwise the current library is moved there, or a new,

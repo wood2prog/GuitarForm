@@ -31,6 +31,7 @@ namespace GuitarForm.Geometry
 
         readonly Body _d;
         readonly double _tolerance;
+        readonly Func<double, string> _length;
 
         // Right-side circles, where the outline joins the upper primary (from the heel end) and leaves the lower primary
         // (to the tail), and the right-side waist tangent lines.
@@ -40,15 +41,18 @@ namespace GuitarForm.Geometry
         Line? _tailLine;
         Arc? _tailArc;
 
-        PlateGeometry(Body body, double tolerance)
+        PlateGeometry(Body body, double tolerance, Func<double, string> formatLength)
         {
             _d = body;
             _tolerance = tolerance;
+            _length = formatLength ?? DefaultLengthFormat;
         }
 
-        public static PlateGeometry Solve(Body body, double tolerance)
+        // Lengths in messages are written with formatLength, so the caller can show them in its own units. By default
+        // they're plain numbers to three decimal places.
+        public static PlateGeometry Solve(Body body, double tolerance, Func<double, string> formatLength = null)
         {
-            var plate = new PlateGeometry(body, tolerance);
+            var plate = new PlateGeometry(body, tolerance, formatLength);
             plate.Failed = !plate.Build();
             return plate;
         }
@@ -201,7 +205,7 @@ namespace GuitarForm.Geometry
             if (centreX < offset)
                 return Fail(
                     $"The tail arc meets the lower bout radius above its centre, so it would run wider than the lower bout width. " +
-                    $"The lower bout radius centre's distance from the centerline ({centreX:0.###}) must be at least the lower bout offset ({offset:0.###}). " +
+                    $"The lower bout radius centre's distance from the centerline ({_length(centreX)}) must be at least the lower bout offset ({_length(offset)}). " +
                     "Reduce the lower bout offset or the lower bout primary radius, or widen the lower bout.");
 
             double centreY = primary.Center.Y;
@@ -269,7 +273,7 @@ namespace GuitarForm.Geometry
                 double centreSpacing = 2 * ub.Center.X;
                 if (centreSpacing < heelWidth)
                     return Fail(
-                        $"The upper bout radius centres are {centreSpacing:0.###} apart, which is less than the heel width ({heelWidth:0.###}). " +
+                        $"The upper bout radius centres are {_length(centreSpacing)} apart, which is less than the heel width ({_length(heelWidth)}). " +
                         "Reduce the upper bout primary radius, widen the upper bout, or reduce the heel width.");
 
                 if (ubOffset < -_tolerance)
@@ -290,7 +294,7 @@ namespace GuitarForm.Geometry
                     if (dx < ubOffset)
                         return Fail(
                             $"The shoulder arc meets the upper bout radius below its centre, so it would run wider than the upper bout width. " +
-                            $"The gap from the heel flat end to the upper bout radius centre ({dx:0.###}) must be at least the upper bout offset ({ubOffset:0.###}). " +
+                            $"The gap from the heel flat end to the upper bout radius centre ({_length(dx)}) must be at least the upper bout offset ({_length(ubOffset)}). " +
                             "Reduce the upper bout offset or the heel width, or widen the upper bout.");
 
                     double t = length - ub.Center.Y; // = radius + ubOffset
@@ -366,6 +370,8 @@ namespace GuitarForm.Geometry
 
         // A secondary radius can't overlap the waist radius on the same side: the bout curve must meet the waist curve
         // tangentially, so the centres must be at least the two radii apart.
+        static string DefaultLengthFormat(double length) => length.ToString("0.###");
+
         bool CheckSecondaryClearsWaist(Circle secondary, string boutName, string inputName)
         {
             var waist = _waist.Value;
@@ -373,7 +379,7 @@ namespace GuitarForm.Geometry
             if (gap >= -_tolerance) return true;
 
             return Fail(
-                $"The {boutName.ToLowerInvariant()} secondary radius overlaps the waist radius by {-gap:0.###}, which is an impossible shape. " +
+                $"The {boutName.ToLowerInvariant()} secondary radius overlaps the waist radius by {_length(-gap)}, which is an impossible shape. " +
                 $"Reduce the {inputName}, or adjust the waist radius, width or offset.");
         }
 
