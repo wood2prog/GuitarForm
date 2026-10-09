@@ -205,3 +205,27 @@ The radius of the curve that runs from the back of the neck shaft down into the 
 
 **Heel Shaft Offset (HLSO)**
 How far the center of the Heel Shaft Radius is moved toward the peghead, measured parallel to the neck shaft so the curve stays tangent to the back of the neck. At 0, a straight line tangent to the curve joins it to the heel end. Above 0, a tangent arc joins it instead. The center can't move past the Neck Thickness Fret.
+
+**Heel End Thickness (HLET)**
+At the heel end, the distance from the heel/body joint to the front of the heel's profile.
+
+**Heel End Offset from Back (HLEO)**
+The distance from the back plate to the heel end. At 0 the heel end is flush with the back; a positive value moves it toward the top plate.
+
+**Heel End Width (HLEW)**
+The heel's width at the heel end.
+
+**Profile Uses First Fret at Heel End (PUFE)**
+Whether the heel end profile uses the first fret's bottom radius, shoulder angle and midshoulder radius instead of its own.
+
+**Profile Bottom Radius at Heel End (PBRE)**
+At the heel end, the radius of the arc that forms the front of the heel's profile.
+
+**Profile Shoulder Angle at Heel End (PSAE)**
+At the heel end, the angle of the straight shoulder line that runs from the end of the heel's straight sides, measured from a flat line straight across the heel's width.
+
+**Profile Midshoulder Radius at Heel End (PMRE)**
+At the heel end, the radius of the arc that blends the shoulder line into the bottom arc, tangent to both.
+
+**Profile Side Length at Heel End (PSLE)**
+At the heel end, the length of the heel's straight sides, running out from the heel/body joint before the profile's curves start.
