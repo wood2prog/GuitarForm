@@ -130,6 +130,7 @@ Done last, once the panel covers every component, so the project stays usable th
   - String Unit Weight (STUW): stored in kg/m. Shown in the document's unit system (kg/m or lb/in), with a check box in the dialog that pins it to lb/in, since most manufacturers publish lb/in.
   - String core (STCE, STCS): entered by hand when the core material is not specified. The known materials have no built-in values for now; they may get them later.
   - Neck Angle (NKA): typed in by hand, with a button that matches it to the top's angle.
+  - Neck profile: the shoulder line and the bottom arc are fixed, and the midshoulder arc is a fillet between them, so its radius is free within a range. Report an error when it's too large (a tangent point runs past the fretboard edge or the bottom of the neck), or when the shoulder line doesn't cross the bottom arc. With a center offset, each side gets its own fillet of the same radius.
 - [ ] Work the user's notes (`variables and settings.txt`) into the plan: the sections, their fields, which have their own tables of choices (string sets, fretwire, string action, dot marker layouts), and the order to build them in. This also settles 8f (string sets).
 - [ ] Convert the existing British spellings (colour, grey, centre, millimetre, organisation, …) to American English in the docs, UI text, code and CLAUDE.md. Rhino API names such as `DisplayColor` aren't affected.
 - [ ] UI polish: alignment and positioning in the panel. The user will describe or screenshot what looks off.

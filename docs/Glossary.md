@@ -166,3 +166,18 @@ At the Neck Thickness Fret, the neck's thickness from the fretboard's playing su
 
 **Neck Thickness Fret (NKSF)**
 The fret at which the Neck Thickness at Selected Fret is set.
+
+**Profile Bottom Radius at First Fret (PBRF)**
+At the first fret, the radius of the arc that forms the back of the neck.
+
+**Profile Shoulder Angle at First Fret (PSAF)**
+At the first fret, the angle of the straight shoulder line that runs down from the fretboard edge, measured from the fretboard's playing surface.
+
+**Profile Midshoulder Radius at First Fret (PMRF)**
+At the first fret, the radius of the arc that blends the shoulder line into the bottom arc, tangent to both.
+
+**Profile Center Offset at First Fret (PCOF)**
+At the first fret, how far the bottom arc is shifted from the neck's centerline: positive toward the treble side, negative toward the bass side.
+
+**Profile Includes Fretboard at First Fret (PIFF)**
+At the first fret, whether the shoulder line starts at the top of the fretboard edge (true) or at its underside (false).
