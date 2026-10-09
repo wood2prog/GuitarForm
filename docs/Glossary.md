@@ -123,3 +123,6 @@ The core's modulus of elasticity (MOE), in GPa. Given only when the core materia
 
 **String Core Strength (STCS)**
 The core's ultimate tensile strength (UTS), in MPa. Given only when the core material is not specified.
+
+**String Used in Saddle Compensation (STSC)**
+Whether the string's compensated position is used to fit the straight saddle line.
