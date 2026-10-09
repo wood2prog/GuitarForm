@@ -96,7 +96,7 @@ namespace GuitarForm.Plugin
 
         void ShowSettings()
         {
-            var settings = Plugin.LibrarySettings;
+            var settings = Plugin.GuitarFormSettings;
             _showing = true;
             _libraryFolder.Text = Path.GetDirectoryName(settings.LibraryPath);
             _backupFolder.Text = settings.BackupFolder;
@@ -107,7 +107,7 @@ namespace GuitarForm.Plugin
             _status.Text = Status(settings);
         }
 
-        static string Status(LibrarySettings settings)
+        static string Status(GuitarFormSettings settings)
         {
             string library;
             try
@@ -130,25 +130,25 @@ namespace GuitarForm.Plugin
         {
             if (_showing)
                 return;
-            Plugin.UpdateLibrarySettings(Plugin.LibrarySettings with
+            Plugin.UpdateSettings(Plugin.GuitarFormSettings with
             {
                 BackupIntervalMinutes = (int)_interval.Value,
                 KeepLastBackups = (int)_keepLast.Value,
                 KeepDailyBackupsDays = (int)_keepDays.Value,
             });
-            _status.Text = Status(Plugin.LibrarySettings);
+            _status.Text = Status(Plugin.GuitarFormSettings);
         }
 
         // A library already in the chosen folder is opened; otherwise the current library is moved there, or a new,
         // empty one is started there.
         void ChangeLibraryFolder()
         {
-            var settings = Plugin.LibrarySettings;
+            var settings = Plugin.GuitarFormSettings;
             var dialog = new SelectFolderDialog { Title = "Library folder", Directory = Path.GetDirectoryName(settings.LibraryPath) };
             if (dialog.ShowDialog(this) != DialogResult.Ok)
                 return;
 
-            string path = Path.GetFullPath(Path.Combine(dialog.Directory, LibrarySettings.LibraryFileName));
+            string path = Path.GetFullPath(Path.Combine(dialog.Directory, GuitarFormSettings.LibraryFileName));
             if (string.Equals(path, Path.GetFullPath(settings.LibraryPath), StringComparison.OrdinalIgnoreCase))
                 return;
 
@@ -170,15 +170,15 @@ namespace GuitarForm.Plugin
                     Plugin.BackupScheduler.MoveLibrary(settings.LibraryPath, path);
             }
 
-            Plugin.UpdateLibrarySettings(settings with { LibraryPath = path });
+            Plugin.UpdateSettings(settings with { LibraryPath = path });
         }
 
         void ChangeBackupFolder()
         {
-            var settings = Plugin.LibrarySettings;
+            var settings = Plugin.GuitarFormSettings;
             var dialog = new SelectFolderDialog { Title = "Backup folder", Directory = settings.BackupFolder };
             if (dialog.ShowDialog(this) == DialogResult.Ok)
-                Plugin.UpdateLibrarySettings(settings with { BackupFolder = dialog.Directory });
+                Plugin.UpdateSettings(settings with { BackupFolder = dialog.Directory });
         }
 
         void BackUpNow()
@@ -189,7 +189,7 @@ namespace GuitarForm.Plugin
 
         void Restore()
         {
-            var settings = Plugin.LibrarySettings;
+            var settings = Plugin.GuitarFormSettings;
             Directory.CreateDirectory(settings.BackupFolder);
             var dialog = new OpenFileDialog
             {
@@ -213,7 +213,7 @@ namespace GuitarForm.Plugin
 
         void OpenBackupFolder()
         {
-            string folder = Plugin.LibrarySettings.BackupFolder;
+            string folder = Plugin.GuitarFormSettings.BackupFolder;
             Directory.CreateDirectory(folder);
             Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true });
         }

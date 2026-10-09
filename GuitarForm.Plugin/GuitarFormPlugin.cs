@@ -15,14 +15,14 @@ namespace GuitarForm.Plugin
 
         public static GuitarFormPlugin Instance { get; private set; }
 
-        public LibrarySettings LibrarySettings { get; private set; } = new LibrarySettings();
+        public GuitarFormSettings GuitarFormSettings { get; private set; } = new GuitarFormSettings();
 
         internal BackupScheduler BackupScheduler { get; private set; }
 
         protected override LoadReturnCode OnLoad(ref string errorMessage)
         {
-            LibrarySettings = ReadLibrarySettings();
-            BackupScheduler = new BackupScheduler(() => LibrarySettings);
+            GuitarFormSettings = ReadGuitarFormSettings();
+            BackupScheduler = new BackupScheduler(() => GuitarFormSettings);
             Panels.RegisterPanel(this, typeof(GuitarFormPanel), "GuitarForm", LoadIcon());
             return LoadReturnCode.Success;
         }
@@ -34,28 +34,30 @@ namespace GuitarForm.Plugin
         }
 
         // Saves the settings straight away and restarts the backup timer with them.
-        public void UpdateLibrarySettings(LibrarySettings settings)
+        public void UpdateSettings(GuitarFormSettings settings)
         {
-            LibrarySettings = settings.Corrected();
-            Settings.SetString(nameof(LibrarySettings.LibraryPath), LibrarySettings.LibraryPath);
-            Settings.SetString(nameof(LibrarySettings.BackupFolder), LibrarySettings.BackupFolder);
-            Settings.SetInteger(nameof(LibrarySettings.BackupIntervalMinutes), LibrarySettings.BackupIntervalMinutes);
-            Settings.SetInteger(nameof(LibrarySettings.KeepLastBackups), LibrarySettings.KeepLastBackups);
-            Settings.SetInteger(nameof(LibrarySettings.KeepDailyBackupsDays), LibrarySettings.KeepDailyBackupsDays);
+            GuitarFormSettings = settings.Corrected();
+            Settings.SetString(nameof(GuitarFormSettings.LibraryPath), GuitarFormSettings.LibraryPath);
+            Settings.SetString(nameof(GuitarFormSettings.BackupFolder), GuitarFormSettings.BackupFolder);
+            Settings.SetInteger(nameof(GuitarFormSettings.BackupIntervalMinutes), GuitarFormSettings.BackupIntervalMinutes);
+            Settings.SetInteger(nameof(GuitarFormSettings.KeepLastBackups), GuitarFormSettings.KeepLastBackups);
+            Settings.SetInteger(nameof(GuitarFormSettings.KeepDailyBackupsDays), GuitarFormSettings.KeepDailyBackupsDays);
+            Settings.SetDouble(nameof(GuitarFormSettings.DrawingGap), GuitarFormSettings.DrawingGap);
             SaveSettings();
             BackupScheduler?.Restart();
         }
 
-        LibrarySettings ReadLibrarySettings()
+        GuitarFormSettings ReadGuitarFormSettings()
         {
-            var defaults = new LibrarySettings();
-            return new LibrarySettings
+            var defaults = new GuitarFormSettings();
+            return new GuitarFormSettings
             {
                 LibraryPath = Settings.GetString(nameof(defaults.LibraryPath), defaults.LibraryPath),
                 BackupFolder = Settings.GetString(nameof(defaults.BackupFolder), defaults.BackupFolder),
                 BackupIntervalMinutes = Settings.GetInteger(nameof(defaults.BackupIntervalMinutes), defaults.BackupIntervalMinutes),
                 KeepLastBackups = Settings.GetInteger(nameof(defaults.KeepLastBackups), defaults.KeepLastBackups),
                 KeepDailyBackupsDays = Settings.GetInteger(nameof(defaults.KeepDailyBackupsDays), defaults.KeepDailyBackupsDays),
+                DrawingGap = Settings.GetDouble(nameof(defaults.DrawingGap), defaults.DrawingGap),
             }.Corrected();
         }
 

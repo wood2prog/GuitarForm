@@ -99,15 +99,17 @@ Decided:
 
 ### 8e. Editor panel
 
-- [ ] Design list: new, open, copy, rename, delete.
+- [ ] Design list: new, open, copy, rename, delete. New asks for the name, body length, scale length and neck join fret (the required values); optional values start blank, with no soundhole.
 - [ ] One tab per section, with number fields (blank means not set, for optional values), the section's errors and warnings, and **Load preset** / **Save as preset**.
 - [ ] The overwrite-or-copy prompt on the first edit after loading, then saving as you edit.
-- [ ] Lay the drawings out automatically: the side view sits to the right of the plate, at half the lower bout width plus a gap. Later views (neck, fretboard) are placed the same way.
-- [ ] Live preview with a display conduit: construction geometry light grey, outline in the default preview colour, redrawn on every change.
-- [ ] Build: writes the geometry to GuitarForm layers, tagged with the design's id, replacing that design's previous build. Construction geometry is light grey with a solid linetype.
-- [ ] Export: saves the design as JSON.
+- [x] Lay the drawings out automatically: the side view sits to the right of the plate, at half the lower bout width plus a gap. Later views (neck, fretboard) are placed the same way. *(`DesignDrawing` in `GuitarForm.Geometry` draws a whole design in mm. The side view sits the gap right of the plate's widest point (its outline and construction lines). The gap is a setting, 50 mm by default. Messages are kept per section.)*
+- [ ] Live preview with a display conduit: construction geometry light grey, outline in Rhino's feedback colour (so it doesn't look like a built object), redrawn on every change.
+- [ ] Build: writes the geometry to the `GuitarForm::Outline` and `GuitarForm::Construction` layers, tagged with the design's id, replacing that design's previous build. Construction geometry is light grey with a solid linetype.
+- [ ] Export: saves the design as JSON. Import: adds a design from a JSON file.
 
 ### 8f. String sets
+
+Deferred: string sets are covered by the user's notes on every section's variables, which will be worked into the plan once the plug-in is a working proof of concept (after 8g).
 
 - [ ] **(decision)** What a string set holds (per string: gauge, plain or wound, material, …?), and whether tension is calculated from it with the scale length and tuning.
 

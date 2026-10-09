@@ -12,9 +12,9 @@ namespace GuitarForm.Plugin
     {
         readonly object _lock = new object();
         readonly System.Timers.Timer _timer = new System.Timers.Timer { AutoReset = true };
-        readonly Func<LibrarySettings> _settings;
+        readonly Func<GuitarFormSettings> _settings;
 
-        public BackupScheduler(Func<LibrarySettings> settings)
+        public BackupScheduler(Func<GuitarFormSettings> settings)
         {
             _settings = settings;
             _timer.Elapsed += (_, _) => BackUpIfNeededQuietly();
