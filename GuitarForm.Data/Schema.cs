@@ -74,17 +74,11 @@ namespace GuitarForm.Data
         // InvalidDataException if the file is another kind of database, or a library made by a newer GuitarForm.
         public static void Prepare(SqliteConnection connection, string path)
         {
-            long applicationId = (long)Scalar(connection, "PRAGMA application_id");
-            if (applicationId == 0 && (long)Scalar(connection, "SELECT count(*) FROM sqlite_master") == 0)
+            if ((long)Scalar(connection, "PRAGMA application_id") == 0 &&
+                (long)Scalar(connection, "SELECT count(*) FROM sqlite_master") == 0)
                 Scalar(connection, $"PRAGMA application_id = {ApplicationId}");
-            else if (applicationId != ApplicationId)
-                throw new InvalidDataException($"{path} is not a GuitarForm library.");
 
-            int version = (int)(long)Scalar(connection, "PRAGMA user_version");
-            if (version > LatestVersion)
-                throw new InvalidDataException(
-                    $"{path} was made by a newer GuitarForm (library version {version}; this version reads up to {LatestVersion}).");
-
+            int version = Check(connection, path);
             for (; version < LatestVersion; version++)
             {
                 using var transaction = connection.BeginTransaction();
@@ -94,6 +88,20 @@ namespace GuitarForm.Data
                 command.ExecuteNonQuery();
                 transaction.Commit();
             }
+        }
+
+        // Returns the library's schema version. Throws InvalidDataException if the file is another kind of database,
+        // or a library made by a newer GuitarForm. Doesn't change the file.
+        public static int Check(SqliteConnection connection, string path)
+        {
+            if ((long)Scalar(connection, "PRAGMA application_id") != ApplicationId)
+                throw new InvalidDataException($"{path} is not a GuitarForm library.");
+
+            int version = (int)(long)Scalar(connection, "PRAGMA user_version");
+            if (version > LatestVersion)
+                throw new InvalidDataException(
+                    $"{path} was made by a newer GuitarForm (library version {version}; this version reads up to {LatestVersion}).");
+            return version;
         }
 
         static object Scalar(SqliteConnection connection, string sql)
