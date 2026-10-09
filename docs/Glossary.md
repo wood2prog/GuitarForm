@@ -69,3 +69,6 @@ At the nut, the distance from the bass edge of the fretboard to the centerline o
 
 **Treble String Setback (TSS)**
 At the nut, the distance from the treble edge of the fretboard to the centerline of the outermost treble string.
+
+**Strings per Course (SPC)**
+The number of strings in each course, 1 or 2, the same for every course: 1 for a standard six-string, 2 for a twelve-string.
