@@ -9,3 +9,6 @@ The name and abbreviation of every design setting. The plug-in uses these everyw
 
 **Instrument Name (IN)**
 A short name that identifies this instrument design.
+
+**Designer (DSG)**
+The name of the person who designed this instrument.
