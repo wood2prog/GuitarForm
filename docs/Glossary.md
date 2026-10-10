@@ -351,3 +351,30 @@ For a custom top: how far the top plate rises at the bridge, above the plane thr
 
 **Top Arching Offset from Edge (TPAO)**
 For a custom top: the distance from the edge of the soundhole, toward the tail, to where the arch starts. A custom arch is only in the lower bout: it rises from this line to the Top Arching Height at Bridge, then slopes down to the outline's edges. Between the soundhole and this line, the top stays flat.
+
+**Soundhole (SH)**
+Whether the top plate has a soundhole.
+
+**Soundhole Diameter (SHD)**
+The soundhole's diameter.
+
+**Soundhole Offset from Centerline (SHOC)**
+The distance from the centerline to the soundhole's center, square to the centerline: positive toward the treble side, negative toward the bass side. At 0 the soundhole is centered.
+
+**Soundhole Offset from Tail End (SHOT)**
+The distance from the tail end of the outline to the soundhole's center, along the centerline.
+
+**Back Plate Thickness (BKT)**
+The back plate's thickness, the same everywhere.
+
+**Back Arching Type (BKAT)**
+The back plate's shape: flat, spherical or custom.
+
+**Back Spherical Radius (BKSR)**
+For a spherical back: the radius of the sphere the back plate's surface lies on.
+
+**Back Arching Height at Center (BKAC)**
+For a custom back: how far the back plate rises at its center, above the plane through the back plate's edge.
+
+**Back Arching Offset from Edge (BKAO)**
+For a custom back: the distance in from the body's outline to where the arch starts. The back stays flat between the outline and this line, and the arch rises from it to the Back Arching Height at Center.
