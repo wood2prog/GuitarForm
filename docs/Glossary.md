@@ -398,3 +398,6 @@ The depth of the fret's tang below the bead's base, the part that goes into the 
 
 **Fretwire Tang Thickness (FWTT)**
 The thickness of the fret's tang along the length of the fretboard, not counting its barbs.
+
+**Fretwire Barb Thickness (FWBT)**
+Optional. The thickness of the fret's tang along the length of the fretboard, measured across its barbs. With the Fretwire Tang Thickness, it shows how tightly the fret grips its slot.
