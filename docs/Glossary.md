@@ -4,7 +4,7 @@ The name and abbreviation of every design setting. The plug-in uses these everyw
 
 - Each abbreviation is 2–4 capital letters and unique across the whole plug-in.
 - Words that recur are always abbreviated the same way:
-  - A part the setting is about has a subject code: Back Plate is BK, Body is BD, Bridge is BR, Cutaway is CT, Fretboard is FB, Heel is HL, Heel Cap is HCP, Lower Bout is LB, Neck is NK, Nut is NT, Saddle is SDL, Soundhole is SH, String (one string of a set) is ST, Top Plate is TP, Upper Bout is UB, Waist is WS (e.g. NTW, FBTN, STD).
+  - A part the setting is about has a subject code: Back Plate is BK, Body is BD, Bridge is BR, Cutaway is CT, Fretboard is FB, Fretwire is FW, Heel is HL, Heel Cap is HCP, Lower Bout is LB, Neck is NK, Nut is NT, Saddle is SDL, Soundhole is SH, String (one string of a set) is ST, Top Plate is TP, Upper Bout is UB, Waist is WS (e.g. NTW, FBTN, STD).
   - A position the setting is measured at has a one-letter suffix: at Nut is N, at End is E, at Bridge is B, at Neck End is N, at Tail End is T (e.g. FBRN, FBTE, SSB, BDDT). Nut and neck end never apply to the same part, so they share N.
 - A setting that appears in more than one place (e.g. a neck profile radius at the first fret and at the heel) gets its own name and abbreviation for each place.
 
@@ -378,3 +378,17 @@ For a custom back: how far the back plate rises at its center, above the plane t
 
 **Back Arching Offset from Edge (BKAO)**
 For a custom back: the distance in from the body's outline to where the arch starts. The back stays flat between the outline and this line, and the arch rises from it to the Back Arching Height at Center.
+
+## Fretwire
+
+**Fretwire Bead Height (FWBH)**
+The height of the fret's bead (the crown), from its base, which sits on the fretboard's playing surface, to its top.
+
+**Fretwire Bead Width (FWBW)**
+The width of the fret's bead along the length of the fretboard.
+
+**Fretwire Tang Height (FWTH)**
+The depth of the fret's tang below the bead's base, the part that goes into the fret slot.
+
+**Fretwire Tang Thickness (FWTT)**
+The thickness of the fret's tang along the length of the fretboard, not counting its barbs.
