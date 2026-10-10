@@ -276,3 +276,39 @@ The body's depth at the tail end, from the top plate to the back plate.
 
 **Body Profile Skew (BDPS)**
 In the side view, how far the neck end is shifted sideways relative to the tail end, slanting the body into a parallelogram. The tail end and neck end stay square to the centerline. At 0 the top runs parallel to the centerline and the back takes whatever slant the two depths give. A positive value shifts the neck end toward the top's side, a negative value toward the back's side, and the back follows it.
+
+**Upper Bout Width (UBW)**
+The plate's greatest width across the upper bout.
+
+**Upper Bout Primary Radius (UBPR)**
+The radius of the arc that forms the upper bout's outline at its widest point.
+
+**Upper Bout Offset from Neck End (UBO)**
+The distance from the neck end to the top of the Upper Bout Primary Radius's circle, along the centerline. The upper bout's widest point is this offset plus the primary radius from the neck end. At 0, the circle's top is level with the neck end.
+
+**Upper Bout Secondary Offset (UBSO)**
+How far the center of the upper bout's secondary arc is moved from the primary arc's center toward the centerline. Its radius grows by the same amount, so its outer edge stays at the Upper Bout Width. The secondary arc carries the outline from the widest point toward the waist, and a larger offset swells that transition for a fuller waist. At 0 it's the same as the primary arc.
+
+**Heel Flat Width (HFW)**
+The width of the straight part of the outline at the neck end, where the neck's heel sits.
+
+**Waist Width (WSW)**
+The plate's narrowest width across the waist.
+
+**Waist Radius (WSR)**
+The radius of the arc that forms the waist's outline at its narrowest point.
+
+**Waist Offset from Tail End (WSO)**
+The distance from the tail end to the waist's narrowest point, along the centerline.
+
+**Lower Bout Width (LBW)**
+The plate's greatest width across the lower bout.
+
+**Lower Bout Primary Radius (LBPR)**
+The radius of the arc that forms the lower bout's outline at its widest point.
+
+**Lower Bout Secondary Offset (LBSO)**
+How far the center of the lower bout's secondary arc is moved from the primary arc's center toward the centerline. Its radius grows by the same amount, so its outer edge stays at the Lower Bout Width. The secondary arc carries the outline from the widest point toward the waist, and a larger offset swells that transition for a fuller waist. At 0 it's the same as the primary arc.
+
+**Lower Bout Offset from Tail End (LBO)**
+The distance from the tail end to the bottom of the Lower Bout Primary Radius's circle, along the centerline. The lower bout's widest point is this offset plus the primary radius from the tail end. At 0, the circle's bottom is level with the tail end.
