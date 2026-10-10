@@ -381,6 +381,12 @@ For a custom back: the distance in from the body's outline to where the arch sta
 
 ## Fretwire
 
+**Fretwire Manufacturer (FWM)**
+The company that makes the fretwire.
+
+**Fretwire Product Code (FWPC)**
+The manufacturer's name or product code for the fretwire, e.g. 47104.
+
 **Fretwire Bead Height (FWBH)**
 The height of the fret's bead (the crown), from its base, which sits on the fretboard's playing surface, to its top.
 
