@@ -436,6 +436,9 @@ The distance from the neck end of the body to the graft's edge nearest the neck 
 **Graft Edge Offset (GREO)**
 How far each end of the graft stops short of the body's outline. At 0 the graft runs to the outline on both sides.
 
+**Upper Transverse Bar Offset from Neck End (UTO)**
+The distance from the neck end of the body to the upper transverse bar's edge nearest the neck end, along the centerline.
+
 **Upper Transverse Bar Width (UTW)**
 The upper transverse bar's width along the centerline. The bar runs across the guitar from side to side.
 
@@ -503,10 +506,10 @@ The width of every soundhole brace.
 The height of every soundhole brace, from the top plate to the top of the brace.
 
 **Bridge Patch Thickness (BPT)**
-The thickness of the bridge patch: a plate glued under the top, centered under the bridge, between the X brace's lower legs.
+The thickness of the bridge patch: a plate glued under the top, centered under the bridge. Its ends always run to the X brace's lower legs.
 
 **Bridge Patch Width Offset (BPWO)**
-How far each side of the bridge patch stays in from the X brace's lower legs.
+How much wider the bridge patch is than the bridge, measured along the centerline: positive makes it wider, negative narrower. At 0 it's as wide as the bridge.
 
 **Bridge Patch Offset (BPO)**
 How far the bridge patch is moved along the centerline from centered under the bridge: positive toward the neck end, negative toward the tail end.
