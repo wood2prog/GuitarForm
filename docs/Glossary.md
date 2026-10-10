@@ -313,6 +313,9 @@ How far the center of the lower bout's secondary arc is moved from the primary a
 **Lower Bout Offset from Tail End (LBO)**
 The distance from the tail end to the bottom of the Lower Bout Primary Radius's circle, along the centerline. The lower bout's widest point is this offset plus the primary radius from the tail end. At 0, the circle's bottom is level with the tail end.
 
+**Cutaway Type (CTT)**
+Which cutaway the body has: none, Florentine or Venetian. A Florentine cutaway is one arc from the wall to the cutaway's end point on the upper bout, which leaves a sharp point. A Venetian cutaway rounds the point: a valley arc, a point arc and a straight line between them.
+
 **Cutaway Offset from Neck (CTO)**
 The distance from the fretboard's treble edge where the neck meets the body, square to the centerline, out to the offset line: a line parallel to the centerline that the cutaway's wall runs down. At 0 the wall carries straight on from the fretboard's edge. Above 0 the neck end leaves a step of this width between the fretboard and the cutaway. It can't be negative. The Heel Flat Width doesn't affect it. Florentine and Venetian cutaways both use it.
 
@@ -320,4 +323,10 @@ The distance from the fretboard's treble edge where the neck meets the body, squ
 The distance from the offset line, square to the centerline, out to a second line parallel to the centerline on the treble side. The cutaway ends where this line meets the upper bout outline. Florentine and Venetian cutaways both use it.
 
 **Cutaway Depth (CTD)**
-The distance from the neck end, along the offset line, to where the cutaway's arc starts. The wall runs straight down the offset line from the neck end to that point. The arc starts there tangent to the offset line and runs to the cutaway's end point on the upper bout, and its radius and center are calculated to do both. Florentine and Venetian cutaways both use it.
+The distance from the neck end, along the offset line, to where the cutaway's arc starts. The wall runs straight down the offset line from the neck end to that point. The arc starts there, tangent to the offset line. In a Florentine cutaway, its radius and center are calculated so it also passes through the cutaway's end point on the upper bout. In a Venetian cutaway, its radius is the Cutaway Valley Radius.
+
+**Cutaway Valley Radius (CTVR)**
+Venetian cutaway only. The radius of the valley arc. The arc stays tangent to the offset line where the straight wall ends, at the Cutaway Depth, but its radius is set here instead of being calculated to pass through the end point. This lets the cutaway undercut the end point.
+
+**Cutaway Point Radius (CTPR)**
+Venetian cutaway only. The radius of the rounded point where the cutaway meets the upper bout. The point arc is tangent to the upper bout outline at the cutaway's end point, where the Cutaway Width line meets it. A straight line tangent to both the point arc and the valley arc joins them and completes the outline.
