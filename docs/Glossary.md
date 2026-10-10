@@ -330,3 +330,24 @@ Venetian cutaway only. The radius of the valley arc. The arc stays tangent to th
 
 **Cutaway Point Radius (CTPR)**
 Venetian cutaway only. The radius of the rounded point where the cutaway meets the upper bout. The point arc is tangent to the upper bout outline at the cutaway's end point, where the Cutaway Width line meets it. A straight line tangent to both the point arc and the valley arc joins them and completes the outline.
+
+**Top Plate Thickness (TPT)**
+The top plate's thickness, the same everywhere.
+
+**Bridge Height (BRH)**
+The height of the bridge's top above the top plate, measured at the saddle on the centerline.
+
+**Saddle Exposure (SDLE)**
+The height of the saddle's top above the bridge's top, measured on the centerline.
+
+**Top Arching Type (TPAT)**
+The top plate's shape: flat, spherical or custom.
+
+**Top Spherical Radius (TPSR)**
+For a spherical top: the radius of the sphere the top plate's surface lies on.
+
+**Top Arching Height at Bridge (TPAB)**
+For a custom top: how far the top plate rises at the bridge, above the plane through the top plate's edge.
+
+**Top Arching Offset from Edge (TPAO)**
+For a custom top: the distance from the edge of the soundhole, toward the tail, to where the arch starts. A custom arch is only in the lower bout: it rises from this line to the Top Arching Height at Bridge, then slopes down to the outline's edges. Between the soundhole and this line, the top stays flat.
