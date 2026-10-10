@@ -4,7 +4,7 @@ The name and abbreviation of every design setting. The plug-in uses these everyw
 
 - Each abbreviation is 2–4 capital letters and unique across the whole plug-in.
 - Words that recur are always abbreviated the same way:
-  - A part the setting is about has a subject code: Back Plate is BK, Body is BD, Bridge is BR, Cutaway is CT, Finger Brace is FN, Fretboard is FB, Fretwire is FW, Graft is GR, Heel is HL, Heel Cap is HCP, Lower Bout is LB, Neck is NK, Nut is NT, Saddle is SDL, Soundhole is SH, Soundhole Brace is SHB, String (one string of a set) is ST, Tone Bar is TN, Top Plate is TP, Upper Bout is UB, Waist is WS, X Brace is XB (e.g. NTW, FBTN, STD).
+  - A part the setting is about has a subject code: Back Plate is BK, Body is BD, Bridge is BR, Bridge Patch is BP, Cutaway is CT, Finger Brace is FN, Fretboard is FB, Fretwire is FW, Graft is GR, Headblock is HB, Heel is HL, Heel Cap is HCP, Lower Bout is LB, Neck is NK, Nut is NT, Saddle is SDL, Soundhole is SH, Soundhole Brace is SHB, String (one string of a set) is ST, Tailblock is TB, Tone Bar is TN, Top Plate is TP, Upper Bout is UB, Upper Transverse Bar is UT, Waist is WS, X Brace is XB (e.g. NTW, FBTN, STD).
   - A position the setting is measured at has a one-letter suffix: at Nut is N, at End is E, at Bridge is B, at Neck End is N, at Tail End is T (e.g. FBRN, FBTE, SSB, BDDT). Nut and neck end never apply to the same part, so they share N.
 - A setting that appears in more than one place (e.g. a neck profile radius at the first fret and at the heel) gets its own name and abbreviation for each place.
 
@@ -404,7 +404,7 @@ Optional. The thickness of the fret's tang along the length of the fretboard, me
 
 ## Bracing
 
-The top plate's braces. All of them sit on the underside of the top plate.
+The top plate's braces, which sit on the underside of the top plate, and the headblock and tailblock.
 
 **X Brace Offset from Neck End (XBO)**
 The distance from the neck end of the body, where the heel sits, to the point where the X brace's legs cross, along the centerline.
@@ -422,16 +422,28 @@ The X brace's width across the top plate.
 The X brace's height, from the top plate to the top of the brace.
 
 **X Brace Profile Type (XBPT)**
-The shape of the X brace's profile along its legs: scalloped or tapered.
+The shape of the X brace's profile along its legs: scalloped or tapered. Settings for each type (e.g. scallop depth) may be added later.
 
 **Graft Thickness (GRT)**
 The thickness of the graft: a flat piece glued under the top between the headblock and the upper transverse bar, which strengthens the top where the strings' pull presses on it.
 
 **Graft Width (GRW)**
-The graft's width, square to the centerline.
+The graft's width along the centerline. The graft runs across the guitar from side to side.
 
 **Graft Offset from Neck End (GRO)**
 The distance from the neck end of the body to the graft's edge nearest the neck end, along the centerline.
+
+**Graft Edge Offset (GREO)**
+How far each end of the graft stops short of the body's outline. At 0 the graft runs to the outline on both sides.
+
+**Upper Transverse Bar Width (UTW)**
+The upper transverse bar's width along the centerline. The bar runs across the guitar from side to side.
+
+**Upper Transverse Bar Height (UTH)**
+The upper transverse bar's height, from the top plate to the top of the bar.
+
+**Upper Transverse Bar Edge Offset (UTEO)**
+How far each end of the upper transverse bar stops short of the body's outline. At 0 the bar runs to the outline on both sides.
 
 **Bass Finger Brace Count (BFNC)**
 The number of finger braces on the bass side, off the X brace's bass side lower leg.
@@ -463,8 +475,8 @@ How far each finger brace stops short of the body's outline. The braces run from
 **Tone Bar Count (TNC)**
 The number of tone bars, on the treble side only, off the X brace's treble side lower leg.
 
-**Tone Bar Position (TNP)**
-The distance from the X brace's crossing to the first tone bar, measured along the X brace's treble side lower leg.
+**Tone Bar Spacing (TNS)**
+The distance between the tone bars, measured along the X brace's treble side lower leg. The first tone bar is this distance from the crossing, and each one after it is this distance from the last.
 
 **Tone Bar Angle (TNA)**
 The angle of the tone bars from square to the X brace's treble side lower leg. At 0 they're at 90° to the leg. A positive value turns them toward the neck end, a negative value toward the tail end.
@@ -489,3 +501,29 @@ The width of every soundhole brace.
 
 **Soundhole Brace Height (SHBH)**
 The height of every soundhole brace, from the top plate to the top of the brace.
+
+**Bridge Patch Thickness (BPT)**
+The thickness of the bridge patch: a plate glued under the top, centered under the bridge, between the X brace's lower legs.
+
+**Bridge Patch Width Offset (BPWO)**
+How far each side of the bridge patch stays in from the X brace's lower legs.
+
+**Bridge Patch Offset (BPO)**
+How far the bridge patch is moved along the centerline from centered under the bridge: positive toward the neck end, negative toward the tail end.
+
+**Headblock Width (HBW)**
+The headblock's width across the guitar, square to the centerline. Its height is the Body Depth at Neck End.
+
+**Headblock Depth (HBD)**
+The headblock's size along the centerline, from the neck end into the body.
+
+**Tailblock Width (TBW)**
+The tailblock's width across the guitar, square to the centerline. Its height is the Body Depth at Tail End.
+
+**Tailblock Depth (TBD)**
+The tailblock's size along the centerline, from the tail end into the body.
+
+## Neck Joint
+
+**Neck Joint Type (NKJT)** *(planned)*
+How the neck is joined to the body: bolt-on, mortise and tenon, or dovetail. Each type will have settings of its own.
