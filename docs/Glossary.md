@@ -4,7 +4,7 @@ The name and abbreviation of every design setting. The plug-in uses these everyw
 
 - Each abbreviation is 2–4 capital letters and unique across the whole plug-in.
 - Words that recur are always abbreviated the same way:
-  - A part the setting is about has a subject code: Back Plate is BK, Body is BD, Bridge is BR, Cutaway is CT, Finger Brace is FN, Fretboard is FB, Fretwire is FW, Graft is GR, Heel is HL, Heel Cap is HCP, Lower Bout is LB, Neck is NK, Nut is NT, Saddle is SDL, Soundhole is SH, String (one string of a set) is ST, Top Plate is TP, Upper Bout is UB, Waist is WS, X Brace is XB (e.g. NTW, FBTN, STD).
+  - A part the setting is about has a subject code: Back Plate is BK, Body is BD, Bridge is BR, Cutaway is CT, Finger Brace is FN, Fretboard is FB, Fretwire is FW, Graft is GR, Heel is HL, Heel Cap is HCP, Lower Bout is LB, Neck is NK, Nut is NT, Saddle is SDL, Soundhole is SH, Soundhole Brace is SHB, String (one string of a set) is ST, Tone Bar is TN, Top Plate is TP, Upper Bout is UB, Waist is WS, X Brace is XB (e.g. NTW, FBTN, STD).
   - A position the setting is measured at has a one-letter suffix: at Nut is N, at End is E, at Bridge is B, at Neck End is N, at Tail End is T (e.g. FBRN, FBTE, SSB, BDDT). Nut and neck end never apply to the same part, so they share N.
 - A setting that appears in more than one place (e.g. a neck profile radius at the first fret and at the heel) gets its own name and abbreviation for each place.
 
@@ -410,7 +410,7 @@ The top plate's braces. All of them sit on the underside of the top plate.
 The distance from the neck end of the body, where the heel sits, to the point where the X brace's legs cross, along the centerline.
 
 **X Brace Angle (XBA)**
-The angle between the X brace's two legs, measured on the neck end side of the crossing.
+The angle between each of the X brace's legs and the centerline. The legs are mirror images of each other.
 
 **X Brace Edge Offset (XBEO)**
 How far each leg of the X brace stops short of the body's outline. At 0 the legs run to the outline.
@@ -422,7 +422,7 @@ The X brace's width across the top plate.
 The X brace's height, from the top plate to the top of the brace.
 
 **X Brace Profile Type (XBPT)**
-The shape of the X brace's profile along its legs.
+The shape of the X brace's profile along its legs: scalloped or tapered.
 
 **Graft Thickness (GRT)**
 The thickness of the graft: a flat piece glued under the top between the headblock and the upper transverse bar, which strengthens the top where the strings' pull presses on it.
@@ -437,7 +437,7 @@ The distance from the neck end of the body to the graft's edge nearest the neck 
 The number of finger braces on the bass side, off the X brace's bass side lower leg.
 
 **Bass Finger Brace Angle (BFNA)**
-The angle of the bass side finger braces from square to the X brace's bass side lower leg. At 0 they're at 90° to the leg. A positive or negative value turns them away from square.
+The angle of the bass side finger braces from square to the X brace's bass side lower leg. At 0 they're at 90° to the leg. A positive value turns them toward the neck end, a negative value toward the tail end.
 
 **Bass Finger Brace Spacing (BFNS)**
 The distance between the bass side finger braces, measured along the X brace's bass side lower leg. The first finger brace is this distance from the crossing, and each one after it is this distance from the last.
@@ -446,7 +446,7 @@ The distance between the bass side finger braces, measured along the X brace's b
 The number of finger braces on the treble side, off the X brace's treble side lower leg.
 
 **Treble Finger Brace Angle (TFNA)**
-The angle of the treble side finger braces from square to the X brace's treble side lower leg. At 0 they're at 90° to the leg. A positive or negative value turns them away from square.
+The angle of the treble side finger braces from square to the X brace's treble side lower leg. At 0 they're at 90° to the leg. A positive value turns them toward the neck end, a negative value toward the tail end.
 
 **Treble Finger Brace Spacing (TFNS)**
 The distance between the treble side finger braces, measured along the X brace's treble side lower leg. The first finger brace is this distance from the crossing, and each one after it is this distance from the last.
@@ -459,3 +459,33 @@ The height of every finger brace, on both sides, from the top plate to the top o
 
 **Finger Brace Edge Offset (FNEO)**
 How far each finger brace stops short of the body's outline. The braces run from the X brace's lower leg toward the outline, and at 0 they reach it.
+
+**Tone Bar Count (TNC)**
+The number of tone bars, on the treble side only, off the X brace's treble side lower leg.
+
+**Tone Bar Position (TNP)**
+The distance from the X brace's crossing to the first tone bar, measured along the X brace's treble side lower leg.
+
+**Tone Bar Angle (TNA)**
+The angle of the tone bars from square to the X brace's treble side lower leg. At 0 they're at 90° to the leg. A positive value turns them toward the neck end, a negative value toward the tail end.
+
+**Tone Bar Width (TNW)**
+The width of every tone bar.
+
+**Tone Bar Height (TNH)**
+The height of every tone bar, from the top plate to the top of the bar.
+
+**Tone Bar Edge Offset (TNEO)**
+How far each tone bar stops short of the body's outline. The bars run from the X brace's lower leg toward the outline, and at 0 they reach it.
+
+**Soundhole Braces (SHB)**
+Whether the soundhole has its three braces: a bottom brace straight across the guitar on the tail end side of the hole, and a bass and a treble brace, each 120° around the hole from it. Their lengths follow from where they sit.
+
+**Soundhole Brace Offset (SHBO)**
+The distance from the edge of the soundhole to each soundhole brace.
+
+**Soundhole Brace Width (SHBW)**
+The width of every soundhole brace.
+
+**Soundhole Brace Height (SHBH)**
+The height of every soundhole brace, from the top plate to the top of the brace.
