@@ -4,7 +4,7 @@ The name and abbreviation of every design setting. The plug-in uses these everyw
 
 - Each abbreviation is 2–4 capital letters and unique across the whole plug-in.
 - Words that recur are always abbreviated the same way:
-  - A part the setting is about has a subject code: Body is BD, Fretboard is FB, Heel is HL, Heel Cap is HCP, Neck is NK, Nut is NT, String (one string of a set) is ST (e.g. NTW, FBTN, STD).
+  - A part the setting is about has a subject code: Back Plate is BK, Body is BD, Bridge is BR, Cutaway is CT, Fretboard is FB, Heel is HL, Heel Cap is HCP, Lower Bout is LB, Neck is NK, Nut is NT, Saddle is SDL, Soundhole is SH, String (one string of a set) is ST, Top Plate is TP, Upper Bout is UB, Waist is WS (e.g. NTW, FBTN, STD).
   - A position the setting is measured at has a one-letter suffix: at Nut is N, at End is E, at Bridge is B, at Neck End is N, at Tail End is T (e.g. FBRN, FBTE, SSB, BDDT). Nut and neck end never apply to the same part, so they share N.
 - A setting that appears in more than one place (e.g. a neck profile radius at the first fret and at the heel) gets its own name and abbreviation for each place.
 
