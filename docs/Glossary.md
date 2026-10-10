@@ -4,7 +4,7 @@ The name and abbreviation of every design setting. The plug-in uses these everyw
 
 - Each abbreviation is 2–4 capital letters and unique across the whole plug-in.
 - Words that recur are always abbreviated the same way:
-  - A part the setting is about has a subject code: Back Plate is BK, Body is BD, Bridge is BR, Cutaway is CT, Fretboard is FB, Fretwire is FW, Heel is HL, Heel Cap is HCP, Lower Bout is LB, Neck is NK, Nut is NT, Saddle is SDL, Soundhole is SH, String (one string of a set) is ST, Top Plate is TP, Upper Bout is UB, Waist is WS (e.g. NTW, FBTN, STD).
+  - A part the setting is about has a subject code: Back Plate is BK, Body is BD, Bridge is BR, Cutaway is CT, Finger Brace is FN, Fretboard is FB, Fretwire is FW, Graft is GR, Heel is HL, Heel Cap is HCP, Lower Bout is LB, Neck is NK, Nut is NT, Saddle is SDL, Soundhole is SH, String (one string of a set) is ST, Top Plate is TP, Upper Bout is UB, Waist is WS, X Brace is XB (e.g. NTW, FBTN, STD).
   - A position the setting is measured at has a one-letter suffix: at Nut is N, at End is E, at Bridge is B, at Neck End is N, at Tail End is T (e.g. FBRN, FBTE, SSB, BDDT). Nut and neck end never apply to the same part, so they share N.
 - A setting that appears in more than one place (e.g. a neck profile radius at the first fret and at the heel) gets its own name and abbreviation for each place.
 
@@ -401,3 +401,61 @@ The thickness of the fret's tang along the length of the fretboard, not counting
 
 **Fretwire Barb Thickness (FWBT)**
 Optional. The thickness of the fret's tang along the length of the fretboard, measured across its barbs. With the Fretwire Tang Thickness, it shows how tightly the fret grips its slot.
+
+## Bracing
+
+The top plate's braces. All of them sit on the underside of the top plate.
+
+**X Brace Offset from Neck End (XBO)**
+The distance from the neck end of the body, where the heel sits, to the point where the X brace's legs cross, along the centerline.
+
+**X Brace Angle (XBA)**
+The angle between the X brace's two legs, measured on the neck end side of the crossing.
+
+**X Brace Edge Offset (XBEO)**
+How far each leg of the X brace stops short of the body's outline. At 0 the legs run to the outline.
+
+**X Brace Width (XBW)**
+The X brace's width across the top plate.
+
+**X Brace Height (XBH)**
+The X brace's height, from the top plate to the top of the brace.
+
+**X Brace Profile Type (XBPT)**
+The shape of the X brace's profile along its legs.
+
+**Graft Thickness (GRT)**
+The thickness of the graft: a flat piece glued under the top between the headblock and the upper transverse bar, which strengthens the top where the strings' pull presses on it.
+
+**Graft Width (GRW)**
+The graft's width, square to the centerline.
+
+**Graft Offset from Neck End (GRO)**
+The distance from the neck end of the body to the graft's edge nearest the neck end, along the centerline.
+
+**Bass Finger Brace Count (BFNC)**
+The number of finger braces on the bass side, off the X brace's bass side lower leg.
+
+**Bass Finger Brace Angle (BFNA)**
+The angle of the bass side finger braces from square to the X brace's bass side lower leg. At 0 they're at 90° to the leg. A positive or negative value turns them away from square.
+
+**Bass Finger Brace Spacing (BFNS)**
+The distance between the bass side finger braces, measured along the X brace's bass side lower leg. The first finger brace is this distance from the crossing, and each one after it is this distance from the last.
+
+**Treble Finger Brace Count (TFNC)**
+The number of finger braces on the treble side, off the X brace's treble side lower leg.
+
+**Treble Finger Brace Angle (TFNA)**
+The angle of the treble side finger braces from square to the X brace's treble side lower leg. At 0 they're at 90° to the leg. A positive or negative value turns them away from square.
+
+**Treble Finger Brace Spacing (TFNS)**
+The distance between the treble side finger braces, measured along the X brace's treble side lower leg. The first finger brace is this distance from the crossing, and each one after it is this distance from the last.
+
+**Finger Brace Width (FNW)**
+The width of every finger brace, on both sides.
+
+**Finger Brace Height (FNH)**
+The height of every finger brace, on both sides, from the top plate to the top of the brace.
+
+**Finger Brace Edge Offset (FNEO)**
+How far each finger brace stops short of the body's outline. The braces run from the X brace's lower leg toward the outline, and at 0 they reach it.
