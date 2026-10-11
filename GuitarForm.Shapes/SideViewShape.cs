@@ -17,6 +17,10 @@ namespace GuitarForm.Shapes
         // Clockwise from the back at the tail end: tail end, top, neck end, back. Null when it isn't drawn.
         public Path Outline { get; private set; }
 
+        // The top's line, from the tail end to the neck end.
+        public Point2 TopAtTailEnd { get; private set; }
+        public Point2 TopAtNeckEnd { get; private set; }
+
         public List<GeometryMessage> Messages { get; } = new List<GeometryMessage>();
 
         public static SideViewShape Solve(Body body, double left)
@@ -41,6 +45,8 @@ namespace GuitarForm.Shapes
             var topTail = new Point2(shift + tailDepth.Value.Value, 0);
             var topNeck = new Point2(shift + neckTop, length);
             var backNeck = new Point2(shift + neckBack, length);
+            side.TopAtTailEnd = topTail;
+            side.TopAtNeckEnd = topNeck;
             side.Outline = new Path(new Segment[]
             {
                 new LineSegment(backTail, topTail),

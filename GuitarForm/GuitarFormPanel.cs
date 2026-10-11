@@ -37,6 +37,8 @@ namespace GuitarForm
         // The New fields tab: values the old tabs don't have, drawn with GuitarForm.Shapes (see NewFields).
         readonly TextBox[] _newFieldBoxes = NewFields.Fields.Select(_ => new TextBox()).ToArray();
         readonly string[] _newFieldErrors = new string[NewFields.Fields.Length];
+        readonly TextBox _markers = new TextBox { ToolTip = "Each marker's fret, with :2 for two dots, e.g. 3 5 7 9 12:2" };
+        string _markersError;
         readonly Label _newFieldMessages = new Label { Wrap = WrapMode.Word };
         Guitar _newFields = new Guitar();
         List<GeometryMessage> _shapeMessages = new List<GeometryMessage>();
@@ -140,8 +142,26 @@ namespace GuitarForm
                     _newFieldBoxes[i]));
                 _newFieldBoxes[i].TextChanged += (_, _) => OnNewFieldChanged(index);
             }
+            layout.Rows.Add(new TableRow(
+                new TableCell(new Label { Text = "Dot markers (frets, 12:2 for two dots)", VerticalAlignment = VerticalAlignment.Center }, true),
+                _markers));
+            _markers.TextChanged += (_, _) => OnMarkersChanged();
             layout.Rows.Add(new TableRow { ScaleHeight = true });
             return layout;
+        }
+
+        void OnMarkersChanged()
+        {
+            if (_showing || _designId == null)
+                return;
+            var changed = NewFields.WithMarkers(_newFields, _markers.Text);
+            _markersError = changed == null ? "Dot markers: write each marker's fret, with :2 for two dots, e.g. 3 5 7 9 12:2." : null;
+            if (changed != null)
+            {
+                _newFields = changed;
+                Run(() => NewFields.Save(_designId.Value, _newFields));
+            }
+            Redraw();
         }
 
         void OnNewFieldChanged(int index)
@@ -310,6 +330,7 @@ namespace GuitarForm
             _lastSoundhole = null;
             _newFields = NewFields.Load(id);
             Array.Clear(_newFieldErrors);
+            _markersError = null;
             ShowDesignList(id);
             ShowDesign();
         }
@@ -340,6 +361,7 @@ namespace GuitarForm
             _soundhole.Show(_design?.Soundhole, _units);
             for (int i = 0; i < NewFields.Fields.Length; i++)
                 _newFieldBoxes[i].Text = NewFields.Fields[i].Get(_newFields).Format(_units.LengthUnit, CultureInfo.CurrentCulture);
+            _markers.Text = NewFields.FormatMarkers(_newFields);
             _showing = false;
 
             foreach (var control in _needDesign)
@@ -427,8 +449,10 @@ namespace GuitarForm
             static GeometryMessage FromModel(ModelMessage m) => new GeometryMessage(m.Level, m.Text);
             var soundhole = guitar.Body.TopPlate.Validate(unit, culture).Select(FromModel).ToList();
             var body = guitar.Body.Validate(unit, culture).Select(FromModel).Except(soundhole).Concat(shapes.BodyMessages).ToList();
-            _shapeMessages = _newFieldErrors.Where(e => e != null).Select(e => new GeometryMessage(MessageLevel.Error, e))
-                .Concat(guitar.Neck.Fretboard.Validate(unit, culture).Select(FromModel))
+            _shapeMessages = _newFieldErrors.Append(_markersError).Where(e => e != null)
+                .Select(e => new GeometryMessage(MessageLevel.Error, e))
+                .Concat(guitar.Neck.Validate(unit, culture).Select(FromModel))
+                .Concat(shapes.FretboardMessages)
                 .Concat(body)
                 .ToList();
             return DesignDrawing.FromShapes(shapes, _design.Instrument.Validate(), body, soundhole);

@@ -13,7 +13,7 @@ using OldBody = GuitarForm.Model.Body;
 namespace GuitarForm
 {
     // A stopgap until the panel moves to the new model: the open design is turned into a new-model Guitar so it can be
-    // drawn with GuitarForm.Shapes, and the values the old tabs don't have (cutaway, body skew, fretboard widths) are
+    // drawn with GuitarForm.Shapes, and the values the old tabs don't have (cutaway, body skew, fretboard, neck angle and overstand, dot markers) are
     // kept per design in a JSON file in the library's folder, by glossary abbreviation, in mm.
     static class NewFields
     {
@@ -25,6 +25,9 @@ namespace GuitarForm
         static Field FretboardField(Func<Fretboard, Parameter> get) =>
             new Field(g => get(g.Neck.Fretboard),
                 (g, p) => g with { Neck = g.Neck with { Fretboard = (Fretboard)g.Neck.Fretboard.With(p) } });
+
+        static Field NeckField(Func<Neck, Parameter> get) =>
+            new Field(g => get(g.Neck), (g, p) => g with { Neck = (Neck)g.Neck.With(p) });
 
         public static readonly Field[] Fields =
         {
@@ -39,7 +42,42 @@ namespace GuitarForm
             FretboardField(f => f.StringSpacingAtBridge),
             FretboardField(f => f.BassStringSetback),
             FretboardField(f => f.TrebleStringSetback),
+            FretboardField(f => f.FretCount),
+            FretboardField(f => f.LastFretOverhang),
+            FretboardField(f => f.ThicknessAtNut),
+            FretboardField(f => f.ThicknessAtEnd),
+            FretboardField(f => f.FaceDotDiameter),
+            FretboardField(f => f.DoubleDotEdgeDistance),
+            NeckField(n => n.Angle),
+            NeckField(n => n.Overstand),
         };
+
+        const string MarkersKey = "Markers";
+
+        // The dot markers as text: each marker's fret, with ":2" for two dots, e.g. "3 5 7 9 12:2".
+        public static string FormatMarkers(Guitar guitar) => string.Join(" ", guitar.Neck.Fretboard.Markers.Select(m =>
+            m.DotCount.Value == 2 ? $"{m.Fret.Value}:2" : $"{m.Fret.Value}"));
+
+        // The markers read from text, or null when it isn't understood.
+        public static Guitar WithMarkers(Guitar guitar, string text)
+        {
+            var markers = new List<DotMarker>();
+            foreach (string item in (text ?? "").Split(new[] { ' ', ',' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var parts = item.Split(':');
+                if (!int.TryParse(parts[0], out int fret) || parts.Length > 2)
+                    return null;
+                int dots = 1;
+                if (parts.Length == 2 && !int.TryParse(parts[1], out dots))
+                    return null;
+                markers.Add(new DotMarker
+                {
+                    Fret = new(DotMarker.Definitions.Fret, fret),
+                    DotCount = new(DotMarker.Definitions.DotCount, dots),
+                });
+            }
+            return guitar with { Neck = guitar.Neck with { Fretboard = guitar.Neck.Fretboard with { Markers = markers } } };
+        }
 
         // The design's values as a Guitar, without the new fields.
         public static Guitar FromDesign(GuitarDesign design)
@@ -80,7 +118,7 @@ namespace GuitarForm
 
         // The new fields' values copied from one guitar into another.
         public static Guitar CopyFields(Guitar from, Guitar to) =>
-            Fields.Aggregate(to, (guitar, field) => field.Set(guitar, field.Get(from)));
+            WithMarkers(Fields.Aggregate(to, (guitar, field) => field.Set(guitar, field.Get(from))), FormatMarkers(from));
 
         static string FilePath(long designId) =>
             System.IO.Path.Combine(System.IO.Path.GetDirectoryName(GuitarFormPlugin.Instance.GuitarFormSettings.LibraryPath)!,
@@ -101,6 +139,8 @@ namespace GuitarForm
                     parameter.TryParse(text, LengthUnit.Millimeters, CultureInfo.InvariantCulture, out var parsed, out _))
                     guitar = field.Set(guitar, parsed);
             }
+            if (texts.TryGetValue(MarkersKey, out string markers))
+                guitar = WithMarkers(guitar, markers) ?? guitar;
             return guitar;
         }
 
@@ -108,6 +148,7 @@ namespace GuitarForm
         {
             var texts = Fields.Select(field => field.Get(guitar)).Where(p => p.HasValue).ToDictionary(
                 p => p.Definition.Abbreviation, p => p.Format(LengthUnit.Millimeters, CultureInfo.InvariantCulture));
+            texts[MarkersKey] = FormatMarkers(guitar);
             string path = FilePath(designId);
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
             File.WriteAllText(path, JsonSerializer.Serialize(texts, new JsonSerializerOptions { WriteIndented = true }));

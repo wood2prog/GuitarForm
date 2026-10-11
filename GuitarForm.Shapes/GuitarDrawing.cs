@@ -8,8 +8,9 @@ using MessageLevel = GuitarForm.Model.MessageLevel;
 
 namespace GuitarForm.Shapes
 {
-    // Everything drawn for a guitar, in millimeters: the plate from the origin up +Y with its soundhole, and the side
-    // view to its right, the gap away from the plate's widest point. Construction geometry is kept apart from the
+    // Everything drawn for a guitar, in millimeters: the plate from the origin up +Y with its soundhole and the
+    // fretboard over it, and the side view, with the fretboard's side profile, to its right, the gap away from the
+    // plate's widest point. Construction geometry is kept apart from the
     // final outline, which is drawn and built differently.
     public sealed class GuitarDrawing
     {
@@ -21,7 +22,12 @@ namespace GuitarForm.Shapes
         // Problems the model's checks can't see, from drawing the body.
         public List<GeometryMessage> BodyMessages { get; } = new List<GeometryMessage>();
 
+        // Problems the model's checks can't see, from drawing the fretboard.
+        public List<GeometryMessage> FretboardMessages { get; } = new List<GeometryMessage>();
+
         public PlateShape Plate { get; private set; }
+        public FretboardShape Fretboard { get; private set; }
+        public FretboardSideShape FretboardSide { get; private set; }
         public SideViewShape SideView { get; private set; }
         public Circle? Soundhole { get; private set; }
 
@@ -47,6 +53,20 @@ namespace GuitarForm.Shapes
             drawing.BodyMessages.AddRange(side.Messages);
             if (side.Outline != null)
                 drawing.OutlinePaths.Add(side.Outline);
+
+            var fretboard = drawing.Fretboard = FretboardShape.Solve(guitar);
+            drawing.FretboardMessages.AddRange(fretboard.Messages);
+            drawing.ConstructionLines.AddRange(fretboard.FretLines);
+            drawing.ConstructionLines.AddRange(fretboard.Strings);
+            if (fretboard.Outline != null)
+                drawing.OutlinePaths.Add(fretboard.Outline);
+            drawing.OutlinePaths.AddRange(fretboard.Slots);
+            drawing.OutlineCircles.AddRange(fretboard.Dots);
+
+            var fretboardSide = drawing.FretboardSide = FretboardSideShape.Solve(guitar, side);
+            drawing.FretboardMessages.AddRange(fretboardSide.Messages);
+            if (fretboardSide.Outline != null)
+                drawing.OutlinePaths.Add(fretboardSide.Outline);
             return drawing;
         }
 
