@@ -407,11 +407,13 @@ Optional. The thickness of the fret's tang along the length of the fretboard, me
 
 The top plate's braces, which sit on the underside of the top plate, and the headblock and tailblock.
 
+They're drawn on their own copy of the plate outline, seen from inside (treble on the left), the drawing gap left of the plate. Where a brace runs toward the outline, its end follows the outline, the brace's edge offset inside it; where it meets another brace, it ends along that brace's side. The bridge patch isn't drawn until the bridge's footprint is defined.
+
 **X Brace Offset from Neck End (XBO)**
 The distance from the neck end of the body, where the heel sits, to the point where the X brace's legs cross, along the centerline. It must be less than the Body Length.
 
 **X Brace Angle (XBA)**
-The angle between each of the X brace's legs and the centerline. The legs are mirror images of each other.
+The angle between each of the X brace's legs and the centerline. The legs are mirror images of each other. The bar from the bass side lower leg to the treble side upper leg runs through the crossing, and the other bar's legs end against its sides, as at the lap joint. An upper leg that reaches the upper transverse bar before the outline ends against the bar.
 
 **X Brace Edge Offset (XBEO)**
 How far each leg of the X brace stops short of the body's outline. At 0 the legs run to the outline.
@@ -453,22 +455,22 @@ The upper transverse bar's height, from the top plate to the top of the bar.
 How far each end of the upper transverse bar stops short of the body's outline. At 0 the bar runs to the outline on both sides.
 
 **Bass Finger Brace Count (BFNC)**
-The number of finger braces on the bass side, off the X brace's bass side lower leg. Above 0, the Bass Finger Brace Angle and Spacing and the Finger Brace Width and Height are required.
+The number of finger braces on the bass side, running from the outer side of the X brace's bass side lower leg toward the side of the lower bout. Above 0, the Bass Finger Brace Angle and Spacing and the Finger Brace Width and Height are required.
 
 **Bass Finger Brace Angle (BFNA)**
-The angle of the bass side finger braces from square to the X brace's bass side lower leg. At 0 they're at 90° to the leg. A positive value turns them toward the neck end, a negative value toward the tail end.
+The angle of the bass side finger braces from square to the X brace's bass side lower leg. At 0 they're at 90° to the leg. A positive value turns them toward the neck end, a negative value toward the tail end. It must be more than -90° and less than 90°.
 
 **Bass Finger Brace Spacing (BFNS)**
-The distance between the bass side finger braces, measured along the X brace's bass side lower leg. The first finger brace is this distance from the crossing, and each one after it is this distance from the last.
+The distance between the bass side finger braces, measured along the X brace's bass side lower leg. The first finger brace is this distance from the crossing, and each one after it is this distance from the last. Each brace is centered on its place on the leg's centerline, and the last must be before the end of the leg.
 
 **Treble Finger Brace Count (TFNC)**
-The number of finger braces on the treble side, off the X brace's treble side lower leg. Above 0, the Treble Finger Brace Angle and Spacing and the Finger Brace Width and Height are required.
+The number of finger braces on the treble side, running from the outer side of the X brace's treble side lower leg toward the side of the lower bout. Above 0, the Treble Finger Brace Angle and Spacing and the Finger Brace Width and Height are required.
 
 **Treble Finger Brace Angle (TFNA)**
-The angle of the treble side finger braces from square to the X brace's treble side lower leg. At 0 they're at 90° to the leg. A positive value turns them toward the neck end, a negative value toward the tail end.
+The angle of the treble side finger braces from square to the X brace's treble side lower leg. At 0 they're at 90° to the leg. A positive value turns them toward the neck end, a negative value toward the tail end. It must be more than -90° and less than 90°.
 
 **Treble Finger Brace Spacing (TFNS)**
-The distance between the treble side finger braces, measured along the X brace's treble side lower leg. The first finger brace is this distance from the crossing, and each one after it is this distance from the last.
+The distance between the treble side finger braces, measured along the X brace's treble side lower leg. The first finger brace is this distance from the crossing, and each one after it is this distance from the last. Each brace is centered on its place on the leg's centerline, and the last must be before the end of the leg.
 
 **Finger Brace Width (FNW)**
 The width of every finger brace, on both sides.
@@ -480,13 +482,13 @@ The height of every finger brace, on both sides, from the top plate to the top o
 How far each finger brace stops short of the body's outline. The braces run from the X brace's lower leg toward the outline, and at 0 they reach it.
 
 **Tone Bar Count (TNC)**
-The number of tone bars, on the treble side only, off the X brace's treble side lower leg. Above 0, the Tone Bar Angle, Spacing, Width and Height are required.
+The number of tone bars, on the treble side only, running from the inner side of the X brace's treble side lower leg, inside the X, toward the tail end. A tone bar can't cross the bass side lower leg. Above 0, the Tone Bar Angle, Spacing, Width and Height are required.
 
 **Tone Bar Spacing (TNS)**
-The distance between the tone bars, measured along the X brace's treble side lower leg. The first tone bar is this distance from the crossing, and each one after it is this distance from the last.
+The distance between the tone bars, measured along the X brace's treble side lower leg. The first tone bar is this distance from the crossing, and each one after it is this distance from the last. Each bar is centered on its place on the leg's centerline, and the last must be before the end of the leg.
 
 **Tone Bar Angle (TNA)**
-The angle of the tone bars from square to the X brace's treble side lower leg. At 0 they're at 90° to the leg. A positive value turns them toward the neck end, a negative value toward the tail end.
+The angle of the tone bars from square to the X brace's treble side lower leg. At 0 they're at 90° to the leg. A positive value turns them toward the neck end, a negative value toward the tail end. It must be more than -90° and less than 90°.
 
 **Tone Bar Width (TNW)**
 The width of every tone bar.
@@ -498,10 +500,10 @@ The height of every tone bar, from the top plate to the top of the bar.
 How far each tone bar stops short of the body's outline. The bars run from the X brace's lower leg toward the outline, and at 0 they reach it.
 
 **Soundhole Braces (SHB)**
-Whether the soundhole has its three braces: a bottom brace straight across the guitar on the tail end side of the hole, and a bass and a treble brace, each 120° around the hole from it. Their lengths follow from where they sit. They need a soundhole, and require the Soundhole Brace Offset, Width and Height.
+Whether the soundhole has its three braces: a bottom brace straight across the guitar on the tail end side of the hole, and a bass and a treble brace, each 120° around the hole from it. Their lengths follow from where they sit: each runs both ways until it meets another brace (the X brace, the upper transverse bar or another soundhole brace), or the outline when it meets none. They need a soundhole, and require the Soundhole Brace Offset, Width and Height.
 
 **Soundhole Brace Offset (SHBO)**
-The distance from the edge of the soundhole to each soundhole brace.
+The distance from the edge of the soundhole to the near side of each soundhole brace.
 
 **Soundhole Brace Width (SHBW)**
 The width of every soundhole brace.
@@ -519,13 +521,13 @@ How much wider the bridge patch is than the bridge, measured along the centerlin
 How far the bridge patch is moved along the centerline from centered under the bridge: positive toward the neck end, negative toward the tail end.
 
 **Headblock Width (HBW)**
-The headblock's width across the guitar, square to the centerline. Its height is the Body Depth at Neck End.
+The headblock's width across the guitar, square to the centerline. Its height is the Body Depth at Neck End. Its side against the neck end follows the outline.
 
 **Headblock Depth (HBD)**
 The headblock's size along the centerline, from the neck end into the body.
 
 **Tailblock Width (TBW)**
-The tailblock's width across the guitar, square to the centerline. Its height is the Body Depth at Tail End.
+The tailblock's width across the guitar, square to the centerline. Its height is the Body Depth at Tail End. Its side against the tail end follows the outline.
 
 **Tailblock Depth (TBD)**
 The tailblock's size along the centerline, from the tail end into the body. The Headblock Depth and Tailblock Depth together must be less than the Body Length.

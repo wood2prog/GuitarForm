@@ -9,7 +9,8 @@ using MessageLevel = GuitarForm.Model.MessageLevel;
 namespace GuitarForm.Shapes
 {
     // Everything drawn for a guitar, in millimeters: the plate from the origin up +Y with its soundhole and the
-    // fretboard over it; the side view, with the fretboard's side profile, to its right, the gap away from the plate's
+    // fretboard over it; the bracing on its own copy of the plate, seen from inside, the gap left of the plate's widest
+    // point; the side view, with the fretboard's side profile, to its right, the gap away from the plate's
     // widest point, with the neck under the fretboard; and the neck's profiles the gap right of that. Construction geometry is kept apart from the final
     // outline, which is drawn and built differently.
     public sealed class GuitarDrawing
@@ -21,6 +22,9 @@ namespace GuitarForm.Shapes
 
         // Problems the model's checks can't see, from drawing the body.
         public List<GeometryMessage> BodyMessages { get; } = new List<GeometryMessage>();
+
+        // Problems the model's checks can't see, from drawing the bracing.
+        public List<GeometryMessage> BracingMessages { get; } = new List<GeometryMessage>();
 
         // Problems the model's checks can't see, from drawing the fretboard.
         public List<GeometryMessage> FretboardMessages { get; } = new List<GeometryMessage>();
@@ -35,6 +39,9 @@ namespace GuitarForm.Shapes
         public NeckSideShape NeckSide { get; private set; }
         public NeckProfilesShape NeckProfiles { get; private set; }
         public Circle? Soundhole { get; private set; }
+
+        // The bracing where it's drawn, left of the plate; null when there's nothing to draw.
+        public BracingShape Bracing { get; private set; }
 
         // Lengths in messages are shown in unit.
         public static GuitarDrawing Draw(Guitar guitar, double tolerance, double gap,
@@ -53,6 +60,20 @@ namespace GuitarForm.Shapes
             drawing.Soundhole = SoundholeShape.Solve(guitar.Body.TopPlate);
             if (drawing.Soundhole is Circle soundhole)
                 drawing.OutlineCircles.Add(soundhole);
+
+            var bracing = BracingShape.Solve(guitar, plate, drawing.Soundhole, unit, culture);
+            drawing.BracingMessages.AddRange(bracing.Messages);
+            if (!bracing.IsEmpty)
+            {
+                // Mirrored, so the copy's right edge is the plate's left edge, moved the gap further left.
+                double left = LeftEdge(plate);
+                var placed = drawing.Bracing = bracing.Placed(2 * left - gap);
+                drawing.ConstructionLines.AddRange(placed.ConstructionLines);
+                drawing.OutlinePaths.Add(placed.Plate);
+                if (placed.Soundhole is Circle copy)
+                    drawing.OutlineCircles.Add(copy);
+                drawing.OutlinePaths.AddRange(placed.Braces.Select(brace => brace.Outline));
+            }
 
             double sideLeft = RightEdge(plate) + gap;
             var side = drawing.SideView = SideViewShape.Solve(guitar.Body, sideLeft);
@@ -103,5 +124,12 @@ namespace GuitarForm.Shapes
                 .Concat(plate.ConstructionLines.Select(line => line.Bounds.MaxX))
                 .DefaultIfEmpty(0)
                 .Max();
+
+        // The same on the left of the centerline.
+        static double LeftEdge(PlateShape plate) =>
+            plate.Outline.Select(path => path.Bounds.MinX)
+                .Concat(plate.ConstructionLines.Select(line => line.Bounds.MinX))
+                .DefaultIfEmpty(0)
+                .Min();
     }
 }

@@ -455,6 +455,7 @@ namespace GuitarForm
                 .Concat(shapes.FretboardMessages)
                 .Concat(shapes.NeckMessages)
                 .Concat(body)
+                .Concat(shapes.BracingMessages)
                 .ToList();
             return DesignDrawing.FromShapes(shapes, _design.Instrument.Validate(), body, soundhole);
         }

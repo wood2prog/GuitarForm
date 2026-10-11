@@ -14,7 +14,7 @@ using OldBody = GuitarForm.Model.Body;
 namespace GuitarForm
 {
     // A stopgap until the panel moves to the new model: the open design is turned into a new-model Guitar so it can be
-    // drawn with GuitarForm.Shapes, and the values the old tabs don't have (cutaway, body skew, fretboard, neck, dot markers) are
+    // drawn with GuitarForm.Shapes, and the values the old tabs don't have (cutaway, body skew, fretboard, neck, dot markers, bracing) are
     // kept per design in a JSON file in the library's folder, by glossary abbreviation, in mm.
     static class NewFields
     {
@@ -22,6 +22,15 @@ namespace GuitarForm
 
         static Field BodyField(Func<Body, Parameter> get) =>
             new Field(g => get(g.Body), (g, p) => g with { Body = (Body)g.Body.With(p) });
+
+        static Field BracingField(Func<Bracing, Parameter> get) =>
+            new Field(g => get(g.Body.TopPlate.Bracing), (g, p) => g with
+            {
+                Body = g.Body with
+                {
+                    TopPlate = g.Body.TopPlate with { Bracing = (Bracing)g.Body.TopPlate.Bracing.With(p) },
+                },
+            });
 
         static Field FretboardField(Func<Fretboard, Parameter> get) =>
             new Field(g => get(g.Neck.Fretboard),
@@ -92,6 +101,43 @@ namespace GuitarForm
             NeckField(n => n.ShoulderAngleAtHeelSection),
             NeckField(n => n.MidshoulderRadiusAtHeelSection),
             NeckField(n => n.SideLengthAtHeelSection),
+            BodyField(b => b.HeadblockWidth),
+            BodyField(b => b.HeadblockDepth),
+            BodyField(b => b.TailblockWidth),
+            BodyField(b => b.TailblockDepth),
+            BracingField(b => b.XBraceOffsetFromNeckEnd),
+            BracingField(b => b.XBraceAngle),
+            BracingField(b => b.XBraceEdgeOffset),
+            BracingField(b => b.XBraceWidth),
+            BracingField(b => b.XBraceHeight),
+            BracingField(b => b.Graft),
+            BracingField(b => b.GraftThickness),
+            BracingField(b => b.GraftWidth),
+            BracingField(b => b.GraftOffsetFromNeckEnd),
+            BracingField(b => b.GraftEdgeOffset),
+            BracingField(b => b.UpperTransverseBarOffsetFromNeckEnd),
+            BracingField(b => b.UpperTransverseBarWidth),
+            BracingField(b => b.UpperTransverseBarHeight),
+            BracingField(b => b.UpperTransverseBarEdgeOffset),
+            BracingField(b => b.BassFingerBraceCount),
+            BracingField(b => b.BassFingerBraceAngle),
+            BracingField(b => b.BassFingerBraceSpacing),
+            BracingField(b => b.TrebleFingerBraceCount),
+            BracingField(b => b.TrebleFingerBraceAngle),
+            BracingField(b => b.TrebleFingerBraceSpacing),
+            BracingField(b => b.FingerBraceWidth),
+            BracingField(b => b.FingerBraceHeight),
+            BracingField(b => b.FingerBraceEdgeOffset),
+            BracingField(b => b.ToneBarCount),
+            BracingField(b => b.ToneBarSpacing),
+            BracingField(b => b.ToneBarAngle),
+            BracingField(b => b.ToneBarWidth),
+            BracingField(b => b.ToneBarHeight),
+            BracingField(b => b.ToneBarEdgeOffset),
+            BracingField(b => b.SoundholeBraces),
+            BracingField(b => b.SoundholeBraceOffset),
+            BracingField(b => b.SoundholeBraceWidth),
+            BracingField(b => b.SoundholeBraceHeight),
         };
 
         const string MarkersKey = "Markers";

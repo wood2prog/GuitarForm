@@ -53,6 +53,9 @@ namespace GuitarForm.Shapes
         // Where the segment crosses the horizontal line at y, in order along the segment.
         public abstract IReadOnlyList<Crossing> CrossingsAtY(double y);
 
+        // Where the segment crosses the endless line through a point in a direction, in order along the segment.
+        public abstract IReadOnlyList<Crossing> CrossingsWithLine(Point2 through, Vector2 direction);
+
         // The same segment moved by the given vector.
         public abstract Segment Moved(Vector2 by);
 
@@ -95,6 +98,18 @@ namespace GuitarForm.Shapes
             double t = (y - From.Y) / dy;
             return Crossing.OnSegment(t)
                 ? new[] { new Crossing(new Point2(PointAt(Crossing.Clamp(t)).X, y), Crossing.Clamp(t)) }
+                : Array.Empty<Crossing>();
+        }
+
+        public override IReadOnlyList<Crossing> CrossingsWithLine(Point2 through, Vector2 direction)
+        {
+            var along = To - From;
+            double cross = along.Cross(direction);
+            if (Math.Abs(cross) < 1e-12)
+                return Array.Empty<Crossing>();
+            double t = (through - From).Cross(direction) / cross;
+            return Crossing.OnSegment(t)
+                ? new[] { new Crossing(PointAt(Crossing.Clamp(t)), Crossing.Clamp(t)) }
                 : Array.Empty<Crossing>();
         }
 
@@ -172,6 +187,19 @@ namespace GuitarForm.Shapes
                 return Array.Empty<Crossing>();
             double dx = Math.Sqrt(Radius * Radius - dy * dy);
             return OnArc(new[] { new Point2(Center.X + dx, y), new Point2(Center.X - dx, y) });
+        }
+
+        public override IReadOnlyList<Crossing> CrossingsWithLine(Point2 through, Vector2 direction)
+        {
+            // Points through + direction * s on the circle: s² + 2bs + c = 0, with direction a unit vector.
+            var unit = direction.Unit;
+            var fromCenter = through - Center;
+            double b = unit.Dot(fromCenter), c = fromCenter.Dot(fromCenter) - Radius * Radius;
+            double discriminant = b * b - c;
+            if (discriminant < 0)
+                return Array.Empty<Crossing>();
+            double root = Math.Sqrt(discriminant);
+            return OnArc(new[] { through + unit * (-b - root), through + unit * (-b + root) });
         }
 
         public override Segment Moved(Vector2 by) => this with { Center = Center + by };

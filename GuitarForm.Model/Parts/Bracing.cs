@@ -39,10 +39,10 @@ namespace GuitarForm.Model.Parts
             public static readonly ParameterDefinition UpperTransverseBarEdgeOffset = ParameterDefinition.Distance("Upper Transverse Bar Edge Offset", "UTEO");
 
             public static readonly ParameterDefinition BassFingerBraceCount = ParameterDefinition.Count("Bass Finger Brace Count", "BFNC", 0);
-            public static readonly ParameterDefinition BassFingerBraceAngle = ParameterDefinition.Angle("Bass Finger Brace Angle", "BFNA");
+            public static readonly ParameterDefinition BassFingerBraceAngle = ParameterDefinition.Angle("Bass Finger Brace Angle", "BFNA", -90, 90, exclusive: true);
             public static readonly ParameterDefinition BassFingerBraceSpacing = ParameterDefinition.Size("Bass Finger Brace Spacing", "BFNS");
             public static readonly ParameterDefinition TrebleFingerBraceCount = ParameterDefinition.Count("Treble Finger Brace Count", "TFNC", 0);
-            public static readonly ParameterDefinition TrebleFingerBraceAngle = ParameterDefinition.Angle("Treble Finger Brace Angle", "TFNA");
+            public static readonly ParameterDefinition TrebleFingerBraceAngle = ParameterDefinition.Angle("Treble Finger Brace Angle", "TFNA", -90, 90, exclusive: true);
             public static readonly ParameterDefinition TrebleFingerBraceSpacing = ParameterDefinition.Size("Treble Finger Brace Spacing", "TFNS");
             public static readonly ParameterDefinition FingerBraceWidth = ParameterDefinition.Size("Finger Brace Width", "FNW");
             public static readonly ParameterDefinition FingerBraceHeight = ParameterDefinition.Size("Finger Brace Height", "FNH");
@@ -50,7 +50,7 @@ namespace GuitarForm.Model.Parts
 
             public static readonly ParameterDefinition ToneBarCount = ParameterDefinition.Count("Tone Bar Count", "TNC", 0);
             public static readonly ParameterDefinition ToneBarSpacing = ParameterDefinition.Size("Tone Bar Spacing", "TNS");
-            public static readonly ParameterDefinition ToneBarAngle = ParameterDefinition.Angle("Tone Bar Angle", "TNA");
+            public static readonly ParameterDefinition ToneBarAngle = ParameterDefinition.Angle("Tone Bar Angle", "TNA", -90, 90, exclusive: true);
             public static readonly ParameterDefinition ToneBarWidth = ParameterDefinition.Size("Tone Bar Width", "TNW");
             public static readonly ParameterDefinition ToneBarHeight = ParameterDefinition.Size("Tone Bar Height", "TNH");
             public static readonly ParameterDefinition ToneBarEdgeOffset = ParameterDefinition.Distance("Tone Bar Edge Offset", "TNEO");

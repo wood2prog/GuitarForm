@@ -40,6 +40,10 @@ namespace GuitarForm.Shapes
 
         public Vector2 Right => new Vector2(Y, -X);
 
+        // Turned by an angle in radians: counterclockwise when it's positive.
+        public Vector2 Rotated(double angle) => new Vector2(X * Math.Cos(angle) - Y * Math.Sin(angle),
+            X * Math.Sin(angle) + Y * Math.Cos(angle));
+
         public double Dot(Vector2 other) => X * other.X + Y * other.Y;
 
         // Positive when other turns counterclockwise from this direction, negative when clockwise.
