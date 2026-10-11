@@ -38,9 +38,15 @@ namespace GuitarForm
         // Values the old sections don't have, drawn with GuitarForm.Shapes (see NewFields): on the Body tab, and on the
         // Bracing, Fretboard and Neck tabs, each with its own messages.
         static readonly string[] NewFieldTabs = NewFields.Groups.SelectMany(g => g.Fields.Select(_ => g.Tab)).ToArray();
-        // Decimal numbers (lengths, angles, numbers) are sliders; counts, flags and choices are plain boxes.
-        readonly IFieldBox[] _newFieldBoxes = NewFields.Fields.Select((field, i) => FieldLayout.Box(
-            IsDecimal(field.Get(new Guitar()).Definition.Kind), step: field.Step)).ToArray();
+        // Choices and yes/no values are drop-downs, decimal numbers (lengths, angles, numbers) sliders, and counts
+        // plain boxes.
+        readonly IFieldBox[] _newFieldBoxes = NewFields.Fields.Select(field =>
+        {
+            var parameter = field.Get(new Guitar());
+            return parameter.OptionTexts.Count > 0
+                ? new FieldDropDown(parameter.OptionTexts)
+                : FieldLayout.Box(IsDecimal(parameter.Definition.Kind), step: field.Step);
+        }).ToArray();
         readonly Label[] _newFieldUnits = NewFields.Fields.Select(_ => FieldLayout.UnitLabel()).ToArray();
         readonly string[] _newFieldErrors = new string[NewFields.Fields.Length];
         readonly TextBox _markers = new TextBox { Width = 160, ToolTip = "Each marker's fret, with :2 for two dots, e.g. 3 5 7 9 12:2" };

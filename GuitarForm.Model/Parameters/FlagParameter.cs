@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace GuitarForm.Model.Parameters
 {
@@ -6,6 +7,10 @@ namespace GuitarForm.Model.Parameters
     public sealed record FlagParameter(ParameterDefinition Definition, bool Value = false) : Parameter(Definition)
     {
         public override bool HasValue => true;
+
+        static readonly string[] Texts = { "Yes", "No" };
+
+        public override IReadOnlyList<string> OptionTexts => Texts;
 
         public override string Format(LengthUnit unit, IFormatProvider culture = null) => Value ? "Yes" : "No";
 

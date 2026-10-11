@@ -204,6 +204,20 @@ namespace GuitarForm.Tests
         }
 
         [Test]
+        public void OptionTexts_ArePickableAndParse()
+        {
+            var choice = new ChoiceParameter<Material>(CoreMaterial);
+            Assert.That(choice.OptionTexts, Is.EqualTo(new[] { "Not specified", "Solid nylon", "Steel" }));
+            Assert.That(((ChoiceParameter<Material>)Parse(choice, choice.OptionTexts[1])).Value, Is.EqualTo(Material.SolidNylon));
+
+            var flag = new FlagParameter(HasSoundhole);
+            Assert.That(flag.OptionTexts, Is.EqualTo(new[] { "Yes", "No" }));
+            Assert.That(((FlagParameter)Parse(flag, flag.OptionTexts[0])).Value, Is.True);
+
+            Assert.That(new NumberParameter(ScaleLength, 650).OptionTexts, Is.Empty);
+        }
+
+        [Test]
         public void Choice_UnknownOption_ListsOptions()
         {
             new ChoiceParameter<Material>(CoreMaterial).TryParse("gut", LengthUnit.Millimeters, Culture, out _,

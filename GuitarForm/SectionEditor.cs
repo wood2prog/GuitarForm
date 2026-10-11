@@ -175,6 +175,29 @@ namespace GuitarForm
     {
     }
 
+    // A box for a value picked from a list, e.g. a choice or yes/no. Its text is the picked option's.
+    sealed class FieldDropDown : DropDown, IFieldBox
+    {
+        public FieldDropDown(IEnumerable<string> options)
+        {
+            Width = 140;
+            foreach (string option in options)
+                Items.Add(option);
+            SelectedIndexChanged += (_, _) => TextChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public string Text
+        {
+            get => SelectedKey ?? "";
+            set => SelectedKey = value;
+        }
+
+        // Every option is a value, so there's nothing to show when none is picked.
+        public string PlaceholderText { get; set; }
+
+        public event EventHandler<EventArgs> TextChanged;
+    }
+
     // A tab's errors, warnings and notes, which the panel shows beside the tabs while the tab is selected.
     sealed class TabMessages
     {

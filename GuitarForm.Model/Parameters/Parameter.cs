@@ -19,6 +19,10 @@ namespace GuitarForm.Model.Parameters
         // The unit symbol shown after the value, e.g. "mm" or "°". Empty when the value has no unit.
         public virtual string Symbol(LengthUnit unit) => "";
 
+        // The texts a field can offer to pick from, as Format gives them and TryParse reads them. Empty when the
+        // value is typed rather than picked.
+        public virtual IReadOnlyList<string> OptionTexts => Array.Empty<string>();
+
         // The value with its unit, for messages.
         public string FormatWithUnit(LengthUnit unit, IFormatProvider culture = null)
         {

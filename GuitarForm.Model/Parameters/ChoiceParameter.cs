@@ -13,6 +13,11 @@ namespace GuitarForm.Model.Parameters
 
         public override bool HasValue => true;
 
+        // Static, so it isn't a field that record equality would compare.
+        static readonly string[] Texts = Options.Select(OptionText).ToArray();
+
+        public override IReadOnlyList<string> OptionTexts => Texts;
+
         public override string Format(LengthUnit unit, IFormatProvider culture = null) => OptionText(Value);
 
         // Saved by option name, so reordering the options doesn't change saved values.
