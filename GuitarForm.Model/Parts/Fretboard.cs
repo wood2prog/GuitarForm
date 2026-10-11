@@ -84,9 +84,22 @@ namespace GuitarForm.Model.Parts
                 yield return message;
             for (int i = 0; i < Markers.Count; i++)
             {
-                if (Markers[i].Fret.Value > FretCount.Value)
-                    yield return ModelMessage.Error($"Marker {i + 1}: {PastLastFret(Markers[i].Fret).Text}");
+                var fret = Markers[i].Fret;
+                if (fret.Value > FretCount.Value)
+                    yield return ModelMessage.Error($"Marker {i + 1}: {PastLastFret(fret).Text}");
+                int first = FirstMarkerAt(fret.Value);
+                if (fret.HasValue && first < i)
+                    yield return ModelMessage.Error($"Marker {i + 1}: fret {fret.Value} already has marker {first + 1}.");
             }
+        }
+
+        // The place in the list of the first marker at the given fret, or -1 when there's none.
+        int FirstMarkerAt(int? fret)
+        {
+            for (int i = 0; i < Markers.Count; i++)
+                if (Markers[i].Fret.Value == fret)
+                    return i;
+            return -1;
         }
 
         // A fret that's past the last fret, as an error.

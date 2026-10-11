@@ -170,6 +170,21 @@ namespace GuitarForm.Tests
             }));
         }
 
+        [Test]
+        public void MarkerFretListedTwice_IsError()
+        {
+            var fretboard = new Fretboard
+            {
+                Markers = new[] { 12, 3, 12 }.Select(fret => new DotMarker
+                {
+                    Fret = new(DotMarker.Definitions.Fret, fret),
+                    DotCount = new(DotMarker.Definitions.DotCount, 1),
+                }).ToArray(),
+            };
+
+            Assert.That(Messages(fretboard), Is.EqualTo(new[] { "Marker 3: fret 12 already has marker 1." }));
+        }
+
         static Fretboard WithSetbacks(double bass, double treble, double nutWidth) => new Fretboard
         {
             BassStringSetback = new(Fretboard.Definitions.BassStringSetback, bass),

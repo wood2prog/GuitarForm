@@ -146,7 +146,7 @@ The distance from the fretboard's bottom face to the center of the side dots.
 For a fret with two side dots, the distance between the centers of the two dots.
 
 **Marker Fret (MKF)**
-In the marker list, the fret a marker sits at.
+In the marker list, the fret a marker sits at. Each fret can be listed only once.
 
 **Marker Dot Count (MKDC)**
 In the marker list, the number of dots at that fret, 1 or 2, on both the face and the bass edge.
