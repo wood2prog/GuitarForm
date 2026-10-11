@@ -28,7 +28,7 @@ namespace GuitarForm
     {
         readonly DropDown _designs = new DropDown();
         readonly SectionEditor<Instrument> _instrument = new SectionEditor<Instrument>(Sections.Instrument);
-        readonly SectionEditor<Body> _body = new SectionEditor<Body>(Sections.Body, sliders: true);
+        readonly SectionEditor<Body> _body = new SectionEditor<Body>(Sections.Body);
         readonly SectionEditor<Soundhole> _soundhole = new SectionEditor<Soundhole>(Sections.Soundhole);
         readonly CheckBox _hasSoundhole = new CheckBox { Text = "This design has a soundhole" };
         readonly CheckBox _showPreview = new CheckBox { Text = "Preview", Checked = true };
@@ -38,9 +38,9 @@ namespace GuitarForm
         // Values the old sections don't have, drawn with GuitarForm.Shapes (see NewFields): on the Body tab, and on the
         // Bracing, Fretboard and Neck tabs, each with its own messages.
         static readonly string[] NewFieldTabs = NewFields.Groups.SelectMany(g => g.Fields.Select(_ => g.Tab)).ToArray();
-        // For now only the Body tab's decimal numbers are sliders.
+        // Decimal numbers (lengths, angles, numbers) are sliders; counts, flags and choices are plain boxes.
         readonly IFieldBox[] _newFieldBoxes = NewFields.Fields.Select((field, i) => FieldLayout.Box(
-            NewFieldTabs[i] == NewFields.BodyTab && IsDecimal(field.Get(new Guitar()).Definition.Kind), step: field.Step)).ToArray();
+            IsDecimal(field.Get(new Guitar()).Definition.Kind), step: field.Step)).ToArray();
         readonly Label[] _newFieldUnits = NewFields.Fields.Select(_ => FieldLayout.UnitLabel()).ToArray();
         readonly string[] _newFieldErrors = new string[NewFields.Fields.Length];
         readonly TextBox _markers = new TextBox { Width = 160, ToolTip = "Each marker's fret, with :2 for two dots, e.g. 3 5 7 9 12:2" };

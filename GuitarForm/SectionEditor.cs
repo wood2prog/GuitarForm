@@ -51,8 +51,8 @@ namespace GuitarForm
         // The section's input errors and the messages from validating or drawing it.
         public TabMessages Messages => _messages;
 
-        // With sliders, decimal numbers get a NumberSlider instead of a plain box.
-        public SectionEditor(IEnumerable<FieldGroup<T>> groups, bool sliders = false)
+        // Decimal numbers get a NumberSlider, whole numbers a plain box.
+        public SectionEditor(IEnumerable<FieldGroup<T>> groups)
         {
             var groupList = groups.ToList();
             GroupTitles = groupList.Select(g => g.Title).ToList();
@@ -68,7 +68,7 @@ namespace GuitarForm
                 foreach (var field in group.Fields)
                 {
                     int index = i++;
-                    _boxes[index] = FieldLayout.Box(sliders && field.IsLength && !field.Whole, field.Description, field.Step);
+                    _boxes[index] = FieldLayout.Box(field.IsLength && !field.Whole, field.Description, field.Step);
                     _boxes[index].PlaceholderText = field.Required ? "required" : "";
                     _boxes[index].TextChanged += (_, _) => OnTextChanged(index);
                     _unitLabels[index] = FieldLayout.UnitLabel();

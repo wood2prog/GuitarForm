@@ -152,11 +152,11 @@ Done last, once the panel covers every component, so the project stays usable th
 
 ### 9a. Slider refinements
 
-`NumberSlider` (a fader: the value is on a lever dragged along a track that springs back to the middle; each step is the field's `Step`, a tenth of it with Shift; click the lever to type) is on the Body tab's decimal fields only, to try out.
+`NumberSlider` (a fader: the value is on a lever dragged along a track that springs back to the middle; each step is the field's `Step`, a tenth of it with Shift; click the lever to type) is the box for every decimal field: lengths, angles and numbers. Counts, flags, choices and the dot marker list keep plain boxes.
 
 - [ ] The user tries the slider and says whether it feels natural; adjust the feel (reach per drag, pixels per step, lever and track size).
 - [ ] **(decision)** Each field's step. A tenth is right for some values and too much for others. `NumberField.Step` and `NewFields.Field.Step` (default 0.1) are in place; the user will say which fields need another step as they use it. Also decide how steps behave in inches, since they're in the units shown (0.1 in is much coarser than 0.1 mm).
-- [ ] Put the slider on every decimal field (every tab), once the feel is settled.
+- [x] Put the slider on every decimal field (every tab). *(The Settings page's drawing gap keeps its stepper.)*
 - [ ] The overwrite-or-copy question on the first edit of an opened design pops up on the first step of a drag. Ask once the drag ends instead, or before it starts.
 - [ ] Check mouse capture during a drag in Rhino (called by reflection, since the Eto RhinoCommon 8.0's package compiles against lacks it), and that a slider looks disabled when no design is open.
 
