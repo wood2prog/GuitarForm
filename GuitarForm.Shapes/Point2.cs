@@ -42,6 +42,9 @@ namespace GuitarForm.Shapes
 
         public double Dot(Vector2 other) => X * other.X + Y * other.Y;
 
+        // Positive when other turns counterclockwise from this direction, negative when clockwise.
+        public double Cross(Vector2 other) => X * other.Y - Y * other.X;
+
         public static Vector2 operator +(Vector2 a, Vector2 b) => new Vector2(a.X + b.X, a.Y + b.Y);
 
         public static Vector2 operator -(Vector2 a, Vector2 b) => new Vector2(a.X - b.X, a.Y - b.Y);

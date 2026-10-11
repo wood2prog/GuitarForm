@@ -30,6 +30,9 @@ namespace GuitarForm
         static Field NeckField(Func<Neck, Parameter> get) =>
             new Field(g => get(g.Neck), (g, p) => g with { Neck = (Neck)g.Neck.With(p) });
 
+        static Field NutField(Func<Nut, Parameter> get) =>
+            new Field(g => get(g.Neck.Nut), (g, p) => g with { Neck = g.Neck with { Nut = (Nut)g.Neck.Nut.With(p) } });
+
         public static readonly Field[] Fields =
         {
             BodyField(b => b.ProfileSkew),
@@ -66,6 +69,10 @@ namespace GuitarForm
             NeckField(n => n.MidshoulderRadiusAtSelectedFret),
             NeckField(n => n.CenterOffsetAtSelectedFret),
             NeckField(n => n.IncludesFretboardAtSelectedFret),
+            NutField(n => n.Thickness),
+            NutField(n => n.Reveal),
+            NeckField(n => n.HeelShaftRadius),
+            NeckField(n => n.HeelShaftOffset),
             NeckField(n => n.HeelEndThickness),
             NeckField(n => n.HeelEndOffsetFromBack),
             NeckField(n => n.HeelEndWidth),

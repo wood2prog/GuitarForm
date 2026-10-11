@@ -21,6 +21,9 @@ namespace GuitarForm.Shapes
         public Point2 TopAtTailEnd { get; private set; }
         public Point2 TopAtNeckEnd { get; private set; }
 
+        // The back at the neck end.
+        public Point2 BackAtNeckEnd { get; private set; }
+
         public List<GeometryMessage> Messages { get; } = new List<GeometryMessage>();
 
         public static SideViewShape Solve(Body body, double left)
@@ -47,6 +50,7 @@ namespace GuitarForm.Shapes
             var backNeck = new Point2(shift + neckBack, length);
             side.TopAtTailEnd = topTail;
             side.TopAtNeckEnd = topNeck;
+            side.BackAtNeckEnd = backNeck;
             side.Outline = new Path(new Segment[]
             {
                 new LineSegment(backTail, topTail),

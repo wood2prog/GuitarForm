@@ -23,6 +23,10 @@ namespace GuitarForm.Shapes
         public Point2 NutTop { get; private set; }
         public Point2 EndTop { get; private set; }
 
+        // The underside, where the fretboard sits on the neck, at the nut and the body end.
+        public Point2 NutUnder { get; private set; }
+        public Point2 EndUnder { get; private set; }
+
         public List<GeometryMessage> Messages { get; } = new List<GeometryMessage>();
 
         double _length;
@@ -66,8 +70,8 @@ namespace GuitarForm.Shapes
             double join = guitar.NeckJoinDistance.Value;
             double toEnd = guitar.FretDistance(fretboard.FretCount.Value.Value).Value + fretboard.LastFretOverhang.Value.Value - join;
 
-            var nutUnder = joint + toNut * join;
-            var endUnder = joint - toNut * toEnd;
+            var nutUnder = shape.NutUnder = joint + toNut * join;
+            var endUnder = shape.EndUnder = joint - toNut * toEnd;
             var nutTop = shape.NutTop = nutUnder + up * fretboard.ThicknessAtNut.Value.Value;
             var endTop = shape.EndTop = endUnder + up * fretboard.ThicknessAtEnd.Value.Value;
             shape._length = join + toEnd;

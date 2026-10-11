@@ -10,7 +10,7 @@ namespace GuitarForm.Shapes
 {
     // Everything drawn for a guitar, in millimeters: the plate from the origin up +Y with its soundhole and the
     // fretboard over it; the side view, with the fretboard's side profile, to its right, the gap away from the plate's
-    // widest point; and the neck's profiles the gap right of that. Construction geometry is kept apart from the final
+    // widest point, with the neck under the fretboard; and the neck's profiles the gap right of that. Construction geometry is kept apart from the final
     // outline, which is drawn and built differently.
     public sealed class GuitarDrawing
     {
@@ -32,6 +32,7 @@ namespace GuitarForm.Shapes
         public FretboardShape Fretboard { get; private set; }
         public FretboardSideShape FretboardSide { get; private set; }
         public SideViewShape SideView { get; private set; }
+        public NeckSideShape NeckSide { get; private set; }
         public NeckProfilesShape NeckProfiles { get; private set; }
         public Circle? Soundhole { get; private set; }
 
@@ -73,8 +74,15 @@ namespace GuitarForm.Shapes
             if (fretboardSide.Outline != null)
                 drawing.OutlinePaths.Add(fretboardSide.Outline);
 
+            var neckSide = drawing.NeckSide = NeckSideShape.Solve(guitar, side, fretboardSide, tolerance, unit, culture);
+            drawing.NeckMessages.AddRange(neckSide.Messages);
+            drawing.ConstructionLines.AddRange(neckSide.ConstructionLines);
+            var neckSidePaths = new[] { neckSide.Outline, neckSide.HeelCap, neckSide.Nut }.Where(path => path != null);
+            drawing.OutlinePaths.AddRange(neckSidePaths);
+
             // Beside the side view, or where it would be.
-            var sideViews = new[] { side.Outline, fretboardSide.Outline }.Where(path => path != null).ToList();
+            var sideViews = new[] { side.Outline, fretboardSide.Outline }.Concat(neckSidePaths)
+                .Where(path => path != null).ToList();
             double profilesLeft = (sideViews.Count > 0 ? sideViews.Max(path => path.Bounds.MaxX) : sideLeft) + gap;
             var profiles = drawing.NeckProfiles =
                 NeckProfilesShape.Solve(guitar, fretboardSide, profilesLeft, gap, tolerance, unit, culture);

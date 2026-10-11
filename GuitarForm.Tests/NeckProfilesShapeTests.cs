@@ -19,7 +19,7 @@ namespace GuitarForm.Tests
         // The fretboard's 645 scale and 600 body from FretboardShapeTests, with a side view and the neck's profiles. At
         // the first fret the fretboard is 44.954137 wide and 6.918984 thick; at the body's neck end it's 53.427361
         // wide.
-        static Guitar TestGuitar(Func<Neck, Neck> change = null)
+        internal static Guitar TestGuitar(Func<Neck, Neck> change = null)
         {
             var neck = new Neck
             {
@@ -34,7 +34,8 @@ namespace GuitarForm.Tests
                 BottomRadiusAtSelectedFret = new(Neck.Definitions.BottomRadiusAtSelectedFret, 35),
                 ShoulderAngleAtSelectedFret = new(Neck.Definitions.ShoulderAngleAtSelectedFret, 70),
                 MidshoulderRadiusAtSelectedFret = new(Neck.Definitions.MidshoulderRadiusAtSelectedFret, 10),
-                HeelEndThickness = new(Neck.Definitions.HeelEndThickness, 70),
+                HeelShaftRadius = new(Neck.Definitions.HeelShaftRadius, 15),
+                HeelEndThickness = new(Neck.Definitions.HeelEndThickness, 40),
                 HeelEndOffsetFromBack = new(Neck.Definitions.HeelEndOffsetFromBack, 3),
                 HeelEndWidth = new(Neck.Definitions.HeelEndWidth, 60),
                 HeelCap = new(Neck.Definitions.HeelCap, true),
@@ -50,6 +51,11 @@ namespace GuitarForm.Tests
                 ShoulderAngleAtHeelSection = new(Neck.Definitions.ShoulderAngleAtHeelSection, 80),
                 MidshoulderRadiusAtHeelSection = new(Neck.Definitions.MidshoulderRadiusAtHeelSection, 15),
                 SideLengthAtHeelSection = new(Neck.Definitions.SideLengthAtHeelSection, 8),
+                Nut = new Nut
+                {
+                    Thickness = new(Nut.Definitions.Thickness, 6),
+                    Reveal = new(Nut.Definitions.Reveal, 2.5),
+                },
                 Fretboard = new Fretboard
                 {
                     FretCount = new(Fretboard.Definitions.FretCount, 20),
@@ -226,7 +232,7 @@ namespace GuitarForm.Tests
             Assert.That(profiles.HeelSection.Outline.Bounds.MinX, Is.EqualTo(neckRight + Gap).Within(1e-6));
             Assert.That(profiles.HeelEnd.Outline.Bounds.MinX,
                 Is.EqualTo(profiles.HeelSection.Outline.Bounds.MaxX + Gap).Within(1e-6));
-            Assert.That(profiles.HeelEnd.Outline.Bounds.MaxY, Is.EqualTo(670).Within(1e-6));
+            Assert.That(profiles.HeelEnd.Outline.Bounds.MaxY, Is.EqualTo(640).Within(1e-6));
             Assert.That(profiles.Messages, Is.Empty);
         }
 
