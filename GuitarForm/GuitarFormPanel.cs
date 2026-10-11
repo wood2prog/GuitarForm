@@ -9,6 +9,7 @@ using Eto.Forms;
 using GuitarForm.Data;
 using GuitarForm.Geometry;
 using GuitarForm.Model;
+using GuitarForm.Model.Parameters;
 using GuitarForm.Model.Parts;
 using Rhino;
 using Body = GuitarForm.Model.Body;
@@ -27,7 +28,7 @@ namespace GuitarForm
     {
         readonly DropDown _designs = new DropDown();
         readonly SectionEditor<Instrument> _instrument = new SectionEditor<Instrument>(Sections.Instrument);
-        readonly SectionEditor<Body> _body = new SectionEditor<Body>(Sections.Body);
+        readonly SectionEditor<Body> _body = new SectionEditor<Body>(Sections.Body, sliders: true);
         readonly SectionEditor<Soundhole> _soundhole = new SectionEditor<Soundhole>(Sections.Soundhole);
         readonly CheckBox _hasSoundhole = new CheckBox { Text = "This design has a soundhole" };
         readonly CheckBox _showPreview = new CheckBox { Text = "Preview", Checked = true };
@@ -36,9 +37,11 @@ namespace GuitarForm
 
         // Values the old sections don't have, drawn with GuitarForm.Shapes (see NewFields): on the Body tab, and on the
         // Bracing, Fretboard and Neck tabs, each with its own messages.
-        readonly TextBox[] _newFieldBoxes = NewFields.Fields.Select(_ => FieldLayout.Box()).ToArray();
+        static readonly string[] NewFieldTabs = NewFields.Groups.SelectMany(g => g.Fields.Select(_ => g.Tab)).ToArray();
+        // For now only the Body tab's decimal numbers are sliders.
+        readonly IFieldBox[] _newFieldBoxes = NewFields.Fields.Select((field, i) => FieldLayout.Box(
+            NewFieldTabs[i] == NewFields.BodyTab && IsDecimal(field.Get(new Guitar()).Definition.Kind))).ToArray();
         readonly Label[] _newFieldUnits = NewFields.Fields.Select(_ => FieldLayout.UnitLabel()).ToArray();
-        readonly string[] _newFieldTabs = NewFields.Groups.SelectMany(g => g.Fields.Select(_ => g.Tab)).ToArray();
         readonly string[] _newFieldErrors = new string[NewFields.Fields.Length];
         readonly TextBox _markers = new TextBox { Width = 160, ToolTip = "Each marker's fret, with :2 for two dots, e.g. 3 5 7 9 12:2" };
         string _markersError;
@@ -159,6 +162,9 @@ namespace GuitarForm
                 (oldRows?.Invoke(title) ?? Enumerable.Empty<TableRow>()).Concat(NewFieldRows(tab, title)))).ToList();
         }
 
+        static bool IsDecimal(ParameterKind kind) =>
+            kind is ParameterKind.Length or ParameterKind.Angle or ParameterKind.Number;
+
         IEnumerable<TableRow> NewFieldRows(string tab, string title)
         {
             int index = 0;
@@ -167,7 +173,7 @@ namespace GuitarForm
                 foreach (var field in group.Fields)
                 {
                     if (group.Tab == tab && group.Title == title)
-                        yield return FieldLayout.Row(field.Get(_newFields).Label, null, _newFieldBoxes[index], _newFieldUnits[index]);
+                        yield return FieldLayout.Row(field.Get(_newFields).Label, null, (Control)_newFieldBoxes[index], _newFieldUnits[index]);
                     index++;
                 }
             }
@@ -497,7 +503,7 @@ namespace GuitarForm
 
         // The errors from new fields on the tab whose text couldn't be read.
         IEnumerable<GeometryMessage> InputErrors(string tab) =>
-            _newFieldErrors.Where((_, i) => _newFieldTabs[i] == tab)
+            _newFieldErrors.Where((_, i) => NewFieldTabs[i] == tab)
                 .Append(tab == NewFields.FretboardTab ? _markersError : null)
                 .Where(e => e != null)
                 .Select(e => new GeometryMessage(MessageLevel.Error, e));

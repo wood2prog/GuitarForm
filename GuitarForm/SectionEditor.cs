@@ -29,7 +29,7 @@ namespace GuitarForm
     sealed class SectionEditor<T> where T : class
     {
         readonly NumberField<T>[] _fields;
-        readonly TextBox[] _boxes;
+        readonly IFieldBox[] _boxes;
         readonly Label[] _unitLabels;
         readonly string[] _inputErrors;
         readonly Dictionary<string, List<TableRow>> _rows = new Dictionary<string, List<TableRow>>();
@@ -47,12 +47,13 @@ namespace GuitarForm
         // The section's input errors and the messages from validating or drawing it.
         public Control Messages => _messages;
 
-        public SectionEditor(IEnumerable<FieldGroup<T>> groups)
+        // With sliders, decimal numbers get a NumberSlider instead of a plain box.
+        public SectionEditor(IEnumerable<FieldGroup<T>> groups, bool sliders = false)
         {
             var groupList = groups.ToList();
             GroupTitles = groupList.Select(g => g.Title).ToList();
             _fields = groupList.SelectMany(g => g.Fields).ToArray();
-            _boxes = new TextBox[_fields.Length];
+            _boxes = new IFieldBox[_fields.Length];
             _unitLabels = new Label[_fields.Length];
             _inputErrors = new string[_fields.Length];
 
@@ -63,11 +64,11 @@ namespace GuitarForm
                 foreach (var field in group.Fields)
                 {
                     int index = i++;
-                    _boxes[index] = FieldLayout.Box(field.Description);
+                    _boxes[index] = FieldLayout.Box(sliders && field.IsLength && !field.Whole, field.Description);
                     _boxes[index].PlaceholderText = field.Required ? "required" : "";
                     _boxes[index].TextChanged += (_, _) => OnTextChanged(index);
                     _unitLabels[index] = FieldLayout.UnitLabel();
-                    rows.Add(FieldLayout.Row(field.Label, field.Description, _boxes[index], _unitLabels[index]));
+                    rows.Add(FieldLayout.Row(field.Label, field.Description, (Control)_boxes[index], _unitLabels[index]));
                 }
             }
         }
@@ -152,10 +153,26 @@ namespace GuitarForm
         static string Format(double value) => value.ToString("0.#####", CultureInfo.CurrentCulture);
     }
 
+    // What the panel needs from a field's box, so a text box and a NumberSlider can be used alike.
+    interface IFieldBox
+    {
+        string Text { get; set; }
+        string PlaceholderText { get; set; }
+        bool Enabled { get; set; }
+        event EventHandler<EventArgs> TextChanged;
+    }
+
+    sealed class FieldTextBox : TextBox, IFieldBox
+    {
+    }
+
     // The pieces every tab's fields are laid out with, so the boxes line up from group to group and tab to tab.
     static class FieldLayout
     {
-        public static TextBox Box(string toolTip = null) => new TextBox { Width = 90, ToolTip = toolTip };
+        // A box for a field's value: a NumberSlider for a decimal number when slider is true, else a text box.
+        public static IFieldBox Box(bool slider, string toolTip = null) => slider
+            ? new NumberSlider { ToolTip = toolTip }
+            : new FieldTextBox { Width = 90, ToolTip = toolTip };
 
         public static Label UnitLabel() => new Label { Width = 24, VerticalAlignment = VerticalAlignment.Center };
 
