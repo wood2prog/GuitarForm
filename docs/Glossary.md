@@ -321,7 +321,7 @@ Which cutaway the body has: none, Florentine or Venetian. A Florentine cutaway i
 The distance from the fretboard's treble edge where the neck meets the body, square to the centerline, out to the offset line: a line parallel to the centerline that the cutaway's wall runs down. At 0 the wall carries straight on from the fretboard's edge. Above 0 the neck end leaves a step of this width between the fretboard and the cutaway. It can't be negative. The Heel Flat Width doesn't affect it. Florentine and Venetian cutaways both use it.
 
 **Cutaway Width (CTW)**
-The distance from the offset line, square to the centerline, out to a second line parallel to the centerline on the treble side. The cutaway ends where this line meets the upper bout outline. Florentine and Venetian cutaways both use it.
+The distance from the offset line, square to the centerline, out to a second line parallel to the centerline on the treble side. The cutaway ends where this line meets the upper bout outline above its widest point, toward the neck, so the widest point stays. Florentine and Venetian cutaways both use it.
 
 **Cutaway Depth (CTD)**
 The distance from the neck end, along the offset line, to where the cutaway's arc starts. The wall runs straight down the offset line from the neck end to that point. The arc starts there, tangent to the offset line. In a Florentine cutaway, its radius and center are calculated so it also passes through the cutaway's end point on the upper bout. In a Venetian cutaway, its radius is the Cutaway Valley Radius.

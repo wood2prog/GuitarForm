@@ -300,7 +300,8 @@ namespace GuitarForm.Shapes
         // The cutaway replaces the treble side between the wall's top and the cutaway's end point. The wall runs down
         // the offset line, the Cutaway Offset from Neck past the fretboard's treble edge, from where it meets the heel
         // flat, shoulder arc or upper bout above its widest point, to the Cutaway Depth below the neck end. The end
-        // point is where the Cutaway Width line meets the upper bout between its widest point and the waist. A
+        // point is where the Cutaway Width line meets the upper bout above its widest point (toward the neck). Above the
+        // widest point the treble side only moves outward, so each line meets it once, the end point after the wall. A
         // Florentine cutaway is one arc from the wall to the end point; a Venetian one is a valley arc, a straight line
         // and a point arc tangent to the outline at the end point.
         bool AddCutaway(List<Segment[]> treble)
@@ -339,7 +340,7 @@ namespace GuitarForm.Shapes
             double arcStartY = _length - depth.Value.Value;
             var segments = treble.SelectMany((slot, index) => slot.Select(segment => (segment, index))).ToList();
 
-            var wallTop = FirstCrossing(segments, wallX, slot => slot <= UpperPrimary, _ => true);
+            var wallTop = FirstCrossing(segments, wallX);
             if (wallTop == null)
                 return Fail($"The cutaway's offset line, {Format(wallX)} from the centerline, doesn't meet the neck end " +
                             $"or the upper bout above its widest point: reduce the {offset.Label}.");
@@ -347,14 +348,11 @@ namespace GuitarForm.Shapes
                 return Fail($"The cutaway's arc must start below where its offset line meets the outline: the " +
                             $"{depth.Label} must be at least {Format(_length - wallTop.Value.Point.Y)}.");
 
-            double waistY = _body.WaistOffsetFromTailEnd.Value.Value;
-            var end = FirstCrossing(segments, endX, slot => slot is >= UpperSecondary and <= Waist,
-                p => p.Y >= waistY - _tolerance);
+            var end = FirstCrossing(segments, endX);
             if (end == null)
                 return Fail($"The cutaway's end point, {Format(endX)} from the centerline, must be on the upper bout " +
-                            $"between its widest point and the waist: between {Format(_body.WaistWidth.Value.Value / 2)} " +
-                            $"and {Format(_body.UpperBoutWidth.Value.Value / 2)} from the centerline. Change the " +
-                            $"{width.Label} or the {offset.Label}.");
+                            $"above its widest point: no more than {Format(_body.UpperBoutWidth.Value.Value / 2)} from " +
+                            $"the centerline. Reduce the {width.Label} or the {offset.Label}.");
             var endPoint = end.Value.Point;
             var arcStart = new Point2(wallX, arcStartY);
 
@@ -422,19 +420,13 @@ namespace GuitarForm.Shapes
 
         readonly record struct OutlineCrossing(int Index, Segment Segment, Point2 Point, double Parameter);
 
-        // The first place, going down the treble side, where the vertical line at x crosses a segment in the chosen
-        // slots at a point that's accepted.
-        static OutlineCrossing? FirstCrossing(List<(Segment segment, int slot)> segments, double x,
-            Func<int, bool> inSlot, Func<Point2, bool> accept)
+        // The first place, going down the treble side, where the vertical line at x crosses the heel flat, shoulder arc
+        // or upper bout above its widest point.
+        static OutlineCrossing? FirstCrossing(List<(Segment segment, int slot)> segments, double x)
         {
-            for (int i = 0; i < segments.Count; i++)
-            {
-                if (!inSlot(segments[i].slot))
-                    continue;
+            for (int i = 0; i < segments.Count && segments[i].slot <= UpperPrimary; i++)
                 foreach (var crossing in segments[i].segment.CrossingsAtX(x))
-                    if (accept(crossing.Point))
-                        return new OutlineCrossing(i, segments[i].segment, crossing.Point, crossing.Parameter);
-            }
+                    return new OutlineCrossing(i, segments[i].segment, crossing.Point, crossing.Parameter);
             return null;
         }
 

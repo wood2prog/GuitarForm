@@ -269,8 +269,8 @@ namespace GuitarForm.Tests
         public void FlorentineCutaway()
         {
             // The offset line is 30 from the centerline, past the heel flat's end at 28, so the wall starts on the
-            // shoulder arc. The width line at 130 meets the upper waist tangent.
-            var plate = Solve(WithCutaway(CutawayType.Florentine, 8, 100, 60));
+            // shoulder arc. The width line at 120 meets the upper bout above its widest point, at (120, 555).
+            var plate = Solve(WithCutaway(CutawayType.Florentine, 8, 90, 20));
 
             Assert.That(plate.Failed, Is.False, string.Join(" ", plate.Messages));
             var outline = plate.ClosedOutline;
@@ -279,23 +279,24 @@ namespace GuitarForm.Tests
 
             var wall = outline.Segments.OfType<LineSegment>().Single(l => l.From.X == 30 && l.To.X == 30);
             AssertPoint(wall.From, 30, 599.983, 1e-3);
-            AssertPoint(wall.To, 30, 540, 1e-9);
+            AssertPoint(wall.To, 30, 580, 1e-9);
             var arc = (ArcSegment)outline.Segments[outline.Segments.ToList().IndexOf(wall) + 1];
-            Assert.That(arc.Radius, Is.EqualTo(154.2409).Within(1e-3));
-            AssertPoint(arc.Center, 184.2409, 540, 1e-3);
-            AssertPoint(arc.End, 130, 395.611, 1e-3);
+            Assert.That(arc.Radius, Is.EqualTo(48.4722).Within(1e-3));
+            AssertPoint(arc.Center, 78.4722, 580, 1e-3);
+            AssertPoint(arc.End, 120, 555, 1e-6);
             Assert.That(arc.IsClockwise, Is.False);
-            Assert.That(plate.Radii, Has.Some.Matches<Circle>(c => Math.Abs(c.Radius - 154.2409) < 1e-3));
-            // The treble side's widest point is gone; the bass side keeps it.
-            Assert.That(outline.Bounds.MinX, Is.EqualTo(-190).Within(1e-6));
-            Assert.That(outline.Segments.Where(s => s.Start.Y > 400).Max(s => s.Bounds.MaxX), Is.LessThan(140));
+            // The outline then carries on round the upper bout, keeping its widest point.
+            var next = (ArcSegment)outline.Segments[outline.Segments.ToList().IndexOf(arc) + 1];
+            AssertPoint(next.Center, 40, 495, 1e-9);
+            AssertPoint(next.End, 140, 495, 1e-9);
+            Assert.That(outline.Bounds.MaxX, Is.EqualTo(190).Within(1e-6));
         }
 
         [Test]
         public void VenetianCutaway()
         {
-            var body = WithCutaway(CutawayType.Venetian, 8, 100, 60);
-            body = With(body, Body.Definitions.CutawayValleyRadius, 20);
+            var body = WithCutaway(CutawayType.Venetian, 8, 90, 20);
+            body = With(body, Body.Definitions.CutawayValleyRadius, 10);
             body = With(body, Body.Definitions.CutawayPointRadius, 10);
             var plate = Solve(body);
 
@@ -307,13 +308,13 @@ namespace GuitarForm.Tests
             var valley = (ArcSegment)outline.Segments[wall + 1];
             var line = (LineSegment)outline.Segments[wall + 2];
             var point = (ArcSegment)outline.Segments[wall + 3];
-            AssertPoint(valley.Center, 50, 540, 1e-9);
+            AssertPoint(valley.Center, 40, 580, 1e-9);
             Assert.That(valley.IsClockwise, Is.False);
-            AssertPoint(line.From, 34.0044, 527.9941, 1e-3);
-            AssertPoint(line.To, 128.0559, 402.6902, 1e-3);
-            AssertPoint(point.Center, 120.0581, 396.6873, 1e-3);
+            AssertPoint(line.From, 38.5196, 570.1102, 1e-3);
+            AssertPoint(line.To, 113.4804, 558.8898, 1e-3);
+            AssertPoint(point.Center, 112, 549, 1e-6);
             Assert.That(point.IsClockwise, Is.True);
-            AssertPoint(point.End, 130, 395.611, 1e-3);
+            AssertPoint(point.End, 120, 555, 1e-6);
             // The point arc leaves the end point in the outline's own direction.
             var after = outline.Segments[wall + 4];
             Assert.That(point.TangentAt(1).Dot(after.TangentAt(0)), Is.EqualTo(1).Within(1e-9));
@@ -322,18 +323,18 @@ namespace GuitarForm.Tests
         [Test]
         public void CutawayFromTheHeelFlat_WallStartsAtTheNeckEnd()
         {
-            var plate = Solve(WithCutaway(CutawayType.Florentine, 0, 108, 60));
+            var plate = Solve(WithCutaway(CutawayType.Florentine, 0, 98, 20));
 
             var outline = plate.ClosedOutline;
             AssertJoined(outline);
             Assert.That(outline.Segments[0], Is.EqualTo(new LineSegment(new Point2(0, 600), new Point2(22, 600))));
-            Assert.That(outline.Segments[1], Is.EqualTo(new LineSegment(new Point2(22, 600), new Point2(22, 540))));
+            Assert.That(outline.Segments[1], Is.EqualTo(new LineSegment(new Point2(22, 600), new Point2(22, 580))));
         }
 
         [Test]
         public void CutawayWithoutTheFretboardEdge_RemarkAndNoCutaway()
         {
-            var guitar = QuickTestGuitar(WithCutaway(CutawayType.Florentine, 8, 100, 60));
+            var guitar = QuickTestGuitar(WithCutaway(CutawayType.Florentine, 8, 90, 20));
             guitar = guitar with { Neck = new Neck() };
             var plate = PlateShape.Solve(guitar, Tolerance);
 
@@ -358,20 +359,20 @@ namespace GuitarForm.Tests
         [Test]
         public void CutawayEndPastTheUpperBout_Error()
         {
-            var plate = Solve(WithCutaway(CutawayType.Florentine, 8, 115, 60));
+            var plate = Solve(WithCutaway(CutawayType.Florentine, 8, 115, 20));
 
             Assert.That(plate.Failed, Is.True);
             Assert.That(plate.Messages.Single().Level, Is.EqualTo(MessageLevel.Error));
             Assert.That(plate.Messages.Single().Text, Does.StartWith(
-                "The cutaway's end point, 145 mm from the centerline, must be on the upper bout between its widest " +
-                "point and the waist: between 120 mm and 140 mm"));
+                "The cutaway's end point, 145 mm from the centerline, must be on the upper bout above its widest " +
+                "point: no more than 140 mm from the centerline."));
         }
 
         [Test]
         public void CutawayArcAboveTheWall_Error()
         {
             // The wall meets the shoulder arc just below the neck end, so a depth of 0 starts the arc above it.
-            var plate = Solve(WithCutaway(CutawayType.Florentine, 8, 100, 0));
+            var plate = Solve(WithCutaway(CutawayType.Florentine, 8, 90, 0));
 
             Assert.That(plate.Failed, Is.True);
             Assert.That(plate.Messages.Single().Text, Does.Contain("Cutaway Depth (CTD) must be at least 0.02 mm"));
@@ -380,7 +381,7 @@ namespace GuitarForm.Tests
         [Test]
         public void VenetianArcsOverlap_Error()
         {
-            var body = WithCutaway(CutawayType.Venetian, 8, 100, 200);
+            var body = WithCutaway(CutawayType.Venetian, 8, 90, 20);
             body = With(body, Body.Definitions.CutawayValleyRadius, 60);
             body = With(body, Body.Definitions.CutawayPointRadius, 40);
             var plate = Solve(body);
