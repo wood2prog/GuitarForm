@@ -9,9 +9,9 @@ using MessageLevel = GuitarForm.Model.MessageLevel;
 namespace GuitarForm.Shapes
 {
     // Everything drawn for a guitar, in millimeters: the plate from the origin up +Y with its soundhole and the
-    // fretboard over it, and the side view, with the fretboard's side profile, to its right, the gap away from the
-    // plate's widest point. Construction geometry is kept apart from the
-    // final outline, which is drawn and built differently.
+    // fretboard over it; the side view, with the fretboard's side profile, to its right, the gap away from the plate's
+    // widest point; and the neck's profiles the gap right of that. Construction geometry is kept apart from the final
+    // outline, which is drawn and built differently.
     public sealed class GuitarDrawing
     {
         public List<LineSegment> ConstructionLines { get; } = new List<LineSegment>();
@@ -25,10 +25,14 @@ namespace GuitarForm.Shapes
         // Problems the model's checks can't see, from drawing the fretboard.
         public List<GeometryMessage> FretboardMessages { get; } = new List<GeometryMessage>();
 
+        // Problems the model's checks can't see, from drawing the neck.
+        public List<GeometryMessage> NeckMessages { get; } = new List<GeometryMessage>();
+
         public PlateShape Plate { get; private set; }
         public FretboardShape Fretboard { get; private set; }
         public FretboardSideShape FretboardSide { get; private set; }
         public SideViewShape SideView { get; private set; }
+        public NeckProfilesShape NeckProfiles { get; private set; }
         public Circle? Soundhole { get; private set; }
 
         // Lengths in messages are shown in unit.
@@ -49,7 +53,8 @@ namespace GuitarForm.Shapes
             if (drawing.Soundhole is Circle soundhole)
                 drawing.OutlineCircles.Add(soundhole);
 
-            var side = drawing.SideView = SideViewShape.Solve(guitar.Body, RightEdge(plate) + gap);
+            double sideLeft = RightEdge(plate) + gap;
+            var side = drawing.SideView = SideViewShape.Solve(guitar.Body, sideLeft);
             drawing.BodyMessages.AddRange(side.Messages);
             if (side.Outline != null)
                 drawing.OutlinePaths.Add(side.Outline);
@@ -67,6 +72,19 @@ namespace GuitarForm.Shapes
             drawing.FretboardMessages.AddRange(fretboardSide.Messages);
             if (fretboardSide.Outline != null)
                 drawing.OutlinePaths.Add(fretboardSide.Outline);
+
+            // Beside the side view, or where it would be.
+            var sideViews = new[] { side.Outline, fretboardSide.Outline }.Where(path => path != null).ToList();
+            double profilesLeft = (sideViews.Count > 0 ? sideViews.Max(path => path.Bounds.MaxX) : sideLeft) + gap;
+            var profiles = drawing.NeckProfiles =
+                NeckProfilesShape.Solve(guitar, fretboardSide, profilesLeft, gap, tolerance, unit, culture);
+            drawing.NeckMessages.AddRange(profiles.Messages);
+            foreach (var profile in profiles.All)
+            {
+                drawing.OutlinePaths.Add(profile.Outline);
+                if (profile.FretboardUnderside != null)
+                    drawing.OutlinePaths.Add(new Path(new[] { profile.FretboardUnderside }, isClosed: false));
+            }
             return drawing;
         }
 

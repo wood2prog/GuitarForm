@@ -14,7 +14,7 @@ using OldBody = GuitarForm.Model.Body;
 namespace GuitarForm
 {
     // A stopgap until the panel moves to the new model: the open design is turned into a new-model Guitar so it can be
-    // drawn with GuitarForm.Shapes, and the values the old tabs don't have (cutaway, body skew, fretboard, neck angle and overstand, dot markers) are
+    // drawn with GuitarForm.Shapes, and the values the old tabs don't have (cutaway, body skew, fretboard, neck, dot markers) are
     // kept per design in a JSON file in the library's folder, by glossary abbreviation, in mm.
     static class NewFields
     {
@@ -47,10 +47,44 @@ namespace GuitarForm
             FretboardField(f => f.LastFretOverhang),
             FretboardField(f => f.ThicknessAtNut),
             FretboardField(f => f.ThicknessAtEnd),
+            FretboardField(f => f.Radius),
             FretboardField(f => f.FaceDotDiameter),
             FretboardField(f => f.DoubleDotEdgeDistance),
             NeckField(n => n.Angle),
             NeckField(n => n.Overstand),
+            NeckField(n => n.ThicknessAtFirstFret),
+            NeckField(n => n.ThicknessAtSelectedFret),
+            NeckField(n => n.ThicknessFret),
+            NeckField(n => n.BottomRadiusAtFirstFret),
+            NeckField(n => n.ShoulderAngleAtFirstFret),
+            NeckField(n => n.MidshoulderRadiusAtFirstFret),
+            NeckField(n => n.CenterOffsetAtFirstFret),
+            NeckField(n => n.IncludesFretboardAtFirstFret),
+            NeckField(n => n.UsesFirstFretAtSelectedFret),
+            NeckField(n => n.BottomRadiusAtSelectedFret),
+            NeckField(n => n.ShoulderAngleAtSelectedFret),
+            NeckField(n => n.MidshoulderRadiusAtSelectedFret),
+            NeckField(n => n.CenterOffsetAtSelectedFret),
+            NeckField(n => n.IncludesFretboardAtSelectedFret),
+            NeckField(n => n.HeelEndThickness),
+            NeckField(n => n.HeelEndOffsetFromBack),
+            NeckField(n => n.HeelEndWidth),
+            NeckField(n => n.HeelCap),
+            NeckField(n => n.HeelCapThickness),
+            NeckField(n => n.UsesFirstFretAtHeelEnd),
+            NeckField(n => n.BottomRadiusAtHeelEnd),
+            NeckField(n => n.ShoulderAngleAtHeelEnd),
+            NeckField(n => n.MidshoulderRadiusAtHeelEnd),
+            NeckField(n => n.SideLengthAtHeelEnd),
+            NeckField(n => n.HeelSectionThickness),
+            NeckField(n => n.HeelSectionOffsetFromHeelEnd),
+            NeckField(n => n.HeelOutlineStraightSides),
+            NeckField(n => n.HeelSectionWidth),
+            NeckField(n => n.UsesFirstFretAtHeelSection),
+            NeckField(n => n.BottomRadiusAtHeelSection),
+            NeckField(n => n.ShoulderAngleAtHeelSection),
+            NeckField(n => n.MidshoulderRadiusAtHeelSection),
+            NeckField(n => n.SideLengthAtHeelSection),
         };
 
         const string MarkersKey = "Markers";

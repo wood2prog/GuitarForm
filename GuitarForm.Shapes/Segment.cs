@@ -50,6 +50,12 @@ namespace GuitarForm.Shapes
         // Where the segment crosses the vertical line at x, in order along the segment.
         public abstract IReadOnlyList<Crossing> CrossingsAtX(double x);
 
+        // Where the segment crosses the horizontal line at y, in order along the segment.
+        public abstract IReadOnlyList<Crossing> CrossingsAtY(double y);
+
+        // The same segment moved by the given vector.
+        public abstract Segment Moved(Vector2 by);
+
         // The part of the segment between two parameters, from 0 at its start to 1 at its end.
         public abstract Segment Between(double from, double to);
     }
@@ -80,6 +86,19 @@ namespace GuitarForm.Shapes
                 ? new[] { new Crossing(new Point2(x, PointAt(Crossing.Clamp(t)).Y), Crossing.Clamp(t)) }
                 : Array.Empty<Crossing>();
         }
+
+        public override IReadOnlyList<Crossing> CrossingsAtY(double y)
+        {
+            double dy = To.Y - From.Y;
+            if (dy == 0)
+                return Array.Empty<Crossing>();
+            double t = (y - From.Y) / dy;
+            return Crossing.OnSegment(t)
+                ? new[] { new Crossing(new Point2(PointAt(Crossing.Clamp(t)).X, y), Crossing.Clamp(t)) }
+                : Array.Empty<Crossing>();
+        }
+
+        public override Segment Moved(Vector2 by) => new LineSegment(From + by, To + by);
 
         public override Segment Between(double from, double to) => new LineSegment(PointAt(from), PointAt(to));
     }
@@ -143,16 +162,30 @@ namespace GuitarForm.Shapes
             if (Math.Abs(dx) > Radius)
                 return Array.Empty<Crossing>();
             double dy = Math.Sqrt(Radius * Radius - dx * dx);
-            return new[] { new Point2(x, Center.Y + dy), new Point2(x, Center.Y - dy) }
-                .Select(point => new Crossing(point, ParameterOf((point - Center).Angle)))
+            return OnArc(new[] { new Point2(x, Center.Y + dy), new Point2(x, Center.Y - dy) });
+        }
+
+        public override IReadOnlyList<Crossing> CrossingsAtY(double y)
+        {
+            double dy = y - Center.Y;
+            if (Math.Abs(dy) > Radius)
+                return Array.Empty<Crossing>();
+            double dx = Math.Sqrt(Radius * Radius - dy * dy);
+            return OnArc(new[] { new Point2(Center.X + dx, y), new Point2(Center.X - dx, y) });
+        }
+
+        public override Segment Moved(Vector2 by) => this with { Center = Center + by };
+
+        public override Segment Between(double from, double to) =>
+            new ArcSegment(Center, Radius, AngleAt(from), Sweep * (to - from));
+
+        // The points of the circle that are on the arc, in order along it.
+        IReadOnlyList<Crossing> OnArc(IEnumerable<Point2> points) =>
+            points.Select(point => new Crossing(point, ParameterOf((point - Center).Angle)))
                 .Where(crossing => Crossing.OnSegment(crossing.Parameter))
                 .Select(crossing => crossing with { Parameter = Crossing.Clamp(crossing.Parameter) })
                 .OrderBy(crossing => crossing.Parameter)
                 .ToArray();
-        }
-
-        public override Segment Between(double from, double to) =>
-            new ArcSegment(Center, Radius, AngleAt(from), Sweep * (to - from));
 
         // How far along the arc the given angle is: 0 at the start, 1 at the end, outside 0–1 when it isn't on the arc.
         double ParameterOf(double angle)
@@ -171,6 +204,8 @@ namespace GuitarForm.Shapes
 
     public readonly record struct Circle(Point2 Center, double Radius)
     {
+        public Circle Moved(Vector2 by) => new Circle(Center + by, Radius);
+
         public Circle MirrorX() => new Circle(Center.MirrorX(), Radius);
     }
 }

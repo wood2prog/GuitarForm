@@ -14,6 +14,10 @@ namespace GuitarForm.Model.Parts
 
         public static class Definitions
         {
+            // Above 0°, a shoulder line is flat across; at 90° it runs straight down.
+            static ParameterDefinition ShoulderAngle(string name, string abbreviation) =>
+                ParameterDefinition.Angle(name, abbreviation, 0, 90) with { MinimumExclusive = true };
+
             public static readonly ParameterDefinition Angle = ParameterDefinition.Angle("Neck Angle", "NKA");
             public static readonly ParameterDefinition Overstand = ParameterDefinition.Distance("Overstand", "OVS");
             public static readonly ParameterDefinition ThicknessAtFirstFret = ParameterDefinition.Size("Neck Thickness at First Fret", "NKTF");
@@ -21,14 +25,14 @@ namespace GuitarForm.Model.Parts
             public static readonly ParameterDefinition ThicknessFret = ParameterDefinition.Count("Neck Thickness Fret", "NKSF", 1);
 
             public static readonly ParameterDefinition BottomRadiusAtFirstFret = ParameterDefinition.Size("Profile Bottom Radius at First Fret", "PBRF");
-            public static readonly ParameterDefinition ShoulderAngleAtFirstFret = ParameterDefinition.Angle("Profile Shoulder Angle at First Fret", "PSAF");
+            public static readonly ParameterDefinition ShoulderAngleAtFirstFret = ShoulderAngle("Profile Shoulder Angle at First Fret", "PSAF");
             public static readonly ParameterDefinition MidshoulderRadiusAtFirstFret = ParameterDefinition.Size("Profile Midshoulder Radius at First Fret", "PMRF");
             public static readonly ParameterDefinition CenterOffsetAtFirstFret = ParameterDefinition.Offset("Profile Center Offset at First Fret", "PCOF");
             public static readonly ParameterDefinition IncludesFretboardAtFirstFret = ParameterDefinition.Flag("Profile Includes Fretboard at First Fret", "PIFF");
 
             public static readonly ParameterDefinition UsesFirstFretAtSelectedFret = ParameterDefinition.Flag("Profile Uses First Fret at Selected Fret", "PUFS");
             public static readonly ParameterDefinition BottomRadiusAtSelectedFret = ParameterDefinition.Size("Profile Bottom Radius at Selected Fret", "PBRS");
-            public static readonly ParameterDefinition ShoulderAngleAtSelectedFret = ParameterDefinition.Angle("Profile Shoulder Angle at Selected Fret", "PSAS");
+            public static readonly ParameterDefinition ShoulderAngleAtSelectedFret = ShoulderAngle("Profile Shoulder Angle at Selected Fret", "PSAS");
             public static readonly ParameterDefinition MidshoulderRadiusAtSelectedFret = ParameterDefinition.Size("Profile Midshoulder Radius at Selected Fret", "PMRS");
             public static readonly ParameterDefinition CenterOffsetAtSelectedFret = ParameterDefinition.Offset("Profile Center Offset at Selected Fret", "PCOS");
             public static readonly ParameterDefinition IncludesFretboardAtSelectedFret = ParameterDefinition.Flag("Profile Includes Fretboard at Selected Fret", "PIFS");
@@ -43,7 +47,7 @@ namespace GuitarForm.Model.Parts
             public static readonly ParameterDefinition HeelCapThickness = ParameterDefinition.Size("Heel Cap Thickness", "HCPT");
             public static readonly ParameterDefinition UsesFirstFretAtHeelEnd = ParameterDefinition.Flag("Profile Uses First Fret at Heel End", "PUFE");
             public static readonly ParameterDefinition BottomRadiusAtHeelEnd = ParameterDefinition.Size("Profile Bottom Radius at Heel End", "PBRE");
-            public static readonly ParameterDefinition ShoulderAngleAtHeelEnd = ParameterDefinition.Angle("Profile Shoulder Angle at Heel End", "PSAE");
+            public static readonly ParameterDefinition ShoulderAngleAtHeelEnd = ShoulderAngle("Profile Shoulder Angle at Heel End", "PSAE");
             public static readonly ParameterDefinition MidshoulderRadiusAtHeelEnd = ParameterDefinition.Size("Profile Midshoulder Radius at Heel End", "PMRE");
             public static readonly ParameterDefinition SideLengthAtHeelEnd = ParameterDefinition.Distance("Profile Side Length at Heel End", "PSLE");
 
@@ -53,7 +57,7 @@ namespace GuitarForm.Model.Parts
             public static readonly ParameterDefinition HeelSectionWidth = ParameterDefinition.Size("Heel Section Width", "HLCW");
             public static readonly ParameterDefinition UsesFirstFretAtHeelSection = ParameterDefinition.Flag("Profile Uses First Fret at Heel Section", "PUFH");
             public static readonly ParameterDefinition BottomRadiusAtHeelSection = ParameterDefinition.Size("Profile Bottom Radius at Heel Section", "PBRH");
-            public static readonly ParameterDefinition ShoulderAngleAtHeelSection = ParameterDefinition.Angle("Profile Shoulder Angle at Heel Section", "PSAH");
+            public static readonly ParameterDefinition ShoulderAngleAtHeelSection = ShoulderAngle("Profile Shoulder Angle at Heel Section", "PSAH");
             public static readonly ParameterDefinition MidshoulderRadiusAtHeelSection = ParameterDefinition.Size("Profile Midshoulder Radius at Heel Section", "PMRH");
             public static readonly ParameterDefinition SideLengthAtHeelSection = ParameterDefinition.Distance("Profile Side Length at Heel Section", "PSLH");
         }
@@ -133,6 +137,25 @@ namespace GuitarForm.Model.Parts
         {
             if (ThicknessFret.Value > Fretboard.FretCount.Value)
                 yield return Fretboard.PastLastFret(ThicknessFret);
+
+            // Each profile's midshoulder fillet sits inside its bottom arc. A profile that uses the first fret's
+            // settings is checked with the first fret.
+            var profiles = new (bool UsesFirstFret, NumberParameter Midshoulder, NumberParameter Bottom)[]
+            {
+                (false, MidshoulderRadiusAtFirstFret, BottomRadiusAtFirstFret),
+                (UsesFirstFretAtSelectedFret.Value, MidshoulderRadiusAtSelectedFret, BottomRadiusAtSelectedFret),
+                (UsesFirstFretAtHeelEnd.Value, MidshoulderRadiusAtHeelEnd, BottomRadiusAtHeelEnd),
+                (UsesFirstFretAtHeelSection.Value, MidshoulderRadiusAtHeelSection, BottomRadiusAtHeelSection),
+            };
+            foreach (var (usesFirstFret, midshoulder, bottom) in profiles)
+                if (!usesFirstFret && midshoulder.Value >= bottom.Value)
+                    yield return ModelMessage.Error($"{midshoulder.Label} must be less than {bottom.Label}.");
+
+            if (SideLengthAtHeelEnd.Value >= HeelEndThickness.Value)
+                yield return ModelMessage.Error($"{SideLengthAtHeelEnd.Label} must be less than {HeelEndThickness.Label}.");
+            if (SideLengthAtHeelSection.Value >= HeelSectionThickness.Value)
+                yield return ModelMessage.Error(
+                    $"{SideLengthAtHeelSection.Label} must be less than {HeelSectionThickness.Label}.");
             // When the setbacks alone don't fit, the fretboard already says so.
             var nutWidth = Fretboard.NutWidth;
             if (Fretboard.SetbacksFitNutWidth && MinimumNutWidth is double minimum && nutWidth.Value < minimum)

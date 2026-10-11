@@ -453,6 +453,7 @@ namespace GuitarForm
                 .Select(e => new GeometryMessage(MessageLevel.Error, e))
                 .Concat(guitar.Neck.Validate(unit, culture).Select(FromModel))
                 .Concat(shapes.FretboardMessages)
+                .Concat(shapes.NeckMessages)
                 .Concat(body)
                 .ToList();
             return DesignDrawing.FromShapes(shapes, _design.Instrument.Validate(), body, soundhole);

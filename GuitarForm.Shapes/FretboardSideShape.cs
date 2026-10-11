@@ -19,7 +19,16 @@ namespace GuitarForm.Shapes
         // drawn.
         public Path Outline { get; private set; }
 
+        // The playing surface at the centerline, at the nut and the body end.
+        public Point2 NutTop { get; private set; }
+        public Point2 EndTop { get; private set; }
+
         public List<GeometryMessage> Messages { get; } = new List<GeometryMessage>();
+
+        double _length;
+
+        // The point on the playing surface the given plan distance from the nut, along the fretboard.
+        public Point2 PlayingSurfaceAt(double fromNut) => NutTop + (EndTop - NutTop) * (fromNut / _length);
 
         public static FretboardSideShape Solve(Guitar guitar, SideViewShape side)
         {
@@ -59,8 +68,9 @@ namespace GuitarForm.Shapes
 
             var nutUnder = joint + toNut * join;
             var endUnder = joint - toNut * toEnd;
-            var nutTop = nutUnder + up * fretboard.ThicknessAtNut.Value.Value;
-            var endTop = endUnder + up * fretboard.ThicknessAtEnd.Value.Value;
+            var nutTop = shape.NutTop = nutUnder + up * fretboard.ThicknessAtNut.Value.Value;
+            var endTop = shape.EndTop = endUnder + up * fretboard.ThicknessAtEnd.Value.Value;
+            shape._length = join + toEnd;
             shape.Outline = new Path(new Segment[]
             {
                 new LineSegment(nutUnder, nutTop),

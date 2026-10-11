@@ -150,6 +150,55 @@ namespace GuitarForm.Tests
         }
 
         [Test]
+        public void MidshoulderRadiusNotLessThanBottomRadius_IsError_UnlessFirstFretSettingsAreUsed()
+        {
+            var neck = new Neck
+            {
+                BottomRadiusAtFirstFret = new(Neck.Definitions.BottomRadiusAtFirstFret, 30),
+                MidshoulderRadiusAtFirstFret = new(Neck.Definitions.MidshoulderRadiusAtFirstFret, 30),
+                BottomRadiusAtHeelEnd = new(Neck.Definitions.BottomRadiusAtHeelEnd, 20),
+                MidshoulderRadiusAtHeelEnd = new(Neck.Definitions.MidshoulderRadiusAtHeelEnd, 25),
+                UsesFirstFretAtSelectedFret = new(Neck.Definitions.UsesFirstFretAtSelectedFret, true),
+                BottomRadiusAtSelectedFret = new(Neck.Definitions.BottomRadiusAtSelectedFret, 10),
+                MidshoulderRadiusAtSelectedFret = new(Neck.Definitions.MidshoulderRadiusAtSelectedFret, 20),
+            };
+
+            Assert.That(Messages(neck), Is.EqualTo(new[]
+            {
+                "Profile Midshoulder Radius at First Fret (PMRF) must be less than Profile Bottom Radius at First Fret (PBRF).",
+                "Profile Midshoulder Radius at Heel End (PMRE) must be less than Profile Bottom Radius at Heel End (PBRE).",
+            }));
+        }
+
+        [Test]
+        public void HeelSideLengthNotLessThanThickness_IsError()
+        {
+            var neck = new Neck
+            {
+                HeelEndThickness = new(Neck.Definitions.HeelEndThickness, 60),
+                SideLengthAtHeelEnd = new(Neck.Definitions.SideLengthAtHeelEnd, 60),
+                HeelSectionThickness = new(Neck.Definitions.HeelSectionThickness, 50),
+                SideLengthAtHeelSection = new(Neck.Definitions.SideLengthAtHeelSection, 49),
+            };
+
+            Assert.That(Messages(neck), Is.EqualTo(new[]
+            {
+                "Profile Side Length at Heel End (PSLE) must be less than Heel End Thickness (HLET).",
+            }));
+        }
+
+        [Test]
+        public void ShoulderAngle_AboveZeroUpToNinety()
+        {
+            Assert.That(Messages(new Neck { ShoulderAngleAtFirstFret = new(Neck.Definitions.ShoulderAngleAtFirstFret, 90) }),
+                Is.Empty);
+            Assert.That(Messages(new Neck { ShoulderAngleAtHeelEnd = new(Neck.Definitions.ShoulderAngleAtHeelEnd, 0) }),
+                Has.Length.EqualTo(1));
+            Assert.That(Messages(new Neck { ShoulderAngleAtHeelSection = new(Neck.Definitions.ShoulderAngleAtHeelSection, 91) }),
+                Has.Length.EqualTo(1));
+        }
+
+        [Test]
         public void ReliefFretAndMarkerPastLastFret_AreErrors()
         {
             var fretboard = new Fretboard

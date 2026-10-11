@@ -54,6 +54,24 @@ namespace GuitarForm.Shapes
             return shape.FindTaper() && guitar.Body.Length.Value is double length ? shape.HalfWidthAt(length) : null;
         }
 
+        // Half the fretboard's width at the given fret. Null when a value it needs isn't set.
+        public static double? HalfWidthAtFret(Guitar guitar, int fret)
+        {
+            var shape = new FretboardShape(guitar);
+            return shape.FindTaper() ? shape.HalfWidthAt(shape.FretY(fret)) : null;
+        }
+
+        // The values the fretboard's width depends on.
+        internal static Parameter[] TaperParameters(Guitar guitar)
+        {
+            var fretboard = guitar.Neck.Fretboard;
+            return new Parameter[]
+            {
+                guitar.Body.Length, guitar.ScaleLength, guitar.NeckJoinFret, fretboard.NutWidth,
+                fretboard.StringSpacingAtBridge, fretboard.BassStringSetback, fretboard.TrebleStringSetback,
+            };
+        }
+
         public static FretboardShape Solve(Guitar guitar)
         {
             var shape = new FretboardShape(guitar);
@@ -65,9 +83,7 @@ namespace GuitarForm.Shapes
         {
             if (!FindTaper())
             {
-                RemarkMissing("the fretboard", _guitar.Body.Length, _guitar.ScaleLength, _guitar.NeckJoinFret,
-                    _fretboard.NutWidth, _fretboard.StringSpacingAtBridge, _fretboard.BassStringSetback,
-                    _fretboard.TrebleStringSetback);
+                RemarkMissing("the fretboard", TaperParameters(_guitar));
                 return;
             }
             AddStrings();

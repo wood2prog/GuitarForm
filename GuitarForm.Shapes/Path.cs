@@ -18,6 +18,8 @@ namespace GuitarForm.Shapes
         public Point2 Start => Segments[0].Start;
         public Point2 End => Segments[^1].End;
 
+        public Path Moved(Vector2 by) => new Path(Segments.Select(segment => segment.Moved(by)), IsClosed);
+
         public Bounds Bounds => Segments.Select(segment => segment.Bounds).Aggregate((a, b) => a.Union(b));
     }
 }
