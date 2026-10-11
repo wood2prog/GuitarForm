@@ -2,13 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Eto.Drawing;
 using Eto.Forms;
 using GuitarForm.Data;
 using GuitarForm.Geometry;
 using GuitarForm.Model;
+using GuitarForm.Model.Parts;
 using Rhino;
+using Body = GuitarForm.Model.Body;
+using GuitarDrawing = GuitarForm.Shapes.GuitarDrawing;
 using IPanel = Rhino.UI.IPanel;
 using ShowPanelReason = Rhino.UI.ShowPanelReason;
 
@@ -29,6 +33,13 @@ namespace GuitarForm
         readonly CheckBox _showPreview = new CheckBox { Text = "Preview", Checked = true };
         readonly SettingsPage _settings = new SettingsPage();
         readonly DesignPreview _preview = new DesignPreview();
+
+        // The New fields tab: values the old tabs don't have, drawn with GuitarForm.Shapes (see NewFields).
+        readonly TextBox[] _newFieldBoxes = NewFields.Fields.Select(_ => new TextBox()).ToArray();
+        readonly string[] _newFieldErrors = new string[NewFields.Fields.Length];
+        readonly Label _newFieldMessages = new Label { Wrap = WrapMode.Word };
+        Guitar _newFields = new Guitar();
+        List<GeometryMessage> _shapeMessages = new List<GeometryMessage>();
 
         // Controls that only work with a design open, and the preset lists to refresh when the library changes.
         readonly List<Control> _needDesign = new List<Control>();
@@ -79,6 +90,7 @@ namespace GuitarForm
                 _hasSoundhole,
                 PresetRow<Soundhole>(() => _design?.Soundhole, preset => Apply(d => d with { Soundhole = preset })),
                 _soundhole.Control));
+            tabs.Pages.Add(SectionPage("New fields", NewFieldsEditor(), _newFieldMessages));
             tabs.Pages.Add(new TabPage { Text = "Settings", Content = new Scrollable { Content = _settings, Border = BorderType.None } });
 
             Content = new TableLayout
@@ -114,6 +126,39 @@ namespace GuitarForm
                 content.Items.Add(control);
             NeedsDesign(content);
             return new TabPage { Text = title, Content = new Scrollable { Content = content, Border = BorderType.None } };
+        }
+
+        Control NewFieldsEditor()
+        {
+            var layout = new TableLayout { Spacing = new Size(6, 4) };
+            for (int i = 0; i < NewFields.Fields.Length; i++)
+            {
+                int index = i;
+                var parameter = NewFields.Fields[i].Get(_newFields);
+                layout.Rows.Add(new TableRow(
+                    new TableCell(new Label { Text = parameter.Label, VerticalAlignment = VerticalAlignment.Center }, true),
+                    _newFieldBoxes[i]));
+                _newFieldBoxes[i].TextChanged += (_, _) => OnNewFieldChanged(index);
+            }
+            layout.Rows.Add(new TableRow { ScaleHeight = true });
+            return layout;
+        }
+
+        void OnNewFieldChanged(int index)
+        {
+            if (_showing || _designId == null)
+                return;
+            var field = NewFields.Fields[index];
+            if (field.Get(_newFields).TryParse(_newFieldBoxes[index].Text, _units.LengthUnit, CultureInfo.CurrentCulture,
+                    out var parsed, out var error))
+            {
+                _newFieldErrors[index] = null;
+                _newFields = field.Set(_newFields, parsed);
+                Run(() => NewFields.Save(_designId.Value, _newFields));
+            }
+            else
+                _newFieldErrors[index] = error.Text;
+            Redraw();
         }
 
         static Control Buttons(params Control[] buttons)
@@ -263,6 +308,8 @@ namespace GuitarForm
             _designId = id;
             _editConfirmed = confirmed;
             _lastSoundhole = null;
+            _newFields = NewFields.Load(id);
+            Array.Clear(_newFieldErrors);
             ShowDesignList(id);
             ShowDesign();
         }
@@ -291,6 +338,8 @@ namespace GuitarForm
             _body.Show(_design?.Body, _units);
             _hasSoundhole.Checked = _design?.Soundhole != null;
             _soundhole.Show(_design?.Soundhole, _units);
+            for (int i = 0; i < NewFields.Fields.Length; i++)
+                _newFieldBoxes[i].Text = NewFields.Fields[i].Get(_newFields).Format(_units.LengthUnit, CultureInfo.CurrentCulture);
             _showing = false;
 
             foreach (var control in _needDesign)
@@ -326,6 +375,7 @@ namespace GuitarForm
                     {
                         long original = _designId.Value;
                         long copy = WithLibrary(library => library.CopyDesign(original));
+                        NewFields.Save(copy, _newFields);
                         changed = changed with { Name = WithLibrary(library => library.LoadDesign(copy).Name) };
                         _designId = copy;
                         ShowDesignList(copy);
@@ -369,7 +419,19 @@ namespace GuitarForm
         {
             var doc = RhinoDoc.ActiveDoc;
             double tolerance = doc == null ? 0.01 : DesignUnits.ToleranceInMillimetres(doc.ModelAbsoluteTolerance, doc.ModelUnitSystem);
-            return DesignDrawing.Draw(_design, tolerance, Plugin.GuitarFormSettings.DrawingGap, _units.FormatLength);
+            var unit = _units.LengthUnit;
+            var culture = CultureInfo.CurrentCulture;
+            var guitar = NewFields.CopyFields(_newFields, NewFields.FromDesign(_design));
+            var shapes = GuitarDrawing.Draw(guitar, tolerance, Plugin.GuitarFormSettings.DrawingGap, unit, culture);
+
+            static GeometryMessage FromModel(ModelMessage m) => new GeometryMessage(m.Level, m.Text);
+            var soundhole = guitar.Body.TopPlate.Validate(unit, culture).Select(FromModel).ToList();
+            var body = guitar.Body.Validate(unit, culture).Select(FromModel).Except(soundhole).Concat(shapes.BodyMessages).ToList();
+            _shapeMessages = _newFieldErrors.Where(e => e != null).Select(e => new GeometryMessage(MessageLevel.Error, e))
+                .Concat(guitar.Neck.Fretboard.Validate(unit, culture).Select(FromModel))
+                .Concat(body)
+                .ToList();
+            return DesignDrawing.FromShapes(shapes, _design.Instrument.Validate(), body, soundhole);
         }
 
         // Shows each section's messages and updates the preview.
@@ -381,6 +443,7 @@ namespace GuitarForm
                 _instrument.ShowMessages(null);
                 _body.ShowMessages(null);
                 _soundhole.ShowMessages(null);
+                _newFieldMessages.Text = "";
                 _preview.Hide(doc);
                 return;
             }
@@ -389,6 +452,7 @@ namespace GuitarForm
             _instrument.ShowMessages(drawing.InstrumentMessages);
             _body.ShowMessages(drawing.BodyMessages);
             _soundhole.ShowMessages(drawing.SoundholeMessages);
+            _newFieldMessages.Text = string.Join(Environment.NewLine, _shapeMessages.Select(m => $"{m.Level}: {m.Text}"));
             if (_showPreview.Checked == true && _panelVisible && doc != null)
                 _preview.Show(drawing, doc);
             else
@@ -440,7 +504,9 @@ namespace GuitarForm
         void CopyDesign()
         {
             long original = _designId.Value;
-            Open(WithLibrary(library => library.CopyDesign(original)), true);
+            long copy = WithLibrary(library => library.CopyDesign(original));
+            NewFields.Save(copy, _newFields);
+            Open(copy, true);
         }
 
         void RenameDesign()

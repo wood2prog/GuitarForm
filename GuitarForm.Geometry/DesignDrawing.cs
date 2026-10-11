@@ -33,6 +33,20 @@ namespace GuitarForm.Geometry
             return drawing;
         }
 
+        // A drawing made by GuitarForm.Shapes, as Rhino curves, with each section's messages.
+        public static DesignDrawing FromShapes(Shapes.GuitarDrawing shapes, IEnumerable<GeometryMessage> instrumentMessages,
+            IEnumerable<GeometryMessage> bodyMessages, IEnumerable<GeometryMessage> soundholeMessages)
+        {
+            var drawing = new DesignDrawing();
+            drawing.Construction.AddRange(ShapeCurves.Construction(shapes));
+            drawing.Outline.AddRange(ShapeCurves.Outline(shapes));
+            drawing.InstrumentMessages.AddRange(instrumentMessages);
+            drawing.BodyMessages.AddRange(bodyMessages);
+            drawing.SoundholeMessages.AddRange(soundholeMessages);
+            drawing.SideViewOffset = shapes.SideView?.Outline?.Bounds.MinX;
+            return drawing;
+        }
+
         void DrawBody(Body body, double tolerance, double gap, Func<double, string> formatLength)
         {
             var plate = PlateGeometry.Solve(body, tolerance, formatLength);

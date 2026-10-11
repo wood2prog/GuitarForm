@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GuitarForm.Model\GuitarForm.Model.csproj" />
+    <ProjectReference Include="..\GuitarForm.Shapes\GuitarForm.Shapes.csproj" />
   </ItemGroup>
 
 </Project>

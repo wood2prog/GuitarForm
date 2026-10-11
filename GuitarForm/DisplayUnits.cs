@@ -23,6 +23,10 @@ namespace GuitarForm
             _ => System.ToString().ToLowerInvariant(),
         };
 
+        // The model's name for the same unit, for its messages and fields. Millimeters for a unit it doesn't have.
+        public Model.Parameters.LengthUnit LengthUnit =>
+            global::System.Enum.TryParse(System.ToString(), out Model.Parameters.LengthUnit unit) ? unit : Model.Parameters.LengthUnit.Millimeters;
+
         public double FromMillimetres(double millimetres) => DesignUnits.FromMillimetres(millimetres, System);
 
         public double ToMillimetres(double length) => DesignUnits.ToMillimetres(length, System);
