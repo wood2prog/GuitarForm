@@ -163,6 +163,7 @@ Done last, once the panel covers every component, so the project stays usable th
 ### 9b. Limits on values
 
 - [ ] **(decision)** Limits on many fields, so values that don't make sense can't be entered at all rather than only reported as errors. Decide with the user, field by field, the range that makes sense (some come from the glossary definitions' minimum and maximum, others from other values, e.g. a waist narrower than the bouts). Then stop sliders at the limits and refuse typed values outside them.
+- [x] Upper and lower bout secondary offsets can't go below 0. *(`NumberField.Minimum` and `NumberSlider.Minimum`: the slider stops there, and a typed value below it is refused with a message. Use them for the other limits.)*
 
 ## 10. Later
 

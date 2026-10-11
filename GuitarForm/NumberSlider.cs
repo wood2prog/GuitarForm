@@ -43,6 +43,9 @@ namespace GuitarForm
         // tenth of it.
         public double Step { get; set; } = 0.1;
 
+        // The lowest value a drag or a click on the track goes to, in the units the value is shown in. None when null.
+        public double? Minimum { get; set; }
+
         double CurrentStep(bool fine) => fine ? Step / 10 : Step;
 
         public NumberSlider()
@@ -128,7 +131,7 @@ namespace GuitarForm
 
         // Rounding drops floating-point noise, and keeps any finer digits typed in by hand.
         void SetValue(double value) =>
-            SetText((Math.Round(value, 6) + 0.0).ToString("0.######", CultureInfo.CurrentCulture));
+            SetText((Math.Round(Math.Max(value, Minimum ?? double.NegativeInfinity), 6) + 0.0).ToString("0.######", CultureInfo.CurrentCulture));
 
         // --- Typing ---
 

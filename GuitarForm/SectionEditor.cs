@@ -10,8 +10,9 @@ namespace GuitarForm
 {
     // One number in a section: how to read it from the section record and how to make a record with it changed.
     // A length is stored in mm and shown in the document's units; other numbers (counts) are shown as they are.
-    // A required number can't be left blank; a whole number can't have a fraction. Step is how much a slider changes
-    // the value per step, in the units it's shown in.
+    // A required number can't be left blank; a whole number can't have a fraction; a number with a Minimum (in mm for
+    // a length) can't be less than it, and a slider stops there. Step is how much a slider changes the value per
+    // step, in the units it's shown in.
     sealed record NumberField<T>(
         string Label,
         bool IsLength,
@@ -20,7 +21,8 @@ namespace GuitarForm
         Func<T, double?, T> Set,
         bool Required = false,
         bool Whole = false,
-        double Step = 0.1);
+        double Step = 0.1,
+        double? Minimum = null);
 
     // Related fields shown together in a box on the section's tab.
     sealed record FieldGroup<T>(string Title, params NumberField<T>[] Fields);
@@ -102,6 +104,8 @@ namespace GuitarForm
                 double? number = value == null ? null : field.Get(value);
                 _boxes[i].Text = number == null ? "" : field.IsLength ? units.FormatNumber(number.Value) : Format(number.Value);
                 _unitLabels[i].Text = field.IsLength ? units.Abbreviation : "";
+                if (_boxes[i] is NumberSlider slider && field.Minimum is double minimum)
+                    slider.Minimum = field.IsLength ? units.FromMillimetres(minimum) : minimum;
                 _inputErrors[i] = null;
             }
             _showing = false;
@@ -135,6 +139,9 @@ namespace GuitarForm
                 _inputErrors[index] = $"{field.Label} isn't a number.";
             else if (field.Whole && parsed != Math.Round(parsed))
                 _inputErrors[index] = $"{field.Label} must be a whole number.";
+            else if (field.Minimum is double minimum && (field.IsLength ? _units.ToMillimetres(parsed) : parsed) < minimum)
+                _inputErrors[index] = $"{field.Label} must be at least " +
+                    (field.IsLength ? _units.FormatLength(minimum) : Format(minimum)) + ".";
             else
                 number = field.IsLength ? _units.ToMillimetres(parsed) : parsed;
 
