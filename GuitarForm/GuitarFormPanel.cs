@@ -34,14 +34,18 @@ namespace GuitarForm
         readonly SettingsPage _settings = new SettingsPage();
         readonly DesignPreview _preview = new DesignPreview();
 
-        // The New fields tab: values the old tabs don't have, drawn with GuitarForm.Shapes (see NewFields).
-        readonly TextBox[] _newFieldBoxes = NewFields.Fields.Select(_ => new TextBox()).ToArray();
+        // Values the old sections don't have, drawn with GuitarForm.Shapes (see NewFields): on the Body tab, and on the
+        // Bracing, Fretboard and Neck tabs, each with its own messages.
+        readonly TextBox[] _newFieldBoxes = NewFields.Fields.Select(_ => FieldLayout.Box()).ToArray();
+        readonly Label[] _newFieldUnits = NewFields.Fields.Select(_ => FieldLayout.UnitLabel()).ToArray();
+        readonly string[] _newFieldTabs = NewFields.Groups.SelectMany(g => g.Fields.Select(_ => g.Tab)).ToArray();
         readonly string[] _newFieldErrors = new string[NewFields.Fields.Length];
-        readonly TextBox _markers = new TextBox { ToolTip = "Each marker's fret, with :2 for two dots, e.g. 3 5 7 9 12:2" };
+        readonly TextBox _markers = new TextBox { Width = 160, ToolTip = "Each marker's fret, with :2 for two dots, e.g. 3 5 7 9 12:2" };
         string _markersError;
-        readonly Label _newFieldMessages = new Label { Wrap = WrapMode.Word };
+        readonly Dictionary<string, Label> _tabMessages = new[] { NewFields.BracingTab, NewFields.FretboardTab, NewFields.NeckTab }
+            .ToDictionary(tab => tab, _ => FieldLayout.MessageLabel());
         Guitar _newFields = new Guitar();
-        List<GeometryMessage> _shapeMessages = new List<GeometryMessage>();
+        Dictionary<string, List<GeometryMessage>> _newTabMessages = new Dictionary<string, List<GeometryMessage>>();
 
         // Controls that only work with a design open, and the preset lists to refresh when the library changes.
         readonly List<Control> _needDesign = new List<Control>();
@@ -81,18 +85,32 @@ namespace GuitarForm
                     refresh();
             };
 
+            for (int i = 0; i < NewFields.Fields.Length; i++)
+            {
+                int index = i;
+                _newFieldBoxes[i].TextChanged += (_, _) => OnNewFieldChanged(index);
+            }
+            _markers.TextChanged += (_, _) => OnMarkersChanged();
+
             var tabs = new TabControl();
             tabs.Pages.Add(SectionPage("Instrument",
-                PresetRow<Instrument>(() => _design?.Instrument, preset => Apply(d => d with { Instrument = preset })),
-                _instrument.Control));
+                new Control[] { PresetRow<Instrument>(() => _design?.Instrument, preset => Apply(d => d with { Instrument = preset })) },
+                Groups(null, _instrument.GroupTitles, _instrument.Rows),
+                _instrument.Messages));
             tabs.Pages.Add(SectionPage("Body",
-                PresetRow<Body>(() => _design?.Body, preset => Apply(d => d with { Body = preset })),
-                _body.Control));
+                new Control[] { PresetRow<Body>(() => _design?.Body, preset => Apply(d => d with { Body = preset })) },
+                Groups(NewFields.BodyTab, _body.GroupTitles, _body.Rows),
+                _body.Messages));
             tabs.Pages.Add(SectionPage("Soundhole",
-                _hasSoundhole,
-                PresetRow<Soundhole>(() => _design?.Soundhole, preset => Apply(d => d with { Soundhole = preset })),
-                _soundhole.Control));
-            tabs.Pages.Add(SectionPage("New fields", NewFieldsEditor(), _newFieldMessages));
+                new Control[]
+                {
+                    _hasSoundhole,
+                    PresetRow<Soundhole>(() => _design?.Soundhole, preset => Apply(d => d with { Soundhole = preset })),
+                },
+                Groups(null, _soundhole.GroupTitles, _soundhole.Rows),
+                _soundhole.Messages));
+            foreach (string tab in _tabMessages.Keys)
+                tabs.Pages.Add(SectionPage(tab, Array.Empty<Control>(), Groups(tab), _tabMessages[tab]));
             tabs.Pages.Add(new TabPage { Text = "Settings", Content = new Scrollable { Content = _settings, Border = BorderType.None } });
 
             Content = new TableLayout
@@ -121,33 +139,40 @@ namespace GuitarForm
 
         // --- Layout ---
 
-        TabPage SectionPage(string title, params Control[] controls)
+        // A tab: the controls at its top (preset row, …), its groups of fields, then its messages.
+        TabPage SectionPage(string title, Control[] top, IEnumerable<Control> groups, Control messages)
         {
             var content = new StackLayout { Padding = 10, Spacing = 10, HorizontalContentAlignment = HorizontalAlignment.Stretch };
-            foreach (var control in controls)
+            foreach (var control in top.Concat(groups).Append(messages))
                 content.Items.Add(control);
             NeedsDesign(content);
             return new TabPage { Text = title, Content = new Scrollable { Content = content, Border = BorderType.None } };
         }
 
-        Control NewFieldsEditor()
+        // A tab's groups: the old section's groups, each with any new fields of the same title added after its own,
+        // then the tab's other new-field groups.
+        IEnumerable<Control> Groups(string tab, IReadOnlyList<string> oldTitles = null, Func<string, IEnumerable<TableRow>> oldRows = null)
         {
-            var layout = new TableLayout { Spacing = new Size(6, 4) };
-            for (int i = 0; i < NewFields.Fields.Length; i++)
+            oldTitles ??= Array.Empty<string>();
+            var titles = oldTitles.Concat(NewFields.Groups.Where(g => g.Tab == tab).Select(g => g.Title)).Distinct();
+            return titles.Select(title => FieldLayout.Group(title,
+                (oldRows?.Invoke(title) ?? Enumerable.Empty<TableRow>()).Concat(NewFieldRows(tab, title)))).ToList();
+        }
+
+        IEnumerable<TableRow> NewFieldRows(string tab, string title)
+        {
+            int index = 0;
+            foreach (var group in NewFields.Groups)
             {
-                int index = i;
-                var parameter = NewFields.Fields[i].Get(_newFields);
-                layout.Rows.Add(new TableRow(
-                    new TableCell(new Label { Text = parameter.Label, VerticalAlignment = VerticalAlignment.Center }, true),
-                    _newFieldBoxes[i]));
-                _newFieldBoxes[i].TextChanged += (_, _) => OnNewFieldChanged(index);
+                foreach (var field in group.Fields)
+                {
+                    if (group.Tab == tab && group.Title == title)
+                        yield return FieldLayout.Row(field.Get(_newFields).Label, null, _newFieldBoxes[index], _newFieldUnits[index]);
+                    index++;
+                }
             }
-            layout.Rows.Add(new TableRow(
-                new TableCell(new Label { Text = "Dot markers (frets, 12:2 for two dots)", VerticalAlignment = VerticalAlignment.Center }, true),
-                _markers));
-            _markers.TextChanged += (_, _) => OnMarkersChanged();
-            layout.Rows.Add(new TableRow { ScaleHeight = true });
-            return layout;
+            if (tab == NewFields.FretboardTab && title == NewFields.MarkersGroup)
+                yield return FieldLayout.Row("Marker frets", _markers.ToolTip, _markers, FieldLayout.UnitLabel());
         }
 
         void OnMarkersChanged()
@@ -360,7 +385,11 @@ namespace GuitarForm
             _hasSoundhole.Checked = _design?.Soundhole != null;
             _soundhole.Show(_design?.Soundhole, _units);
             for (int i = 0; i < NewFields.Fields.Length; i++)
-                _newFieldBoxes[i].Text = NewFields.Fields[i].Get(_newFields).Format(_units.LengthUnit, CultureInfo.CurrentCulture);
+            {
+                var parameter = NewFields.Fields[i].Get(_newFields);
+                _newFieldBoxes[i].Text = parameter.Format(_units.LengthUnit, CultureInfo.CurrentCulture);
+                _newFieldUnits[i].Text = parameter.Symbol(_units.LengthUnit);
+            }
             _markers.Text = NewFields.FormatMarkers(_newFields);
             _showing = false;
 
@@ -446,19 +475,32 @@ namespace GuitarForm
             var guitar = NewFields.CopyFields(_newFields, NewFields.FromDesign(_design));
             var shapes = GuitarDrawing.Draw(guitar, tolerance, Plugin.GuitarFormSettings.DrawingGap, unit, culture);
 
+            // A part's messages include its subparts', so each tab's are what's left after its subparts' are taken out.
             static GeometryMessage FromModel(ModelMessage m) => new GeometryMessage(m.Level, m.Text);
-            var soundhole = guitar.Body.TopPlate.Validate(unit, culture).Select(FromModel).ToList();
-            var body = guitar.Body.Validate(unit, culture).Select(FromModel).Except(soundhole).Concat(shapes.BodyMessages).ToList();
-            _shapeMessages = _newFieldErrors.Append(_markersError).Where(e => e != null)
-                .Select(e => new GeometryMessage(MessageLevel.Error, e))
-                .Concat(guitar.Neck.Validate(unit, culture).Select(FromModel))
-                .Concat(shapes.FretboardMessages)
-                .Concat(shapes.NeckMessages)
-                .Concat(body)
-                .Concat(shapes.BracingMessages)
-                .ToList();
+            var topPlate = guitar.Body.TopPlate.Validate(unit, culture).Select(FromModel).ToList();
+            var bracing = guitar.Body.TopPlate.Bracing.Validate(unit, culture).Select(FromModel).ToList();
+            var fretboard = guitar.Neck.Fretboard.Validate(unit, culture).Select(FromModel).ToList();
+            var soundhole = topPlate.Except(bracing).ToList();
+            var body = InputErrors(NewFields.BodyTab)
+                .Concat(guitar.Body.Validate(unit, culture).Select(FromModel).Except(topPlate))
+                .Concat(shapes.BodyMessages).ToList();
+            _newTabMessages = new Dictionary<string, List<GeometryMessage>>
+            {
+                [NewFields.BracingTab] = InputErrors(NewFields.BracingTab).Concat(bracing).Concat(shapes.BracingMessages).ToList(),
+                [NewFields.FretboardTab] = InputErrors(NewFields.FretboardTab).Concat(fretboard).Concat(shapes.FretboardMessages).ToList(),
+                [NewFields.NeckTab] = InputErrors(NewFields.NeckTab)
+                    .Concat(guitar.Neck.Validate(unit, culture).Select(FromModel).Except(fretboard))
+                    .Concat(shapes.NeckMessages).ToList(),
+            };
             return DesignDrawing.FromShapes(shapes, _design.Instrument.Validate(), body, soundhole);
         }
+
+        // The errors from new fields on the tab whose text couldn't be read.
+        IEnumerable<GeometryMessage> InputErrors(string tab) =>
+            _newFieldErrors.Where((_, i) => _newFieldTabs[i] == tab)
+                .Append(tab == NewFields.FretboardTab ? _markersError : null)
+                .Where(e => e != null)
+                .Select(e => new GeometryMessage(MessageLevel.Error, e));
 
         // Shows each section's messages and updates the preview.
         void Redraw()
@@ -469,7 +511,8 @@ namespace GuitarForm
                 _instrument.ShowMessages(null);
                 _body.ShowMessages(null);
                 _soundhole.ShowMessages(null);
-                _newFieldMessages.Text = "";
+                foreach (var label in _tabMessages.Values)
+                    FieldLayout.ShowMessages(label, Enumerable.Empty<GeometryMessage>());
                 _preview.Hide(doc);
                 return;
             }
@@ -478,7 +521,8 @@ namespace GuitarForm
             _instrument.ShowMessages(drawing.InstrumentMessages);
             _body.ShowMessages(drawing.BodyMessages);
             _soundhole.ShowMessages(drawing.SoundholeMessages);
-            _newFieldMessages.Text = string.Join(Environment.NewLine, _shapeMessages.Select(m => $"{m.Level}: {m.Text}"));
+            foreach (var (tab, label) in _tabMessages)
+                FieldLayout.ShowMessages(label, _newTabMessages[tab]);
             if (_showPreview.Checked == true && _panelVisible && doc != null)
                 _preview.Show(drawing, doc);
             else

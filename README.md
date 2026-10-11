@@ -47,8 +47,11 @@ Every length in GuitarForm is shown and typed in the **Rhino document's units**,
 | Tab | What it holds | Details |
 |---|---|---|
 | Instrument | Values for the whole instrument: scale length, neck join fret. | [docs/Instrument.md](docs/Instrument.md) |
-| Body | The body outline (plate) from its bouts, waist, tail and heel, and the side view from its depths. | [docs/Body.md](docs/Body.md) |
+| Body | The body outline (plate) from its bouts, waist, tail and heel, the side view from its depths and skew, the cutaway, and the head and tail blocks. | [docs/Body.md](docs/Body.md) |
 | Soundhole | A round soundhole. | [docs/Soundhole.md](docs/Soundhole.md) |
+| Bracing | The top's X brace, graft, upper transverse bar, finger braces, tone bars and soundhole braces. | Not yet documented; see [docs/Glossary.md](docs/Glossary.md) |
+| Fretboard | Its width and string spacing, frets, thickness and radius, and dot markers. | Not yet documented; see [docs/Glossary.md](docs/Glossary.md) |
+| Neck | Its angle, nut, thickness, profiles at the first and selected frets, and the heel. | Not yet documented; see [docs/Glossary.md](docs/Glossary.md) |
 | Settings | Where the library and its backups are kept, backup timing, and the drawing gap. | [docs/Settings.md](docs/Settings.md) |
 
 ## Library and backups
