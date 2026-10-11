@@ -165,6 +165,8 @@ namespace GuitarForm.Tests
 
         static Bracing Graft(double offset, double width, double upperTransverseBar) => new Bracing
         {
+            Graft = new(Bracing.Definitions.Graft, true),
+            GraftThickness = new(Bracing.Definitions.GraftThickness, 3),
             GraftOffsetFromNeckEnd = new(Bracing.Definitions.GraftOffsetFromNeckEnd, offset),
             GraftWidth = new(Bracing.Definitions.GraftWidth, width),
             UpperTransverseBarOffsetFromNeckEnd = new(Bracing.Definitions.UpperTransverseBarOffsetFromNeckEnd, upperTransverseBar),
@@ -184,6 +186,48 @@ namespace GuitarForm.Tests
                 "The graft must end before the upper transverse bar: Graft Offset from Neck End (GRO) plus Graft " +
                 "Width (GRW) can't be more than Upper Transverse Bar Offset from Neck End (UTO).",
             }));
+        }
+
+        [Test]
+        public void GraftWiderThanItsSpace_IsLeftOutWithWarning()
+        {
+            // The space from the headblock (75) to the upper transverse bar (125) is 50.
+            var body = WithBracing(Graft(75, 60, 125), headblockDepth: 75);
+            var messages = body.Validate(LengthUnit.Millimeters, CultureInfo.InvariantCulture).ToArray();
+
+            Assert.That(body.GraftFits, Is.False);
+            Assert.That(body.IncludesGraft, Is.False);
+            Assert.That(messages.Select(m => m.Level), Is.EqualTo(new[] { Model.MessageLevel.Warning }));
+            Assert.That(messages[0].Text, Is.EqualTo(
+                "The graft is left out: the space between the headblock and the upper transverse bar (50 mm) is " +
+                "narrower than the Graft Width (GRW)."));
+        }
+
+        [Test]
+        public void GraftFittingItsSpace_IsIncluded()
+        {
+            Assert.That(WithBracing(Graft(75, 50, 125), headblockDepth: 75).IncludesGraft, Is.True);
+        }
+
+        [Test]
+        public void Graft_RequiresItsValues()
+        {
+            var bracing = new Bracing { Graft = new(Bracing.Definitions.Graft, true) };
+
+            Assert.That(Messages(bracing), Is.EqualTo(new[]
+            {
+                "Graft Thickness (GRT) is required when Graft (GR) is Yes.",
+                "Graft Width (GRW) is required when Graft (GR) is Yes.",
+                "Graft Offset from Neck End (GRO) is required when Graft (GR) is Yes.",
+            }));
+        }
+
+        [Test]
+        public void GraftOff_IgnoresItsPlacement()
+        {
+            var bracing = Graft(10, 200, 125) with { Graft = new(Bracing.Definitions.Graft, false) };
+
+            Assert.That(Messages(WithBracing(bracing, headblockDepth: 75)), Is.Empty);
         }
 
         [Test]

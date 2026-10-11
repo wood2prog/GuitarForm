@@ -121,6 +121,18 @@ namespace GuitarForm.Model.Parts
             return primary + offset + waistRadius - distance;
         }
 
+        // The space along the centerline between the headblock and the upper transverse bar, where the graft goes.
+        // Null when either isn't set.
+        public double? GraftSpace =>
+            TopPlate.Bracing.UpperTransverseBarOffsetFromNeckEnd.Value - HeadblockDepth.Value;
+
+        // Whether the graft fits in its space. Null when that can't be told yet. A graft that doesn't fit is left out.
+        public bool? GraftFits =>
+            GraftSpace is double space && TopPlate.Bracing.GraftWidth.Value is double width ? width <= space : null;
+
+        // Whether the graft is built: it's chosen and isn't known not to fit.
+        public bool IncludesGraft => TopPlate.Bracing.Graft.Value && GraftFits != false;
+
         protected override IEnumerable<ModelMessage> CheckValues(LengthUnit unit, IFormatProvider culture)
         {
             string Format(double millimeters) => (Length with { Value = millimeters }).FormatWithUnit(unit, culture);
@@ -188,23 +200,28 @@ namespace GuitarForm.Model.Parts
                     $"{HeadblockDepth.Label} and {TailblockDepth.Label} together must be less than {Length.Label}.");
 
             var bracing = TopPlate.Bracing;
-            foreach (var offset in new[]
-                     {
-                         bracing.XBraceOffsetFromNeckEnd, bracing.GraftOffsetFromNeckEnd,
-                         bracing.UpperTransverseBarOffsetFromNeckEnd,
-                     })
+            var graft = bracing.GraftOffsetFromNeckEnd;
+            var offsets = new[] { bracing.XBraceOffsetFromNeckEnd, graft, bracing.UpperTransverseBarOffsetFromNeckEnd };
+            foreach (var offset in offsets.Where(offset => offset != graft || bracing.Graft.Value))
                 if (offset.Value >= Length.Value)
                     yield return ModelMessage.Error($"{offset.Label} must be less than {Length.Label}.");
 
-            // The graft is optional. When it's placed, it sits between the headblock and the upper transverse bar.
-            var graft = bracing.GraftOffsetFromNeckEnd;
-            if (graft.Value < HeadblockDepth.Value)
-                yield return ModelMessage.Error(
-                    $"The graft must sit past the headblock: {graft.Label} must be at least {HeadblockDepth.Label}.");
-            if (graft.Value + bracing.GraftWidth.Value > bracing.UpperTransverseBarOffsetFromNeckEnd.Value)
-                yield return ModelMessage.Error(
-                    $"The graft must end before the upper transverse bar: {graft.Label} plus {bracing.GraftWidth.Label} " +
-                    $"can't be more than {bracing.UpperTransverseBarOffsetFromNeckEnd.Label}.");
+            // The graft sits between the headblock and the upper transverse bar. When there isn't room for it there,
+            // it's left out, with a warning. When there is, it must be placed in that space.
+            if (bracing.Graft.Value && GraftFits == false)
+                yield return ModelMessage.Warning(
+                    $"The graft is left out: the space between the headblock and the upper transverse bar " +
+                    $"({Format(GraftSpace.Value)}) is narrower than the {bracing.GraftWidth.Label}.");
+            else if (bracing.Graft.Value)
+            {
+                if (graft.Value < HeadblockDepth.Value)
+                    yield return ModelMessage.Error(
+                        $"The graft must sit past the headblock: {graft.Label} must be at least {HeadblockDepth.Label}.");
+                if (graft.Value + bracing.GraftWidth.Value > bracing.UpperTransverseBarOffsetFromNeckEnd.Value)
+                    yield return ModelMessage.Error(
+                        $"The graft must end before the upper transverse bar: {graft.Label} plus " +
+                        $"{bracing.GraftWidth.Label} can't be more than {bracing.UpperTransverseBarOffsetFromNeckEnd.Label}.");
+            }
 
             // The soundhole must sit at least a diameter from the neck end. Without a diameter, it must be on the body.
             var soundhole = TopPlate.SoundholeOffsetFromTailEnd;

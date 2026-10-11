@@ -425,14 +425,17 @@ The X brace's height, from the top plate to the top of the brace.
 **X Brace Profile Type (XBPT)**
 The shape of the X brace's profile along its legs: scalloped or tapered. Settings for each type (e.g. scallop depth) may be added later.
 
+**Graft (GR)**
+Whether the top has a graft: a flat piece glued under the top between the headblock and the upper transverse bar, which strengthens the top where the strings' pull presses on it. With a graft, the Graft Thickness, Width and Offset from Neck End are required. If the space between the headblock and the upper transverse bar is narrower than the Graft Width, the graft is left out, with a warning.
+
 **Graft Thickness (GRT)**
-The thickness of the graft: a flat piece glued under the top between the headblock and the upper transverse bar, which strengthens the top where the strings' pull presses on it.
+The thickness of the graft.
 
 **Graft Width (GRW)**
 The graft's width along the centerline. The graft runs across the guitar from side to side.
 
 **Graft Offset from Neck End (GRO)**
-The distance from the neck end of the body to the graft's edge nearest the neck end, along the centerline. The graft is optional. When it's placed, it must sit between the headblock and the upper transverse bar: this offset is at least the Headblock Depth, and this offset plus the Graft Width is no more than the Upper Transverse Bar Offset from Neck End. It must be less than the Body Length.
+The distance from the neck end of the body to the graft's edge nearest the neck end, along the centerline. When it fits, the graft must sit between the headblock and the upper transverse bar: this offset is at least the Headblock Depth, and this offset plus the Graft Width is no more than the Upper Transverse Bar Offset from Neck End. It must be less than the Body Length.
 
 **Graft Edge Offset (GREO)**
 How far each end of the graft stops short of the body's outline. At 0 the graft runs to the outline on both sides.

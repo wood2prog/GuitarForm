@@ -12,7 +12,8 @@ namespace GuitarForm.Model.Parts
     }
 
     // The braces glued under the top plate: the X brace, graft, upper transverse bar, finger braces, tone bars,
-    // soundhole braces and bridge patch.
+    // soundhole braces and bridge patch. Like the neck and body, the bracing is saved on its own, so a bracing
+    // pattern can be reused in another guitar.
     public sealed record Bracing : Part
     {
         public static class Definitions
@@ -24,6 +25,7 @@ namespace GuitarForm.Model.Parts
             public static readonly ParameterDefinition XBraceHeight = ParameterDefinition.Size("X Brace Height", "XBH");
             public static readonly ParameterDefinition XBraceProfileType = ParameterDefinition.Choice("X Brace Profile Type", "XBPT");
 
+            public static readonly ParameterDefinition Graft = ParameterDefinition.Flag("Graft", "GR");
             public static readonly ParameterDefinition GraftThickness = ParameterDefinition.Size("Graft Thickness", "GRT");
             public static readonly ParameterDefinition GraftWidth = ParameterDefinition.Size("Graft Width", "GRW");
             public static readonly ParameterDefinition GraftOffsetFromNeckEnd = ParameterDefinition.Distance("Graft Offset from Neck End", "GRO");
@@ -68,6 +70,7 @@ namespace GuitarForm.Model.Parts
         public NumberParameter XBraceHeight { get; init; } = new(Definitions.XBraceHeight);
         public ChoiceParameter<BraceProfileType> XBraceProfileType { get; init; } = new(Definitions.XBraceProfileType);
 
+        public FlagParameter Graft { get; init; } = new(Definitions.Graft);
         public NumberParameter GraftThickness { get; init; } = new(Definitions.GraftThickness);
         public NumberParameter GraftWidth { get; init; } = new(Definitions.GraftWidth);
         public NumberParameter GraftOffsetFromNeckEnd { get; init; } = new(Definitions.GraftOffsetFromNeckEnd);
@@ -121,6 +124,9 @@ namespace GuitarForm.Model.Parts
             if (ToneBarCount.Value > 0)
                 messages = messages.Concat(RequiredWhen(ToneBarCount, unit, culture,
                     ToneBarAngle, ToneBarSpacing, ToneBarWidth, ToneBarHeight));
+            if (Graft.Value)
+                messages = messages.Concat(RequiredWhen(Graft, unit, culture,
+                    GraftThickness, GraftWidth, GraftOffsetFromNeckEnd));
             if (SoundholeBraces.Value)
                 messages = messages.Concat(RequiredWhen(SoundholeBraces, unit, culture,
                     SoundholeBraceOffset, SoundholeBraceWidth, SoundholeBraceHeight));
