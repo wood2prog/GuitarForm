@@ -24,6 +24,19 @@ namespace GuitarForm.Tests
             Soundhole = new Soundhole { Diameter = 100, TailOffset = 330 },
         };
 
+        // The example the panel imports for testing (Examples/Quick Test.json) is a design document this version reads.
+        [Test]
+        public void QuickTestExample_Reads()
+        {
+            string path = System.IO.Path.Combine(TestContext.CurrentContext.TestDirectory, "..", "..", "..", "..",
+                "Examples", "Quick Test.json");
+
+            var design = DesignDocument.FromJson(System.IO.File.ReadAllText(path));
+
+            Assert.That(design.Body.BodyLength, Is.EqualTo(600));
+            Assert.That(design.Soundhole.TailOffset, Is.EqualTo(380));
+        }
+
         [Test]
         public void RoundTrip_GivesTheSameDesign()
         {

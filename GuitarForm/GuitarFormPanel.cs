@@ -570,7 +570,7 @@ namespace GuitarForm
                 Filters = { new FileFilter("Design document", ".json") },
             };
             if (dialog.ShowDialog(this) == DialogResult.Ok)
-                File.WriteAllText(dialog.FileName, DesignDocument.ToJson(_design));
+                File.WriteAllText(dialog.FileName, NewFields.AddToDocument(DesignDocument.ToJson(_design), _newFields));
         }
 
         void ImportDesign()
@@ -583,9 +583,14 @@ namespace GuitarForm
             if (dialog.ShowDialog(this) != DialogResult.Ok)
                 return;
 
-            var design = DesignDocument.FromJson(File.ReadAllText(dialog.FileName));
+            string json = File.ReadAllText(dialog.FileName);
+            var design = DesignDocument.FromJson(json);
+            var newFields = NewFields.ReadFromDocument(json);
             string name = string.IsNullOrWhiteSpace(design.Name) ? Path.GetFileNameWithoutExtension(dialog.FileName) : design.Name;
-            Open(WithLibrary(library => library.CreateDesign(design with { Name = library.UnusedDesignName(name) })), true);
+            long id = WithLibrary(library => library.CreateDesign(design with { Name = library.UnusedDesignName(name) }));
+            if (newFields != null)
+                NewFields.Save(id, newFields);
+            Open(id, true);
         }
 
         // --- IPanel: the preview is only shown while the panel is ---

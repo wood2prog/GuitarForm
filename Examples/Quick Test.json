@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "units": "mm",
+  "design": {
+    "name": "Quick Test",
+    "instrument": {
+      "scaleLength": 645,
+      "neckJoinFret": 14
+    },
+    "body": {
+      "bodyLength": 600,
+      "ubWidth": 280,
+      "ubOffset": 5,
+      "ubRadius": 100,
+      "ubSecondaryOffset": 30,
+      "waistRadius": 60,
+      "waistWidth": 240,
+      "waistOffset": 300,
+      "lbWidth": 380,
+      "lbOffset": 10,
+      "lbRadius": 120,
+      "lbSecondaryOffset": 40,
+      "heelWidth": 56,
+      "tailDepth": 120,
+      "neckDepth": 95
+    },
+    "soundhole": {
+      "diameter": 100,
+      "horizontalOffset": 0,
+      "tailOffset": 380
+    }
+  },
+  "newFields": {
+    "BDPS": "0",
+    "CTT": "Venetian",
+    "CTO": "8",
+    "CTW": "100",
+    "CTD": "60",
+    "CTVR": "20",
+    "CTPR": "10",
+    "NTW": "44",
+    "SSB": "54",
+    "BSS": "3.5",
+    "TSS": "3.5",
+    "FC": "20",
+    "LFO": "5",
+    "FBTN": "7",
+    "FBTE": "6",
+    "FDD": "6",
+    "DDED": "8",
+    "NKA": "1.5",
+    "OVS": "2",
+    "Markers": "3 5 7 9 12:2 15 17"
+  }
+}

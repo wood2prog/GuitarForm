@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using GuitarForm.Model;
 using GuitarForm.Model.Parameters;
 using GuitarForm.Model.Parts;
@@ -127,11 +128,38 @@ namespace GuitarForm
         // The design's saved new fields, on an otherwise empty guitar.
         public static Guitar Load(long designId)
         {
-            var guitar = new Guitar();
             string path = FilePath(designId);
-            if (!File.Exists(path))
-                return guitar;
-            var texts = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(path)) ?? new();
+            return File.Exists(path)
+                ? FromTexts(JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(path)) ?? new())
+                : new Guitar();
+        }
+
+        public static void Save(long designId, Guitar guitar)
+        {
+            string path = FilePath(designId);
+            Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, JsonSerializer.Serialize(ToTexts(guitar), new JsonSerializerOptions { WriteIndented = true }));
+        }
+
+        // A design document (see DesignDocument) can carry the new fields in a "newFields" object beside the design,
+        // which older readers ignore. Null when it has none.
+        public static Guitar ReadFromDocument(string json)
+        {
+            var newFields = JsonNode.Parse(json)?["newFields"];
+            return newFields == null ? null : FromTexts(newFields.Deserialize<Dictionary<string, string>>());
+        }
+
+        public static string AddToDocument(string json, Guitar guitar)
+        {
+            var document = JsonNode.Parse(json)!.AsObject();
+            document["newFields"] = JsonSerializer.SerializeToNode(ToTexts(guitar));
+            return document.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+        }
+
+        // Values by glossary abbreviation, lengths in mm, plus the dot markers.
+        static Guitar FromTexts(Dictionary<string, string> texts)
+        {
+            var guitar = new Guitar();
             foreach (var field in Fields)
             {
                 var parameter = field.Get(guitar);
@@ -144,14 +172,12 @@ namespace GuitarForm
             return guitar;
         }
 
-        public static void Save(long designId, Guitar guitar)
+        static Dictionary<string, string> ToTexts(Guitar guitar)
         {
             var texts = Fields.Select(field => field.Get(guitar)).Where(p => p.HasValue).ToDictionary(
                 p => p.Definition.Abbreviation, p => p.Format(LengthUnit.Millimeters, CultureInfo.InvariantCulture));
             texts[MarkersKey] = FormatMarkers(guitar);
-            string path = FilePath(designId);
-            Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
-            File.WriteAllText(path, JsonSerializer.Serialize(texts, new JsonSerializerOptions { WriteIndented = true }));
+            return texts;
         }
     }
 }
