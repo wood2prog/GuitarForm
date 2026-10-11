@@ -30,7 +30,7 @@ Then run the **`GuitarForm`** command to open the panel. Dock it by dragging its
 ## Using the panel
 
 - **Design:** pick a design from the list, or use **New…** (asks for the name, body length, scale length and neck join fret), **Copy**, **Rename…**, **Delete**, **Import…** and **Export…** (a JSON design document).
-- **Section tabs:** each section's values, with its errors, warnings and notes underneath. Hover over a field for its description. Optional fields can be left blank; the drawing shows whatever the values set so far allow.
+- **Section tabs:** each section's values in groups, with the selected tab's errors, warnings and notes in the Messages box to the right. Drag the divider between them to resize the tabs. Hover over a field for its description. Optional fields can be left blank; the drawing shows whatever the values set so far allow.
 - **Presets:** each section tab can **Save as…** its values as a named preset, **Load** a preset into the design (copying its values, so changing the preset later doesn't change the design), or **Delete** one.
 - **Saving:** the first change after you open a design asks whether to overwrite it (**Yes**), save the change in a copy (**No**), or undo the change (**Cancel**). After that, every change is saved as you make it. A design you've just made with New, Copy or Import doesn't ask.
 - **Preview:** the design is drawn in the viewports as you type, while the panel is visible and **Preview** is ticked. Construction geometry is light grey and the outline is in Rhino's feedback colour.

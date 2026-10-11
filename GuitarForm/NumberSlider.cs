@@ -6,15 +6,12 @@ using Eto.Forms;
 namespace GuitarForm
 {
     // A decimal number shown on the lever of a fader-style slider. Drag the lever along its track to change the value:
-    // each step is a tenth, or a hundredth while Shift is held. The lever rests in the middle of the track and springs
+    // each step is Step (a tenth unless the field sets its own), or a tenth of that while Shift is held. The lever rests in the middle of the track and springs
     // back there when let go, keeping the new value, so each drag goes as far as the track allows. Click the lever
     // without dragging to type a value; click the track either side of it to step once that way. The value is kept as
     // text, like a TextBox's, and TextChanged is raised for each step and each edit.
     sealed class NumberSlider : Panel, IFieldBox
     {
-        const double CoarseStep = 0.1;
-        const double FineStep = 0.01;
-
         const int ControlWidth = 240;
         const int ControlHeight = 24;
         const int LeverWidth = 64;
@@ -41,6 +38,12 @@ namespace GuitarForm
         float _baseOffset;
 
         public event EventHandler<EventArgs> TextChanged;
+
+        // The change for each step of a drag or click on the track, in the units the value is shown in. Shift steps a
+        // tenth of it.
+        public double Step { get; set; } = 0.1;
+
+        double CurrentStep(bool fine) => fine ? Step / 10 : Step;
 
         public NumberSlider()
         {
@@ -171,7 +174,7 @@ namespace GuitarForm
             if (!LeverBounds.Contains(e.Location))
             {
                 // A click on the track steps once toward it.
-                double step = fine ? FineStep : CoarseStep;
+                double step = CurrentStep(fine);
                 SetValue(CurrentValue + (e.Location.X < Center ? -step : step));
                 return;
             }
@@ -206,7 +209,7 @@ namespace GuitarForm
 
             _leverOffset = Math.Clamp(moved, -Travel, Travel);
             int steps = (int)Math.Round((_leverOffset - _baseOffset) / PixelsPerStep);
-            SetValue(_baseValue + steps * (_fine ? FineStep : CoarseStep));
+            SetValue(_baseValue + steps * CurrentStep(_fine));
             _bar.Invalidate();
         }
 

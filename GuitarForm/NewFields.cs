@@ -19,7 +19,8 @@ namespace GuitarForm
     // in mm. They're shown on the Body tab and on the Bracing, Fretboard and Neck tabs.
     static class NewFields
     {
-        public sealed record Field(Func<Guitar, Parameter> Get, Func<Guitar, Parameter, Guitar> Set);
+        // Step is how much a slider changes the value per step, in the units it's shown in.
+        public sealed record Field(Func<Guitar, Parameter> Get, Func<Guitar, Parameter, Guitar> Set, double Step = 0.1);
 
         static Field BodyField(Func<Body, Parameter> get) =>
             new Field(g => get(g.Body), (g, p) => g with { Body = (Body)g.Body.With(p) });

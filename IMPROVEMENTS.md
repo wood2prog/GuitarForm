@@ -147,6 +147,22 @@ Done last, once the panel covers every component, so the project stays usable th
 - [ ] Work the user's notes (`variables and settings.txt`) into the plan: the sections, their fields, which have their own tables of choices (string sets, fretwire, string action, dot marker layouts), and the order to build them in. This also settles 8f (string sets).
 - [ ] Convert the existing British spellings (colour, grey, centre, millimetre, organisation, …) to American English in the docs, UI text, code and CLAUDE.md. Rhino API names such as `DisplayColor` aren't affected.
 - [ ] UI polish: alignment and positioning in the panel. The user will describe or screenshot what looks off.
+- [x] Group each tab's fields in titled boxes; split the New fields tab into the Body tab and new Bracing, Fretboard and Neck tabs. *(Old groups in `Sections.cs`, new ones in `NewFields.Groups`; a new group with an old group's title shares its box.)*
+- [x] Show the selected tab's messages in a box right of the tabs, with a draggable divider whose position is remembered (`PanelSplitterPosition` in the plug-in settings).
+
+### 9a. Slider refinements
+
+`NumberSlider` (a fader: the value is on a lever dragged along a track that springs back to the middle; each step is the field's `Step`, a tenth of it with Shift; click the lever to type) is on the Body tab's decimal fields only, to try out.
+
+- [ ] The user tries the slider and says whether it feels natural; adjust the feel (reach per drag, pixels per step, lever and track size).
+- [ ] **(decision)** Each field's step. A tenth is right for some values and too much for others. `NumberField.Step` and `NewFields.Field.Step` (default 0.1) are in place; the user will say which fields need another step as they use it. Also decide how steps behave in inches, since they're in the units shown (0.1 in is much coarser than 0.1 mm).
+- [ ] Put the slider on every decimal field (every tab), once the feel is settled.
+- [ ] The overwrite-or-copy question on the first edit of an opened design pops up on the first step of a drag. Ask once the drag ends instead, or before it starts.
+- [ ] Check mouse capture during a drag in Rhino (called by reflection, since the Eto RhinoCommon 8.0's package compiles against lacks it), and that a slider looks disabled when no design is open.
+
+### 9b. Limits on values
+
+- [ ] **(decision)** Limits on many fields, so values that don't make sense can't be entered at all rather than only reported as errors. Decide with the user, field by field, the range that makes sense (some come from the glossary definitions' minimum and maximum, others from other values, e.g. a waist narrower than the bouts). Then stop sliders at the limits and refuse typed values outside them.
 
 ## 10. Later
 

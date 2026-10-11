@@ -10,7 +10,8 @@ namespace GuitarForm
 {
     // One number in a section: how to read it from the section record and how to make a record with it changed.
     // A length is stored in mm and shown in the document's units; other numbers (counts) are shown as they are.
-    // A required number can't be left blank; a whole number can't have a fraction.
+    // A required number can't be left blank; a whole number can't have a fraction. Step is how much a slider changes
+    // the value per step, in the units it's shown in.
     sealed record NumberField<T>(
         string Label,
         bool IsLength,
@@ -18,7 +19,8 @@ namespace GuitarForm
         Func<T, double?> Get,
         Func<T, double?, T> Set,
         bool Required = false,
-        bool Whole = false);
+        bool Whole = false,
+        double Step = 0.1);
 
     // Related fields shown together in a box on the section's tab.
     sealed record FieldGroup<T>(string Title, params NumberField<T>[] Fields);
@@ -33,7 +35,7 @@ namespace GuitarForm
         readonly Label[] _unitLabels;
         readonly string[] _inputErrors;
         readonly Dictionary<string, List<TableRow>> _rows = new Dictionary<string, List<TableRow>>();
-        readonly Label _messages = FieldLayout.MessageLabel();
+        readonly TabMessages _messages = new TabMessages();
         IReadOnlyList<GeometryMessage> _geometryMessages = Array.Empty<GeometryMessage>();
         T _value;
         DisplayUnits _units = DisplayUnits.Current;
@@ -45,7 +47,7 @@ namespace GuitarForm
         public IReadOnlyList<string> GroupTitles { get; }
 
         // The section's input errors and the messages from validating or drawing it.
-        public Control Messages => _messages;
+        public TabMessages Messages => _messages;
 
         // With sliders, decimal numbers get a NumberSlider instead of a plain box.
         public SectionEditor(IEnumerable<FieldGroup<T>> groups, bool sliders = false)
@@ -64,7 +66,7 @@ namespace GuitarForm
                 foreach (var field in group.Fields)
                 {
                     int index = i++;
-                    _boxes[index] = FieldLayout.Box(sliders && field.IsLength && !field.Whole, field.Description);
+                    _boxes[index] = FieldLayout.Box(sliders && field.IsLength && !field.Whole, field.Description, field.Step);
                     _boxes[index].PlaceholderText = field.Required ? "required" : "";
                     _boxes[index].TextChanged += (_, _) => OnTextChanged(index);
                     _unitLabels[index] = FieldLayout.UnitLabel();
@@ -147,7 +149,7 @@ namespace GuitarForm
             Changed?.Invoke(changed);
         }
 
-        void ShowAllMessages() => FieldLayout.ShowMessages(_messages,
+        void ShowAllMessages() => _messages.Show(
             _inputErrors.Where(e => e != null).Select(e => new GeometryMessage(MessageLevel.Error, e)).Concat(_geometryMessages));
 
         static string Format(double value) => value.ToString("0.#####", CultureInfo.CurrentCulture);
@@ -166,12 +168,26 @@ namespace GuitarForm
     {
     }
 
+    // A tab's errors, warnings and notes, which the panel shows beside the tabs while the tab is selected.
+    sealed class TabMessages
+    {
+        public IReadOnlyList<GeometryMessage> Messages { get; private set; } = Array.Empty<GeometryMessage>();
+
+        public event Action Changed;
+
+        public void Show(IEnumerable<GeometryMessage> messages)
+        {
+            Messages = messages?.ToList() ?? new List<GeometryMessage>();
+            Changed?.Invoke();
+        }
+    }
+
     // The pieces every tab's fields are laid out with, so the boxes line up from group to group and tab to tab.
     static class FieldLayout
     {
         // A box for a field's value: a NumberSlider for a decimal number when slider is true, else a text box.
-        public static IFieldBox Box(bool slider, string toolTip = null) => slider
-            ? new NumberSlider { ToolTip = toolTip }
+        public static IFieldBox Box(bool slider, string toolTip = null, double step = 0.1) => slider
+            ? new NumberSlider { ToolTip = toolTip, Step = step }
             : new FieldTextBox { Width = 90, ToolTip = toolTip };
 
         public static Label UnitLabel() => new Label { Width = 24, VerticalAlignment = VerticalAlignment.Center };
@@ -191,14 +207,11 @@ namespace GuitarForm
             return new GroupBox { Text = title, Padding = new Padding(6), Content = layout };
         }
 
-        public static Label MessageLabel() => new Label { Wrap = WrapMode.Word };
-
         // Messages one per line, red when any of them is an error.
-        public static void ShowMessages(Label label, IEnumerable<GeometryMessage> messages)
+        public static void ShowMessages(TextArea box, IReadOnlyList<GeometryMessage> messages)
         {
-            var list = messages.ToList();
-            label.Text = string.Join("\n", list.Select(m => $"{Level(m.Level)}: {m.Text}"));
-            label.TextColor = list.Any(m => m.Level == MessageLevel.Error) ? Colors.Red : SystemColors.ControlText;
+            box.Text = string.Join("\n", messages.Select(m => $"{Level(m.Level)}: {m.Text}"));
+            box.TextColor = messages.Any(m => m.Level == MessageLevel.Error) ? Colors.Red : SystemColors.ControlText;
         }
 
         static string Level(MessageLevel level) => level switch

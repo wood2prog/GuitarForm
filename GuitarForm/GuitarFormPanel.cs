@@ -40,13 +40,19 @@ namespace GuitarForm
         static readonly string[] NewFieldTabs = NewFields.Groups.SelectMany(g => g.Fields.Select(_ => g.Tab)).ToArray();
         // For now only the Body tab's decimal numbers are sliders.
         readonly IFieldBox[] _newFieldBoxes = NewFields.Fields.Select((field, i) => FieldLayout.Box(
-            NewFieldTabs[i] == NewFields.BodyTab && IsDecimal(field.Get(new Guitar()).Definition.Kind))).ToArray();
+            NewFieldTabs[i] == NewFields.BodyTab && IsDecimal(field.Get(new Guitar()).Definition.Kind), step: field.Step)).ToArray();
         readonly Label[] _newFieldUnits = NewFields.Fields.Select(_ => FieldLayout.UnitLabel()).ToArray();
         readonly string[] _newFieldErrors = new string[NewFields.Fields.Length];
         readonly TextBox _markers = new TextBox { Width = 160, ToolTip = "Each marker's fret, with :2 for two dots, e.g. 3 5 7 9 12:2" };
         string _markersError;
-        readonly Dictionary<string, Label> _tabMessages = new[] { NewFields.BracingTab, NewFields.FretboardTab, NewFields.NeckTab }
-            .ToDictionary(tab => tab, _ => FieldLayout.MessageLabel());
+        readonly Dictionary<string, TabMessages> _tabMessages = new[] { NewFields.BracingTab, NewFields.FretboardTab, NewFields.NeckTab }
+            .ToDictionary(tab => tab, _ => new TabMessages());
+
+        // The selected tab's messages, in a box to the right of the tabs; the divider between them can be dragged.
+        readonly TabControl _tabs = new TabControl();
+        readonly Dictionary<TabPage, TabMessages> _pageMessages = new Dictionary<TabPage, TabMessages>();
+        readonly TextArea _messageBox = new TextArea { ReadOnly = true, Wrap = true };
+        const string SplitterPositionKey = "PanelSplitterPosition";
         Guitar _newFields = new Guitar();
         Dictionary<string, List<GeometryMessage>> _newTabMessages = new Dictionary<string, List<GeometryMessage>>();
 
@@ -95,7 +101,7 @@ namespace GuitarForm
             }
             _markers.TextChanged += (_, _) => OnMarkersChanged();
 
-            var tabs = new TabControl();
+            var tabs = _tabs;
             tabs.Pages.Add(SectionPage("Instrument",
                 new Control[] { PresetRow<Instrument>(() => _design?.Instrument, preset => Apply(d => d with { Instrument = preset })) },
                 Groups(null, _instrument.GroupTitles, _instrument.Rows),
@@ -131,7 +137,7 @@ namespace GuitarForm
                     Buttons(
                         ActionButton("Import…", ImportDesign),
                         NeedsDesign(ActionButton("Export…", ExportDesign))),
-                    new TableRow(tabs) { ScaleHeight = true },
+                    new TableRow(TabsAndMessages()) { ScaleHeight = true },
                     new TableRow(new TableCell(_showPreview, true), NeedsDesign(ActionButton("Build", Build))),
                 },
             };
@@ -142,15 +148,54 @@ namespace GuitarForm
 
         // --- Layout ---
 
-        // A tab: the controls at its top (preset row, …), its groups of fields, then its messages.
-        TabPage SectionPage(string title, Control[] top, IEnumerable<Control> groups, Control messages)
+        // A tab: the controls at its top (preset row, …) and its groups of fields. Its messages are shown beside the tabs.
+        TabPage SectionPage(string title, Control[] top, IEnumerable<Control> groups, TabMessages messages)
         {
             var content = new StackLayout { Padding = 10, Spacing = 10, HorizontalContentAlignment = HorizontalAlignment.Stretch };
-            foreach (var control in top.Concat(groups).Append(messages))
+            foreach (var control in top.Concat(groups))
                 content.Items.Add(control);
             NeedsDesign(content);
-            return new TabPage { Text = title, Content = new Scrollable { Content = content, Border = BorderType.None } };
+            var page = new TabPage { Text = title, Content = new Scrollable { Content = content, Border = BorderType.None } };
+            _pageMessages[page] = messages;
+            messages.Changed += () =>
+            {
+                if (_tabs.SelectedPage == page)
+                    ShowSelectedMessages();
+            };
+            return page;
         }
+
+        // The tabs on the left and the selected tab's messages on the right, with a divider that remembers where it
+        // was dragged to.
+        Control TabsAndMessages()
+        {
+            _tabs.SelectedIndexChanged += (_, _) => ShowSelectedMessages();
+            var splitter = new Splitter
+            {
+                Orientation = Orientation.Horizontal,
+                FixedPanel = SplitterFixedPanel.Panel1,
+                Position = Plugin.Settings.GetInteger(SplitterPositionKey, 430),
+                Panel1MinimumSize = 200,
+                Panel2MinimumSize = 80,
+                Panel1 = _tabs,
+                Panel2 = new TableLayout
+                {
+                    Padding = new Padding(6, 0, 0, 0),
+                    Spacing = new Size(4, 4),
+                    Rows =
+                    {
+                        new Label { Text = "Messages" },
+                        new TableRow(_messageBox) { ScaleHeight = true },
+                    },
+                },
+            };
+            splitter.PositionChanged += (_, _) => Plugin.Settings.SetInteger(SplitterPositionKey, splitter.Position);
+            return splitter;
+        }
+
+        void ShowSelectedMessages() => FieldLayout.ShowMessages(_messageBox,
+            _tabs.SelectedPage != null && _pageMessages.TryGetValue(_tabs.SelectedPage, out var messages)
+                ? messages.Messages : Array.Empty<GeometryMessage>());
 
         // A tab's groups: the old section's groups, each with any new fields of the same title added after its own,
         // then the tab's other new-field groups.
@@ -517,8 +562,8 @@ namespace GuitarForm
                 _instrument.ShowMessages(null);
                 _body.ShowMessages(null);
                 _soundhole.ShowMessages(null);
-                foreach (var label in _tabMessages.Values)
-                    FieldLayout.ShowMessages(label, Enumerable.Empty<GeometryMessage>());
+                foreach (var messages in _tabMessages.Values)
+                    messages.Show(null);
                 _preview.Hide(doc);
                 return;
             }
@@ -527,8 +572,8 @@ namespace GuitarForm
             _instrument.ShowMessages(drawing.InstrumentMessages);
             _body.ShowMessages(drawing.BodyMessages);
             _soundhole.ShowMessages(drawing.SoundholeMessages);
-            foreach (var (tab, label) in _tabMessages)
-                FieldLayout.ShowMessages(label, _newTabMessages[tab]);
+            foreach (var (tab, messages) in _tabMessages)
+                messages.Show(_newTabMessages[tab]);
             if (_showPreview.Checked == true && _panelVisible && doc != null)
                 _preview.Show(drawing, doc);
             else
