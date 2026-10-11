@@ -137,6 +137,19 @@ namespace GuitarForm.Tests
         }
 
         [Test]
+        public void NeckThicknessFretPastLastFret_IsError()
+        {
+            var neck = new Neck
+            {
+                ThicknessFret = new(Neck.Definitions.ThicknessFret, 15),
+                Fretboard = new Fretboard { FretCount = new(Fretboard.Definitions.FretCount, 14) },
+            };
+
+            Assert.That(Messages(neck),
+                Is.EqualTo(new[] { "Neck Thickness Fret (NKSF) can't be past the last fret (Fret Count (FC) is 14)." }));
+        }
+
+        [Test]
         public void FretDistances()
         {
             Assert.That(Minimal.FretDistance(0), Is.EqualTo(0).Within(0.001));

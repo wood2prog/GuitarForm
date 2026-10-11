@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using GuitarForm.Model.Parameters;
 
 namespace GuitarForm.Model.Parts
@@ -103,5 +105,12 @@ namespace GuitarForm.Model.Parts
         // Library items the neck refers to. Null when none is chosen.
         public Fretwire Fretwire { get; init; }
         public StringSet StringSet { get; init; }
+
+        protected override IEnumerable<ModelMessage> CheckValues(LengthUnit unit, IFormatProvider culture)
+        {
+            if (ThicknessFret.Value is int fret && Fretboard.FretCount.Value is int count && fret > count)
+                yield return ModelMessage.Error(
+                    $"{ThicknessFret.Label} can't be past the last fret ({Fretboard.FretCount.Label} is {count}).");
+        }
     }
 }
