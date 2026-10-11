@@ -15,8 +15,14 @@ namespace GuitarForm.Model.Parameters
 
         public override object StoredValue => Value;
 
-        public override Parameter WithStoredValue(object value) =>
-            this with { Value = value == null ? null : Convert.ToInt32(value, CultureInfo.InvariantCulture) };
+        // A fraction isn't rounded: it's refused.
+        public override Parameter WithStoredValue(object value)
+        {
+            if (value is double or float or decimal &&
+                Convert.ToDouble(value, CultureInfo.InvariantCulture) % 1 != 0)
+                throw new FormatException($"{Label}: {value} isn't a whole number.");
+            return this with { Value = value == null ? null : Convert.ToInt32(value, CultureInfo.InvariantCulture) };
+        }
 
         public override bool TryParse(string text, LengthUnit unit, IFormatProvider culture, out Parameter result,
             out ModelMessage error)

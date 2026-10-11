@@ -44,6 +44,13 @@ namespace GuitarForm.Model.Parts
         public IEnumerable<Part> SeparatelySavedParts =>
             Subparts.SelectMany(part => part.IsSavedSeparately ? new[] { part } : part.SeparatelySavedParts);
 
+        // The lists of parts held by this part and the parts saved with it, by property name, e.g. the fretboard's
+        // "Markers" for a neck.
+        public IEnumerable<(string Name, IReadOnlyList<Part> Items)> PartLists =>
+            ListProperties(GetType())
+                .Select(p => (p.Name, (IReadOnlyList<Part>)((IEnumerable<Part>)p.GetValue(this)).ToList()))
+                .Concat(Subparts.Where(p => !p.IsSavedSeparately).SelectMany(p => p.PartLists));
+
         static IEnumerable<PartValue> StoredValuesOf(Part part, int? item)
         {
             foreach (var parameter in part.Parameters)
