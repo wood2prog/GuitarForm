@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using GuitarForm.Model.Parameters;
 
 namespace GuitarForm.Model.Parts
@@ -106,11 +107,36 @@ namespace GuitarForm.Model.Parts
         public Fretwire Fretwire { get; init; }
         public StringSet StringSet { get; init; }
 
+        // The nut's total height, from its base to its top: the fretboard's thickness at the nut plus the nut's
+        // reveal. Null when either isn't set.
+        public double? NutHeight => Fretboard.ThicknessAtNut.Value + Nut.Reveal.Value;
+
+        // The narrowest the fretboard can be at the nut for its string set: the setbacks, plus the span between the
+        // outer strings' centerlines with every string touching. Null when there's no string set, or a setback or
+        // string diameter isn't set.
+        public double? MinimumNutWidth
+        {
+            get
+            {
+                var strings = StringSet?.Strings;
+                if (strings == null || strings.Count == 0 || strings.Any(s => !s.Diameter.HasValue))
+                    return null;
+                double span = strings.Sum(s => s.Diameter.Value.Value) -
+                    (strings[0].Diameter.Value.Value + strings[^1].Diameter.Value.Value) / 2;
+                return Fretboard.BassStringSetback.Value + Fretboard.TrebleStringSetback.Value + span;
+            }
+        }
+
         protected override IEnumerable<ModelMessage> CheckValues(LengthUnit unit, IFormatProvider culture)
         {
-            if (ThicknessFret.Value is int fret && Fretboard.FretCount.Value is int count && fret > count)
+            if (ThicknessFret.Value > Fretboard.FretCount.Value)
+                yield return Fretboard.PastLastFret(ThicknessFret);
+            // When the setbacks alone don't fit, the fretboard already says so.
+            var nutWidth = Fretboard.NutWidth;
+            if (Fretboard.SetbacksFitNutWidth && MinimumNutWidth is double minimum && nutWidth.Value < minimum)
                 yield return ModelMessage.Error(
-                    $"{ThicknessFret.Label} can't be past the last fret ({Fretboard.FretCount.Label} is {count}).");
+                    $"{nutWidth.Label} is too narrow for the string set: with the setbacks it needs at least " +
+                    $"{(nutWidth with { Value = minimum }).FormatWithUnit(unit, culture)}.");
         }
     }
 }

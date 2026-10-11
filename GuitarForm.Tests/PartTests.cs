@@ -40,7 +40,7 @@ namespace GuitarForm.Tests
         public void Parameters_InDeclaredOrder()
         {
             Assert.That(new Nut().Parameters.Select(p => p.Definition.Abbreviation),
-                Is.EqualTo(new[] { "NTT", "NTH", "NTR" }));
+                Is.EqualTo(new[] { "NTT", "NTR" }));
         }
 
         [Test]
@@ -62,10 +62,10 @@ namespace GuitarForm.Tests
         public void With_ReplacesParameterAndLeavesOriginal()
         {
             var nut = new Nut();
-            var changed = (Nut)nut.With(nut.Height with { Value = 9.5 });
+            var changed = (Nut)nut.With(nut.Reveal with { Value = 1.5 });
 
-            Assert.That(changed.Height.Value, Is.EqualTo(9.5));
-            Assert.That(nut.Height.HasValue, Is.False);
+            Assert.That(changed.Reveal.Value, Is.EqualTo(1.5));
+            Assert.That(nut.Reveal.HasValue, Is.False);
         }
 
         [Test]
@@ -150,6 +150,101 @@ namespace GuitarForm.Tests
         }
 
         [Test]
+        public void ReliefFretAndMarkerPastLastFret_AreErrors()
+        {
+            var fretboard = new Fretboard
+            {
+                FretCount = new(Fretboard.Definitions.FretCount, 20),
+                ReliefFret = new(Fretboard.Definitions.ReliefFret, 21),
+                Markers = new[]
+                {
+                    new DotMarker { Fret = new(DotMarker.Definitions.Fret, 12), DotCount = new(DotMarker.Definitions.DotCount, 2) },
+                    new DotMarker { Fret = new(DotMarker.Definitions.Fret, 21), DotCount = new(DotMarker.Definitions.DotCount, 1) },
+                },
+            };
+
+            Assert.That(Messages(fretboard), Is.EqualTo(new[]
+            {
+                "Fretboard Relief Fret (FBRF) can't be past the last fret (Fret Count (FC) is 20).",
+                "Marker 2: Marker Fret (MKF) can't be past the last fret (Fret Count (FC) is 20).",
+            }));
+        }
+
+        static Fretboard WithSetbacks(double bass, double treble, double nutWidth) => new Fretboard
+        {
+            BassStringSetback = new(Fretboard.Definitions.BassStringSetback, bass),
+            TrebleStringSetback = new(Fretboard.Definitions.TrebleStringSetback, treble),
+            NutWidth = new(Fretboard.Definitions.NutWidth, nutWidth),
+        };
+
+        [Test]
+        public void SetbacksFillingNutWidth_IsError()
+        {
+            Assert.That(Messages(WithSetbacks(20, 23, 43)), Is.EqualTo(new[]
+            {
+                "Bass String Setback (BSS) and Treble String Setback (TSS) together must be less than Nut Width (NTW).",
+            }));
+        }
+
+        static StringSet Strings(params double[] diameters) => new StringSet
+        {
+            Strings = diameters.Select(d => new GuitarString { Diameter = new(GuitarString.Definitions.Diameter, d) }).ToArray(),
+        };
+
+        [Test]
+        public void MinimumNutWidth_SetbacksPlusTouchingStrings()
+        {
+            // Centerline span: 1 + 1.5 + 2 - (1 + 2) / 2 = 3; plus setbacks 3 + 4.
+            var neck = new Neck { Fretboard = WithSetbacks(3, 4, 9), StringSet = Strings(1, 1.5, 2) };
+
+            Assert.That(neck.MinimumNutWidth, Is.EqualTo(10).Within(1e-9));
+            Assert.That(Messages(neck), Is.EqualTo(new[]
+            {
+                "Nut Width (NTW) is too narrow for the string set: with the setbacks it needs at least 10 mm.",
+            }));
+        }
+
+        [Test]
+        public void NutWidthFittingStrings_IsValid()
+        {
+            Assert.That(Messages(new Neck { Fretboard = WithSetbacks(3, 4, 10), StringSet = Strings(1, 1.5, 2) }), Is.Empty);
+        }
+
+        [Test]
+        public void MinimumNutWidth_NeedsEveryDiameter()
+        {
+            var set = Strings(1, 2) with { Strings = new[] { new GuitarString() } };
+
+            Assert.That(new Neck { Fretboard = WithSetbacks(3, 4, 43), StringSet = set }.MinimumNutWidth, Is.Null);
+        }
+
+        [Test]
+        public void CourseSpacings_RequiredForTwoStringCourses()
+        {
+            var fretboard = new Fretboard { StringsPerCourse = new(Fretboard.Definitions.StringsPerCourse, 2) };
+
+            Assert.That(Messages(fretboard), Is.EqualTo(new[]
+            {
+                "Course String Spacing at Nut (CSN) is required when Strings per Course (SPC) is 2.",
+                "Course String Spacing at Bridge (CSB) is required when Strings per Course (SPC) is 2.",
+            }));
+            Assert.That(Messages(fretboard with { StringsPerCourse = new(Fretboard.Definitions.StringsPerCourse, 1) }), Is.Empty);
+        }
+
+        [Test]
+        public void NutHeight_IsFretboardThicknessPlusReveal()
+        {
+            var neck = new Neck
+            {
+                Fretboard = new Fretboard { ThicknessAtNut = new(Fretboard.Definitions.ThicknessAtNut, 6.5) },
+                Nut = new Nut { Reveal = new(Nut.Definitions.Reveal, 2.5) },
+            };
+
+            Assert.That(neck.NutHeight, Is.EqualTo(9));
+            Assert.That(new Neck().NutHeight, Is.Null);
+        }
+
+        [Test]
         public void FretDistances()
         {
             Assert.That(Minimal.FretDistance(0), Is.EqualTo(0).Within(0.001));
@@ -201,10 +296,10 @@ namespace GuitarForm.Tests
             Assert.That(model, Is.EqualTo(GlossaryLabels().OrderBy(l => l).ToArray()));
         }
 
-        // The "Name (ABBR)" of every setting in docs/Glossary.md that isn't marked planned.
+        // The "Name (ABBR)" of every setting in docs/Glossary.md that isn't marked planned or calculated.
         static IEnumerable<string> GlossaryLabels()
         {
-            var entry = new Regex(@"^\*\*(.+ \([A-Z]+\))\*\*(\s*\*\(planned\)\*)?\s*$");
+            var entry = new Regex(@"^\*\*(.+ \([A-Z]+\))\*\*(\s*\*\((planned|calculated)\)\*)?\s*$");
             foreach (string line in File.ReadLines(GlossaryPath()))
             {
                 var match = entry.Match(line);

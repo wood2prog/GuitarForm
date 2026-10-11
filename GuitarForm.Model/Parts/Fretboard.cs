@@ -62,8 +62,36 @@ namespace GuitarForm.Model.Parts
         // The frets that have position dots, and how many.
         public IReadOnlyList<DotMarker> Markers { get; init; } = Array.Empty<DotMarker>();
 
-        protected override IEnumerable<ModelMessage> CheckValues(LengthUnit unit, IFormatProvider culture) =>
-            ValidateList(Markers, "Marker", unit, culture);
+        // Whether the setbacks leave room for the strings at the nut. True when any of them isn't set.
+        public bool SetbacksFitNutWidth =>
+            !(BassStringSetback.Value + TrebleStringSetback.Value >= NutWidth.Value);
+
+        protected override IEnumerable<ModelMessage> CheckValues(LengthUnit unit, IFormatProvider culture)
+        {
+            if (ReliefFret.Value > FretCount.Value)
+                yield return PastLastFret(ReliefFret);
+            if (!SetbacksFitNutWidth)
+                yield return ModelMessage.Error(
+                    $"{BassStringSetback.Label} and {TrebleStringSetback.Label} together must be less than {NutWidth.Label}.");
+            if (StringsPerCourse.Value == 2)
+            {
+                foreach (var spacing in new[] { CourseStringSpacingAtNut, CourseStringSpacingAtBridge })
+                    if (!spacing.HasValue)
+                        yield return ModelMessage.Error($"{spacing.Label} is required when {StringsPerCourse.Label} is 2.");
+            }
+
+            foreach (var message in ValidateList(Markers, "Marker", unit, culture))
+                yield return message;
+            for (int i = 0; i < Markers.Count; i++)
+            {
+                if (Markers[i].Fret.Value > FretCount.Value)
+                    yield return ModelMessage.Error($"Marker {i + 1}: {PastLastFret(Markers[i].Fret).Text}");
+            }
+        }
+
+        // A fret that's past the last fret, as an error.
+        public ModelMessage PastLastFret(CountParameter fret) =>
+            ModelMessage.Error($"{fret.Label} can't be past the last fret ({FretCount.Label} is {FretCount.Value}).");
     }
 
     // One fret's position dots, on both the face and the bass edge.

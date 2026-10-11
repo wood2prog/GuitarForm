@@ -7,6 +7,7 @@ The name and abbreviation of every design setting. The plug-in uses these everyw
   - A part the setting is about has a subject code: Back Plate is BK, Body is BD, Bridge is BR, Bridge Patch is BP, Cutaway is CT, Finger Brace is FN, Fretboard is FB, Fretwire is FW, Graft is GR, Headblock is HB, Heel is HL, Heel Cap is HCP, Lower Bout is LB, Neck is NK, Nut is NT, Saddle is SDL, Soundhole is SH, Soundhole Brace is SHB, String (one string of a set) is ST, Tailblock is TB, Tone Bar is TN, Top Plate is TP, Upper Bout is UB, Upper Transverse Bar is UT, Waist is WS, X Brace is XB (e.g. NTW, FBTN, STD).
   - A position the setting is measured at has a one-letter suffix: at Nut is N, at End is E, at Bridge is B, at Neck End is N, at Tail End is T (e.g. FBRN, FBTE, SSB, BDDT). Nut and neck end never apply to the same part, so they share N.
 - A setting that appears in more than one place (e.g. a neck profile radius at the first fret and at the heel) gets its own name and abbreviation for each place.
+- *(planned)* marks a setting that isn't in the model yet. *(calculated)* marks a value worked out from other settings, which can't be typed in.
 
 ## Instrument
 
@@ -46,7 +47,7 @@ The fretboard's thickness at the nut end, measured at the crown (the centerline)
 The fretboard's thickness at the body end, measured at the crown (the centerline).
 
 **Nut Width (NTW)**
-The fretboard's width at the nut.
+The fretboard's width at the nut. It must be more than the Bass and Treble String Setbacks together. With a string set chosen, it must also be at least the setbacks plus the span between the outer strings' centerlines with every string touching.
 
 **String Spacing at Bridge (SSB)**
 The distance between the centerlines of the first and last strings at the saddle. With the Nut Width, it sets the fretboard's taper.
@@ -60,8 +61,8 @@ Optional. The fret at which the Fretboard Relief is measured.
 **Nut Thickness (NTT)**
 The nut's thickness along the length of the neck, from its fretboard face to its headstock face.
 
-**Nut Height (NTH)**
-The nut's total height, from its base to its top.
+**Nut Height (NTH)** *(calculated)*
+The nut's total height, from its base to its top: the Fretboard Thickness at Nut plus the Nut Reveal.
 
 **Nut Reveal (NTR)**
 The height of the nut's top above the fretboard's playing surface, measured at the centerline.
@@ -76,10 +77,10 @@ At the nut, the distance from the treble edge of the fretboard to the centerline
 The number of strings in each course, 1 or 2, the same for every course: 1 for a standard six-string, 2 for a twelve-string.
 
 **Course String Spacing at Nut (CSN)**
-For courses of two strings, the distance between the centerlines of the two strings in a course at the nut.
+For courses of two strings, the distance between the centerlines of the two strings in a course at the nut. Required when Strings per Course is 2.
 
 **Course String Spacing at Bridge (CSB)**
-For courses of two strings, the distance between the centerlines of the two strings in a course at the saddle.
+For courses of two strings, the distance between the centerlines of the two strings in a course at the saddle. Required when Strings per Course is 2.
 
 ## String Action
 

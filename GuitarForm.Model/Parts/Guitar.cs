@@ -34,9 +34,8 @@ namespace GuitarForm.Model.Parts
 
         protected override IEnumerable<ModelMessage> CheckValues(LengthUnit unit, IFormatProvider culture)
         {
-            if (NeckJoinFret.Value is int join && Neck.Fretboard.FretCount.Value is int count && join > count)
-                yield return ModelMessage.Error(
-                    $"{NeckJoinFret.Label} can't be past the last fret ({Neck.Fretboard.FretCount.Label} is {count}).");
+            if (NeckJoinFret.Value > Neck.Fretboard.FretCount.Value)
+                yield return Neck.Fretboard.PastLastFret(NeckJoinFret);
         }
     }
 }
