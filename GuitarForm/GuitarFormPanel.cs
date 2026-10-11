@@ -128,7 +128,12 @@ namespace GuitarForm
                 Spacing = new Size(6, 6),
                 Rows =
                 {
-                    new TableRow(new Label { Text = "Design", VerticalAlignment = VerticalAlignment.Center }, new TableCell(_designs, true)),
+                    // In its own layout, so the outer one has a single column and the tabs get its full width.
+                    new TableLayout
+                    {
+                        Spacing = new Size(6, 0),
+                        Rows = { new TableRow(new Label { Text = "Design", VerticalAlignment = VerticalAlignment.Center }, new TableCell(_designs, true)) },
+                    },
                     Buttons(
                         ActionButton("New…", NewDesign),
                         NeedsDesign(ActionButton("Copy", CopyDesign)),
@@ -138,7 +143,11 @@ namespace GuitarForm
                         ActionButton("Import…", ImportDesign),
                         NeedsDesign(ActionButton("Export…", ExportDesign))),
                     new TableRow(TabsAndMessages()) { ScaleHeight = true },
-                    new TableRow(new TableCell(_showPreview, true), NeedsDesign(ActionButton("Build", Build))),
+                    new TableLayout
+                    {
+                        Spacing = new Size(6, 0),
+                        Rows = { new TableRow(new TableCell(_showPreview, true), NeedsDesign(ActionButton("Build", Build))) },
+                    },
                 },
             };
 
