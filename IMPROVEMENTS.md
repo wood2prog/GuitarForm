@@ -150,6 +150,8 @@ Done last, once the panel covers every component, so the project stays usable th
 - [x] Group each tab's fields in titled boxes; split the New fields tab into the Body tab and new Bracing, Fretboard and Neck tabs. *(Old groups in `Sections.cs`, new ones in `NewFields.Groups`; a new group with an old group's title shares its box.)*
 - [x] Show the selected tab's messages in a box right of the tabs, with a draggable divider whose position is remembered (`PanelSplitterPosition` in the plug-in settings).
 
+- [ ] The Florentine cutaway's radius doesn't work (reported by the user while trying the panel). Find out from the user what goes wrong, then fix it in `PlateShape` (the Florentine arc, around `PlateShape.cs` line 360).
+
 ### 9a. Slider refinements
 
 `NumberSlider` (a fader: the value is on a lever dragged along a track that springs back to the middle; each step is the field's `Step`, a tenth of it with Shift; click the lever to type) is the box for every decimal field: lengths, angles and numbers. Choices and yes/no values are drop-downs; counts and the dot marker list keep plain boxes.
