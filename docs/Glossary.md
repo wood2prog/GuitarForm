@@ -105,25 +105,25 @@ The number of strings in the set.
 A short label for the string, e.g. its note (E4) or the manufacturer's part number.
 
 **String Diameter (STDI)**
-The string's outside diameter (its gauge).
+The string's outside diameter (its gauge). Required.
 
 **String Construction (STC)**
 Whether the string is plain or wound.
 
 **String Unit Weight (STUW)**
-The string's mass per unit length, as published by the manufacturer. Used to calculate string tension.
+The string's mass per unit length, as published by the manufacturer. Used to calculate string tension. Required. Stored in kg/m.
 
 **String Hex Core (STHC)**
-For a wound string, whether its core is hexagonal (true) or round (false).
+For a wound string, whether its core is hexagonal (true) or round (false). Ignored for a plain string.
 
 **String Core Material (STCM)**
-For a wound string, what its core is made of: not specified, solid nylon, nylon floss, steel or gut.
+For a wound string, what its core is made of: not specified, solid nylon, nylon floss, steel or gut. Ignored for a plain string.
 
 **String Core Modulus (STCE)**
-The core's modulus of elasticity (MOE), in GPa. Given only when the core material is not specified.
+The core's modulus of elasticity (MOE), in GPa. Given only when the core material is not specified. Required for a wound string then.
 
 **String Core Strength (STCS)**
-The core's ultimate tensile strength (UTS), in MPa. Given only when the core material is not specified.
+The core's ultimate tensile strength (UTS), in MPa. Given only when the core material is not specified. Required for a wound string then.
 
 **String Used in Saddle Compensation (STSC)**
 Whether the string's compensated position is used to fit the straight saddle line.
@@ -398,10 +398,10 @@ The width of the fret's bead along the length of the fretboard.
 The depth of the fret's tang below the bead's base, the part that goes into the fret slot.
 
 **Fretwire Tang Thickness (FWTT)**
-The thickness of the fret's tang along the length of the fretboard, not counting its barbs.
+The thickness of the fret's tang along the length of the fretboard, not counting its barbs. It must be less than the Fretwire Bead Width.
 
 **Fretwire Barb Thickness (FWBT)**
-Optional. The thickness of the fret's tang along the length of the fretboard, measured across its barbs. With the Fretwire Tang Thickness, it shows how tightly the fret grips its slot.
+Optional. The thickness of the fret's tang along the length of the fretboard, measured across its barbs. With the Fretwire Tang Thickness, it shows how tightly the fret grips its slot. When given, it must be more than the Fretwire Tang Thickness.
 
 ## Bracing
 

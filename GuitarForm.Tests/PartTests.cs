@@ -203,7 +203,14 @@ namespace GuitarForm.Tests
 
         static StringSet Strings(params double[] diameters) => new StringSet
         {
-            Strings = diameters.Select(d => new GuitarString { Diameter = new(GuitarString.Definitions.Diameter, d) }).ToArray(),
+            Strings = diameters.Select(String).ToArray(),
+        };
+
+        // A plain string with the values every string needs.
+        static GuitarString String(double diameter) => new GuitarString
+        {
+            Diameter = new(GuitarString.Definitions.Diameter, diameter),
+            UnitWeight = new(GuitarString.Definitions.UnitWeight, 0.0004),
         };
 
         [Test]
@@ -289,10 +296,64 @@ namespace GuitarForm.Tests
             var set = new StringSet
             {
                 StringCount = new(StringSet.Definitions.StringCount, 6),
-                Strings = new[] { new GuitarString(), new GuitarString() },
+                Strings = new[] { String(0.3), String(0.4) },
             };
 
             Assert.That(Messages(set), Is.EqualTo(new[] { "String Count (SC) is 6, but the set has 2 strings." }));
+        }
+
+        static Fretwire Fretwire(double beadWidth, double tangThickness, double barbThickness) => new Fretwire
+        {
+            BeadWidth = new(Model.Parts.Fretwire.Definitions.BeadWidth, beadWidth),
+            TangThickness = new(Model.Parts.Fretwire.Definitions.TangThickness, tangThickness),
+            BarbThickness = new(Model.Parts.Fretwire.Definitions.BarbThickness, barbThickness),
+        };
+
+        [Test]
+        public void Fretwire_BarbsWiderThanTangNarrowerThanBead()
+        {
+            Assert.That(Messages(Fretwire(2.4, 0.5, 0.6)), Is.Empty);
+            Assert.That(Messages(Fretwire(2.4, 0.5, 0.5)),
+                Is.EqualTo(new[] { "Fretwire Barb Thickness (FWBT) must be more than Fretwire Tang Thickness (FWTT)." }));
+            Assert.That(Messages(Fretwire(0.5, 0.5, 0.6)),
+                Is.EqualTo(new[] { "Fretwire Tang Thickness (FWTT) must be less than Fretwire Bead Width (FWBW)." }));
+        }
+
+        [Test]
+        public void String_RequiresDiameterAndUnitWeight()
+        {
+            Assert.That(Messages(new GuitarString()), Is.EqualTo(new[]
+            {
+                "String Diameter (STDI) is required.",
+                "String Unit Weight (STUW) is required.",
+            }));
+        }
+
+        [Test]
+        public void WoundStringWithoutCoreMaterial_RequiresCoreValues()
+        {
+            var wound = String(1.07) with
+            {
+                Construction = new(GuitarString.Definitions.Construction, StringConstruction.Wound),
+            };
+
+            Assert.That(Messages(wound), Is.EqualTo(new[]
+            {
+                "String Core Modulus (STCE) is required when String Core Material (STCM) is Not specified.",
+                "String Core Strength (STCS) is required when String Core Material (STCM) is Not specified.",
+            }));
+            Assert.That(Messages(wound with
+            {
+                CoreMaterial = new(GuitarString.Definitions.CoreMaterial, StringCoreMaterial.Steel),
+            }), Is.Empty);
+        }
+
+        [Test]
+        public void PlainString_IgnoresCoreSettings()
+        {
+            var plain = String(0.3) with { HexCore = new(GuitarString.Definitions.HexCore, true) };
+
+            Assert.That(Messages(plain), Is.Empty);
         }
 
         [Test]

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using GuitarForm.Model.Parameters;
 
 namespace GuitarForm.Model.Parts
@@ -43,6 +44,14 @@ namespace GuitarForm.Model.Parts
         public NumberParameter TangHeight { get; init; } = new(Definitions.TangHeight);
         public NumberParameter TangThickness { get; init; } = new(Definitions.TangThickness);
         public NumberParameter BarbThickness { get; init; } = new(Definitions.BarbThickness);
+
+        protected override IEnumerable<ModelMessage> CheckValues(LengthUnit unit, IFormatProvider culture)
+        {
+            if (BarbThickness.Value <= TangThickness.Value)
+                yield return ModelMessage.Error($"{BarbThickness.Label} must be more than {TangThickness.Label}.");
+            if (TangThickness.Value >= BeadWidth.Value)
+                yield return ModelMessage.Error($"{TangThickness.Label} must be less than {BeadWidth.Label}.");
+        }
     }
 
     // A manufacturer's string set from the library. Necks refer to one rather than owning a copy.
@@ -75,15 +84,15 @@ namespace GuitarForm.Model.Parts
     }
 
     // One string of a string set. The core settings apply to wound strings, and the modulus and strength only when
-    // the core material isn't specified.
+    // the core material isn't specified; otherwise they're ignored. The unit weight is stored in kg/m.
     public sealed record GuitarString : Part
     {
         public static class Definitions
         {
             public static readonly ParameterDefinition Description = ParameterDefinition.Text("String Description", "STD");
-            public static readonly ParameterDefinition Diameter = ParameterDefinition.Size("String Diameter", "STDI");
+            public static readonly ParameterDefinition Diameter = ParameterDefinition.Size("String Diameter", "STDI", required: true);
             public static readonly ParameterDefinition Construction = ParameterDefinition.Choice("String Construction", "STC");
-            public static readonly ParameterDefinition UnitWeight = ParameterDefinition.Number("String Unit Weight", "STUW", "lb/in", 1e-8);
+            public static readonly ParameterDefinition UnitWeight = ParameterDefinition.Number("String Unit Weight", "STUW", "kg/m", 1e-7) with { Required = true };
             public static readonly ParameterDefinition HexCore = ParameterDefinition.Flag("String Hex Core", "STHC");
             public static readonly ParameterDefinition CoreMaterial = ParameterDefinition.Choice("String Core Material", "STCM");
             public static readonly ParameterDefinition CoreModulus = ParameterDefinition.Number("String Core Modulus", "STCE", "GPa", 0.1);
@@ -100,5 +109,10 @@ namespace GuitarForm.Model.Parts
         public NumberParameter CoreModulus { get; init; } = new(Definitions.CoreModulus);
         public NumberParameter CoreStrength { get; init; } = new(Definitions.CoreStrength);
         public FlagParameter UsedInSaddleCompensation { get; init; } = new(Definitions.UsedInSaddleCompensation);
+
+        protected override IEnumerable<ModelMessage> CheckValues(LengthUnit unit, IFormatProvider culture) =>
+            Construction.Value == StringConstruction.Wound && CoreMaterial.Value == StringCoreMaterial.NotSpecified
+                ? RequiredWhen(CoreMaterial, unit, culture, CoreModulus, CoreStrength)
+                : Enumerable.Empty<ModelMessage>();
     }
 }
