@@ -201,10 +201,10 @@ At the Neck Thickness Fret, how far the bottom arc is shifted from the neck's ce
 At the Neck Thickness Fret, whether the shoulder line starts at the top of the fretboard edge (true) or at its underside (false).
 
 **Heel Shaft Radius (HLSR)**
-The radius of the curve that runs from the back of the neck shaft down into the heel, tangent to the back of the neck.
+The radius of the curve that joins the front of the heel to the back of the neck shaft, tangent to both. Its center can't be past the Neck Thickness Fret, and it can't touch the front of the heel past the heel section, between the heel section and the heel end.
 
 **Heel Shaft Offset (HLSO)**
-How far the center of the Heel Shaft Radius is moved toward the peghead, measured parallel to the neck shaft so the curve stays tangent to the back of the neck. At 0, a straight line tangent to the curve joins it to the heel end. Above 0, a tangent arc joins it instead. The center can't move past the Neck Thickness Fret.
+How the front of the heel is shaped between the heel end and the neck. At 0 it's a straight line through the front of the heel end and the front of the heel section. Above 0 it's an arc through those two points and a third: the point where that straight line meets the back of the neck, moved away from the body along the back of the neck by this offset. The Heel Shaft Radius is tangent to the front of the heel either way.
 
 **Heel End Thickness (HLET)**
 At the heel end, the distance from the heel/body joint to the front of the heel's profile.
