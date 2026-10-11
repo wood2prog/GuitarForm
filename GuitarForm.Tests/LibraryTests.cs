@@ -64,7 +64,7 @@ namespace GuitarForm.Tests
 
             Assert.That(File.Exists(_path));
             Assert.That(Pragma("application_id"), Is.EqualTo(0x4774466D));
-            Assert.That(Pragma("user_version"), Is.EqualTo(1));
+            Assert.That(Pragma("user_version"), Is.EqualTo(2));
         }
 
         [Test]

@@ -12,7 +12,7 @@ namespace GuitarForm.Data
 
     // The SQLite database that holds designs and presets. A design owns its own copy of each section; a preset is a
     // named section saved in the library, whose values are copied into a design when it's loaded.
-    public sealed class Library : IDisposable
+    public sealed partial class Library : IDisposable
     {
         public string Path { get; }
 

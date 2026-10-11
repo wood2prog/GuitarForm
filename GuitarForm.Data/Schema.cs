@@ -66,6 +66,40 @@ namespace GuitarForm.Data
                 CHECK ((design_id IS NULL) <> (preset_name IS NULL))
             );
             ",
+
+            // 1 -> 2: guitars and their parts, for the model in GuitarForm.Model.Parts.
+            //
+            // parts holds a row for each part saved on its own: a guitar; a neck, body or bracing, which belongs to a
+            // guitar (or a body, for bracing) or is a named copy with no parent; or a fretwire or string set, which is
+            // a library item that necks refer to. part_values holds each part's values by glossary abbreviation, with
+            // item the place in a list (-1 when the value isn't in one).
+            @"
+            CREATE TABLE parts (
+                id INTEGER PRIMARY KEY,
+                kind TEXT NOT NULL CHECK (kind IN ('guitar', 'neck', 'body', 'bracing', 'fretwire', 'string_set')),
+                parent_id INTEGER REFERENCES parts (id) ON DELETE CASCADE,
+                name TEXT COLLATE NOCASE CHECK (name <> ''),
+                modified TEXT NOT NULL,
+                fretwire_id INTEGER REFERENCES parts (id),
+                string_set_id INTEGER REFERENCES parts (id),
+                CHECK (CASE WHEN kind IN ('guitar', 'fretwire', 'string_set')
+                            THEN parent_id IS NULL AND name IS NOT NULL
+                            ELSE (parent_id IS NULL) = (name IS NOT NULL) END)
+            );
+
+            CREATE UNIQUE INDEX parts_names ON parts (kind, name) WHERE parent_id IS NULL;
+            CREATE INDEX parts_parents ON parts (parent_id);
+            CREATE INDEX parts_fretwires ON parts (fretwire_id);
+            CREATE INDEX parts_string_sets ON parts (string_set_id);
+
+            CREATE TABLE part_values (
+                part_id INTEGER NOT NULL REFERENCES parts (id) ON DELETE CASCADE,
+                abbreviation TEXT NOT NULL,
+                item INTEGER NOT NULL DEFAULT -1,
+                value NOT NULL,
+                PRIMARY KEY (part_id, abbreviation, item)
+            ) WITHOUT ROWID;
+            ",
         };
 
         public static int LatestVersion => Migrations.Length;
