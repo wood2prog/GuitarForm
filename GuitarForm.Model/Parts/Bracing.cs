@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using GuitarForm.Model.Parameters;
 
 namespace GuitarForm.Model.Parts
@@ -100,5 +103,28 @@ namespace GuitarForm.Model.Parts
         public NumberParameter BridgePatchThickness { get; init; } = new(Definitions.BridgePatchThickness);
         public NumberParameter BridgePatchWidthOffset { get; init; } = new(Definitions.BridgePatchWidthOffset);
         public NumberParameter BridgePatchOffset { get; init; } = new(Definitions.BridgePatchOffset);
+
+        protected override IEnumerable<ModelMessage> CheckValues(LengthUnit unit, IFormatProvider culture)
+        {
+            var messages = Enumerable.Empty<ModelMessage>();
+            if (BassFingerBraceCount.Value > 0)
+                messages = messages.Concat(RequiredWhen(BassFingerBraceCount, unit, culture,
+                    BassFingerBraceAngle, BassFingerBraceSpacing));
+            if (TrebleFingerBraceCount.Value > 0)
+                messages = messages.Concat(RequiredWhen(TrebleFingerBraceCount, unit, culture,
+                    TrebleFingerBraceAngle, TrebleFingerBraceSpacing));
+            // The width and height are shared by both sides, so they're asked for once.
+            var fingerCount = BassFingerBraceCount.Value > 0 ? BassFingerBraceCount
+                : TrebleFingerBraceCount.Value > 0 ? TrebleFingerBraceCount : null;
+            if (fingerCount != null)
+                messages = messages.Concat(RequiredWhen(fingerCount, unit, culture, FingerBraceWidth, FingerBraceHeight));
+            if (ToneBarCount.Value > 0)
+                messages = messages.Concat(RequiredWhen(ToneBarCount, unit, culture,
+                    ToneBarAngle, ToneBarSpacing, ToneBarWidth, ToneBarHeight));
+            if (SoundholeBraces.Value)
+                messages = messages.Concat(RequiredWhen(SoundholeBraces, unit, culture,
+                    SoundholeBraceOffset, SoundholeBraceWidth, SoundholeBraceHeight));
+            return messages;
+        }
     }
 }

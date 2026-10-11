@@ -285,7 +285,7 @@ The plate's greatest width across the upper bout.
 The radius of the arc that forms the upper bout's outline at its widest point.
 
 **Upper Bout Offset from Neck End (UBO)**
-The distance from the neck end to the top of the Upper Bout Primary Radius's circle, along the centerline. The upper bout's widest point is this offset plus the primary radius from the neck end. At 0, the circle's top is level with the neck end.
+The distance from the neck end to the top of the Upper Bout Primary Radius's circle, along the centerline. The upper bout's widest point is this offset plus the primary radius from the neck end. At 0, the circle's top is level with the neck end. With a heel flat, the gap from the flat's end to the primary radius's center must be at least this offset, or the shoulder arc runs wider than the upper bout.
 
 **Upper Bout Secondary Offset (UBSO)**
 How far the center of the upper bout's secondary arc is moved from the primary arc's center toward the centerline. Its radius grows by the same amount, so its outer edge stays at the Upper Bout Width. The secondary arc carries the outline from the widest point toward the waist, and a larger offset swells that transition for a fuller waist. At 0 it's the same as the primary arc. The secondary arc can't overlap the Waist Radius; when the offset isn't set, the primary arc can't.
@@ -312,7 +312,7 @@ The radius of the arc that forms the lower bout's outline at its widest point.
 How far the center of the lower bout's secondary arc is moved from the primary arc's center toward the centerline. Its radius grows by the same amount, so its outer edge stays at the Lower Bout Width. The secondary arc carries the outline from the widest point toward the waist, and a larger offset swells that transition for a fuller waist. At 0 it's the same as the primary arc. The secondary arc can't overlap the Waist Radius; when the offset isn't set, the primary arc can't.
 
 **Lower Bout Offset from Tail End (LBO)**
-The distance from the tail end to the bottom of the Lower Bout Primary Radius's circle, along the centerline. The lower bout's widest point is this offset plus the primary radius from the tail end. At 0, the circle's bottom is level with the tail end.
+The distance from the tail end to the bottom of the Lower Bout Primary Radius's circle, along the centerline. The lower bout's widest point is this offset plus the primary radius from the tail end. At 0, the circle's bottom is level with the tail end. The primary radius's center must be at least this far from the centerline, or the tail arc runs wider than the lower bout.
 
 **Cutaway Type (CTT)**
 Which cutaway the body has: none, Florentine or Venetian. A Florentine cutaway is one arc from the wall to the cutaway's end point on the upper bout, which leaves a sharp point. A Venetian cutaway rounds the point: a valley arc, a point arc and a straight line between them. With a cutaway, the Cutaway Offset from Neck, Width and Depth are required, and a Venetian cutaway also needs its Valley Radius and Point Radius.
@@ -408,7 +408,7 @@ Optional. The thickness of the fret's tang along the length of the fretboard, me
 The top plate's braces, which sit on the underside of the top plate, and the headblock and tailblock.
 
 **X Brace Offset from Neck End (XBO)**
-The distance from the neck end of the body, where the heel sits, to the point where the X brace's legs cross, along the centerline.
+The distance from the neck end of the body, where the heel sits, to the point where the X brace's legs cross, along the centerline. It must be less than the Body Length.
 
 **X Brace Angle (XBA)**
 The angle between each of the X brace's legs and the centerline. The legs are mirror images of each other.
@@ -432,13 +432,13 @@ The thickness of the graft: a flat piece glued under the top between the headblo
 The graft's width along the centerline. The graft runs across the guitar from side to side.
 
 **Graft Offset from Neck End (GRO)**
-The distance from the neck end of the body to the graft's edge nearest the neck end, along the centerline.
+The distance from the neck end of the body to the graft's edge nearest the neck end, along the centerline. The graft is optional. When it's placed, it must sit between the headblock and the upper transverse bar: this offset is at least the Headblock Depth, and this offset plus the Graft Width is no more than the Upper Transverse Bar Offset from Neck End. It must be less than the Body Length.
 
 **Graft Edge Offset (GREO)**
 How far each end of the graft stops short of the body's outline. At 0 the graft runs to the outline on both sides.
 
 **Upper Transverse Bar Offset from Neck End (UTO)**
-The distance from the neck end of the body to the upper transverse bar's edge nearest the neck end, along the centerline.
+The distance from the neck end of the body to the upper transverse bar's edge nearest the neck end, along the centerline. It must be less than the Body Length.
 
 **Upper Transverse Bar Width (UTW)**
 The upper transverse bar's width along the centerline. The bar runs across the guitar from side to side.
@@ -450,7 +450,7 @@ The upper transverse bar's height, from the top plate to the top of the bar.
 How far each end of the upper transverse bar stops short of the body's outline. At 0 the bar runs to the outline on both sides.
 
 **Bass Finger Brace Count (BFNC)**
-The number of finger braces on the bass side, off the X brace's bass side lower leg.
+The number of finger braces on the bass side, off the X brace's bass side lower leg. Above 0, the Bass Finger Brace Angle and Spacing and the Finger Brace Width and Height are required.
 
 **Bass Finger Brace Angle (BFNA)**
 The angle of the bass side finger braces from square to the X brace's bass side lower leg. At 0 they're at 90° to the leg. A positive value turns them toward the neck end, a negative value toward the tail end.
@@ -459,7 +459,7 @@ The angle of the bass side finger braces from square to the X brace's bass side 
 The distance between the bass side finger braces, measured along the X brace's bass side lower leg. The first finger brace is this distance from the crossing, and each one after it is this distance from the last.
 
 **Treble Finger Brace Count (TFNC)**
-The number of finger braces on the treble side, off the X brace's treble side lower leg.
+The number of finger braces on the treble side, off the X brace's treble side lower leg. Above 0, the Treble Finger Brace Angle and Spacing and the Finger Brace Width and Height are required.
 
 **Treble Finger Brace Angle (TFNA)**
 The angle of the treble side finger braces from square to the X brace's treble side lower leg. At 0 they're at 90° to the leg. A positive value turns them toward the neck end, a negative value toward the tail end.
@@ -477,7 +477,7 @@ The height of every finger brace, on both sides, from the top plate to the top o
 How far each finger brace stops short of the body's outline. The braces run from the X brace's lower leg toward the outline, and at 0 they reach it.
 
 **Tone Bar Count (TNC)**
-The number of tone bars, on the treble side only, off the X brace's treble side lower leg.
+The number of tone bars, on the treble side only, off the X brace's treble side lower leg. Above 0, the Tone Bar Angle, Spacing, Width and Height are required.
 
 **Tone Bar Spacing (TNS)**
 The distance between the tone bars, measured along the X brace's treble side lower leg. The first tone bar is this distance from the crossing, and each one after it is this distance from the last.
@@ -495,7 +495,7 @@ The height of every tone bar, from the top plate to the top of the bar.
 How far each tone bar stops short of the body's outline. The bars run from the X brace's lower leg toward the outline, and at 0 they reach it.
 
 **Soundhole Braces (SHB)**
-Whether the soundhole has its three braces: a bottom brace straight across the guitar on the tail end side of the hole, and a bass and a treble brace, each 120° around the hole from it. Their lengths follow from where they sit.
+Whether the soundhole has its three braces: a bottom brace straight across the guitar on the tail end side of the hole, and a bass and a treble brace, each 120° around the hole from it. Their lengths follow from where they sit. They need a soundhole, and require the Soundhole Brace Offset, Width and Height.
 
 **Soundhole Brace Offset (SHBO)**
 The distance from the edge of the soundhole to each soundhole brace.

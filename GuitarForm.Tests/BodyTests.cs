@@ -83,7 +83,12 @@ namespace GuitarForm.Tests
         {
             // The upper bout centers are at x = ±40, so the heel flat can be 80 wide.
             Assert.That(QuickTest.MaximumHeelFlatWidth, Is.EqualTo(80));
-            Assert.That(Messages(QuickTest with { HeelFlatWidth = new(Body.Definitions.HeelFlatWidth, 80) }), Is.Empty);
+            // With no upper bout offset, the heel flat can run right to the centers.
+            Assert.That(Messages(QuickTest with
+            {
+                HeelFlatWidth = new(Body.Definitions.HeelFlatWidth, 80),
+                UpperBoutOffsetFromNeckEnd = new(Body.Definitions.UpperBoutOffsetFromNeckEnd, 0),
+            }), Is.Empty);
             Assert.That(Messages(QuickTest with { HeelFlatWidth = new(Body.Definitions.HeelFlatWidth, 90) }),
                 Is.EqualTo(new[]
                 {
@@ -105,6 +110,147 @@ namespace GuitarForm.Tests
             Assert.That(Messages(body), Does.Contain(
                 "Upper Bout Primary Radius (UBPR) is more than half the Upper Bout Width (UBW), so its center is past " +
                 "the centerline and no heel flat fits."));
+        }
+
+        [Test]
+        public void ShoulderArcWiderThanUpperBout_IsError()
+        {
+            // The heel flat ends at x = 28 and the upper bout center is at x = 40: a gap of 12.
+            Assert.That(Messages(QuickTest with { UpperBoutOffsetFromNeckEnd = new(Body.Definitions.UpperBoutOffsetFromNeckEnd, 12) }),
+                Is.Empty);
+            Assert.That(Messages(QuickTest with { UpperBoutOffsetFromNeckEnd = new(Body.Definitions.UpperBoutOffsetFromNeckEnd, 13) }),
+                Does.Contain(
+                    "The shoulder arc would run wider than the Upper Bout Width (UBW): the gap from the heel flat's end " +
+                    "to the center of the Upper Bout Primary Radius (UBPR) (12 mm) must be at least the Upper Bout " +
+                    "Offset from Neck End (UBO)."));
+        }
+
+        [Test]
+        public void TailArcWiderThanLowerBout_IsError()
+        {
+            // The lower bout center is at x = 70.
+            var body = QuickTest with
+            {
+                LowerBoutOffsetFromTailEnd = new(Body.Definitions.LowerBoutOffsetFromTailEnd, 71),
+                WaistOffsetFromTailEnd = new(Body.Definitions.WaistOffsetFromTailEnd, 360),
+            };
+
+            Assert.That(Messages(body), Does.Contain(
+                "The tail arc would run wider than the Lower Bout Width (LBW): the center of the Lower Bout Primary " +
+                "Radius (LBPR) (70 mm from the centerline) must be at least the Lower Bout Offset from Tail End (LBO) " +
+                "from the centerline."));
+        }
+
+        static Body WithBracing(Bracing bracing, double? headblockDepth = null) => QuickTest with
+        {
+            HeadblockDepth = new(Body.Definitions.HeadblockDepth, headblockDepth),
+            TopPlate = new TopPlate { Bracing = bracing },
+        };
+
+        [Test]
+        public void BracesPastNeckEnd_AreErrors()
+        {
+            var bracing = new Bracing
+            {
+                XBraceOffsetFromNeckEnd = new(Bracing.Definitions.XBraceOffsetFromNeckEnd, 600),
+                UpperTransverseBarOffsetFromNeckEnd = new(Bracing.Definitions.UpperTransverseBarOffsetFromNeckEnd, 650),
+            };
+
+            Assert.That(Messages(WithBracing(bracing)), Is.EqualTo(new[]
+            {
+                "X Brace Offset from Neck End (XBO) must be less than Body Length (BDL).",
+                "Upper Transverse Bar Offset from Neck End (UTO) must be less than Body Length (BDL).",
+            }));
+        }
+
+        static Bracing Graft(double offset, double width, double upperTransverseBar) => new Bracing
+        {
+            GraftOffsetFromNeckEnd = new(Bracing.Definitions.GraftOffsetFromNeckEnd, offset),
+            GraftWidth = new(Bracing.Definitions.GraftWidth, width),
+            UpperTransverseBarOffsetFromNeckEnd = new(Bracing.Definitions.UpperTransverseBarOffsetFromNeckEnd, upperTransverseBar),
+        };
+
+        [Test]
+        public void GraftBetweenHeadblockAndUpperTransverseBar()
+        {
+            Assert.That(Messages(WithBracing(Graft(75, 50, 125), headblockDepth: 75)), Is.Empty);
+            Assert.That(Messages(WithBracing(Graft(70, 50, 125), headblockDepth: 75)), Is.EqualTo(new[]
+            {
+                "The graft must sit past the headblock: Graft Offset from Neck End (GRO) must be at least Headblock " +
+                "Depth (HBD).",
+            }));
+            Assert.That(Messages(WithBracing(Graft(80, 50, 125), headblockDepth: 75)), Is.EqualTo(new[]
+            {
+                "The graft must end before the upper transverse bar: Graft Offset from Neck End (GRO) plus Graft " +
+                "Width (GRW) can't be more than Upper Transverse Bar Offset from Neck End (UTO).",
+            }));
+        }
+
+        [Test]
+        public void NoGraft_IsValid()
+        {
+            var bracing = new Bracing
+            {
+                UpperTransverseBarOffsetFromNeckEnd = new(Bracing.Definitions.UpperTransverseBarOffsetFromNeckEnd, 125),
+            };
+
+            Assert.That(Messages(WithBracing(bracing, headblockDepth: 75)), Is.Empty);
+        }
+
+        [Test]
+        public void SoundholeBracesWithoutSoundhole_IsError()
+        {
+            var plate = new TopPlate
+            {
+                Bracing = new Bracing
+                {
+                    SoundholeBraces = new(Bracing.Definitions.SoundholeBraces, true),
+                    SoundholeBraceOffset = new(Bracing.Definitions.SoundholeBraceOffset, 5),
+                    SoundholeBraceWidth = new(Bracing.Definitions.SoundholeBraceWidth, 6),
+                    SoundholeBraceHeight = new(Bracing.Definitions.SoundholeBraceHeight, 8),
+                },
+            };
+
+            Assert.That(Messages(plate), Is.EqualTo(new[] { "Soundhole Braces (SHB) need a soundhole, but Soundhole (SH) is No." }));
+        }
+
+        [Test]
+        public void SoundholeBraces_RequireTheirValues()
+        {
+            var bracing = new Bracing { SoundholeBraces = new(Bracing.Definitions.SoundholeBraces, true) };
+
+            Assert.That(Messages(bracing), Is.EqualTo(new[]
+            {
+                "Soundhole Brace Offset (SHBO) is required when Soundhole Braces (SHB) is Yes.",
+                "Soundhole Brace Width (SHBW) is required when Soundhole Braces (SHB) is Yes.",
+                "Soundhole Brace Height (SHBH) is required when Soundhole Braces (SHB) is Yes.",
+            }));
+        }
+
+        [Test]
+        public void BraceCounts_RequireTheirValues()
+        {
+            var bracing = new Bracing
+            {
+                BassFingerBraceCount = new(Bracing.Definitions.BassFingerBraceCount, 2),
+                TrebleFingerBraceCount = new(Bracing.Definitions.TrebleFingerBraceCount, 3),
+                ToneBarCount = new(Bracing.Definitions.ToneBarCount, 1),
+            };
+
+            Assert.That(Messages(bracing), Is.EqualTo(new[]
+            {
+                "Bass Finger Brace Angle (BFNA) is required when Bass Finger Brace Count (BFNC) is 2.",
+                "Bass Finger Brace Spacing (BFNS) is required when Bass Finger Brace Count (BFNC) is 2.",
+                "Treble Finger Brace Angle (TFNA) is required when Treble Finger Brace Count (TFNC) is 3.",
+                "Treble Finger Brace Spacing (TFNS) is required when Treble Finger Brace Count (TFNC) is 3.",
+                "Finger Brace Width (FNW) is required when Bass Finger Brace Count (BFNC) is 2.",
+                "Finger Brace Height (FNH) is required when Bass Finger Brace Count (BFNC) is 2.",
+                "Tone Bar Angle (TNA) is required when Tone Bar Count (TNC) is 1.",
+                "Tone Bar Spacing (TNS) is required when Tone Bar Count (TNC) is 1.",
+                "Tone Bar Width (TNW) is required when Tone Bar Count (TNC) is 1.",
+                "Tone Bar Height (TNH) is required when Tone Bar Count (TNC) is 1.",
+            }));
+            Assert.That(Messages(new Bracing { ToneBarCount = new(Bracing.Definitions.ToneBarCount, 0) }), Is.Empty);
         }
 
         [Test]

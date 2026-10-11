@@ -148,6 +148,26 @@ namespace GuitarForm.Model.Parts
                     : $"{HeelFlatWidth.Label} can't reach past the centers of the {UpperBoutPrimaryRadius.Label}: " +
                       $"it can be at most {Format(MaximumHeelFlatWidth.Value)}.");
 
+            // Shoulder arc: from the heel flat's end to the upper bout primary radius, when the radius sits below the
+            // neck end. It meets the radius above its center only while the gap to the center is at least the offset;
+            // otherwise it runs wider than the upper bout. At no offset this is the heel flat check above.
+            if (HeelFlatWidth.Value <= MaximumHeelFlatWidth && UpperBoutOffsetFromNeckEnd.Value is double ubOffset &&
+                ubOffset > 0 && (MaximumHeelFlatWidth - HeelFlatWidth.Value) / 2 is double shoulderGap &&
+                shoulderGap < ubOffset)
+                yield return ModelMessage.Error(
+                    $"The shoulder arc would run wider than the {UpperBoutWidth.Label}: the gap from the heel flat's " +
+                    $"end to the center of the {UpperBoutPrimaryRadius.Label} ({Format(shoulderGap)}) must be at " +
+                    $"least the {UpperBoutOffsetFromNeckEnd.Label}.");
+
+            // Tail arc: through the tail end to the lower bout primary radius, when the radius sits above the tail end.
+            // It meets the radius below its center only while the center is at least the offset from the centerline.
+            if (LowerBoutOffsetFromTailEnd.Value is double lbOffset && lbOffset > 0 &&
+                LowerBoutWidth.Value / 2 - LowerBoutPrimaryRadius.Value is double tailCenter && tailCenter < lbOffset)
+                yield return ModelMessage.Error(
+                    $"The tail arc would run wider than the {LowerBoutWidth.Label}: the center of the " +
+                    $"{LowerBoutPrimaryRadius.Label} ({Format(tailCenter)} from the centerline) must be at least the " +
+                    $"{LowerBoutOffsetFromTailEnd.Label} from the centerline.");
+
             if (UpperBoutWaistOverlap > 0)
                 yield return ModelMessage.Error(
                     $"The upper bout's secondary radius overlaps the {WaistRadius.Label} by {Format(UpperBoutWaistOverlap.Value)}.");
@@ -166,6 +186,25 @@ namespace GuitarForm.Model.Parts
             if (HeadblockDepth.Value + TailblockDepth.Value >= Length.Value)
                 yield return ModelMessage.Error(
                     $"{HeadblockDepth.Label} and {TailblockDepth.Label} together must be less than {Length.Label}.");
+
+            var bracing = TopPlate.Bracing;
+            foreach (var offset in new[]
+                     {
+                         bracing.XBraceOffsetFromNeckEnd, bracing.GraftOffsetFromNeckEnd,
+                         bracing.UpperTransverseBarOffsetFromNeckEnd,
+                     })
+                if (offset.Value >= Length.Value)
+                    yield return ModelMessage.Error($"{offset.Label} must be less than {Length.Label}.");
+
+            // The graft is optional. When it's placed, it sits between the headblock and the upper transverse bar.
+            var graft = bracing.GraftOffsetFromNeckEnd;
+            if (graft.Value < HeadblockDepth.Value)
+                yield return ModelMessage.Error(
+                    $"The graft must sit past the headblock: {graft.Label} must be at least {HeadblockDepth.Label}.");
+            if (graft.Value + bracing.GraftWidth.Value > bracing.UpperTransverseBarOffsetFromNeckEnd.Value)
+                yield return ModelMessage.Error(
+                    $"The graft must end before the upper transverse bar: {graft.Label} plus {bracing.GraftWidth.Label} " +
+                    $"can't be more than {bracing.UpperTransverseBarOffsetFromNeckEnd.Label}.");
 
             // The soundhole must sit at least a diameter from the neck end. Without a diameter, it must be on the body.
             var soundhole = TopPlate.SoundholeOffsetFromTailEnd;

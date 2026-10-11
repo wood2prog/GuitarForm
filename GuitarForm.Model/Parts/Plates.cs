@@ -49,6 +49,9 @@ namespace GuitarForm.Model.Parts
             if (Soundhole.Value)
                 messages = messages.Concat(RequiredWhen(Soundhole, unit, culture,
                     SoundholeDiameter, SoundholeOffsetFromTailEnd));
+            else if (Bracing.SoundholeBraces.Value)
+                messages = messages.Append(ModelMessage.Error(
+                    $"{Bracing.SoundholeBraces.Label} need a soundhole, but {Soundhole.Label} is {Soundhole.Format(unit)}."));
             return messages;
         }
 
