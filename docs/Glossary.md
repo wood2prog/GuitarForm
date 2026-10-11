@@ -288,19 +288,19 @@ The radius of the arc that forms the upper bout's outline at its widest point.
 The distance from the neck end to the top of the Upper Bout Primary Radius's circle, along the centerline. The upper bout's widest point is this offset plus the primary radius from the neck end. At 0, the circle's top is level with the neck end.
 
 **Upper Bout Secondary Offset (UBSO)**
-How far the center of the upper bout's secondary arc is moved from the primary arc's center toward the centerline. Its radius grows by the same amount, so its outer edge stays at the Upper Bout Width. The secondary arc carries the outline from the widest point toward the waist, and a larger offset swells that transition for a fuller waist. At 0 it's the same as the primary arc.
+How far the center of the upper bout's secondary arc is moved from the primary arc's center toward the centerline. Its radius grows by the same amount, so its outer edge stays at the Upper Bout Width. The secondary arc carries the outline from the widest point toward the waist, and a larger offset swells that transition for a fuller waist. At 0 it's the same as the primary arc. The secondary arc can't overlap the Waist Radius; when the offset isn't set, the primary arc can't.
 
 **Heel Flat Width (HFW)**
-The width of the straight part of the outline at the neck end, where the neck's heel sits.
+The width of the straight part of the outline at the neck end, where the neck's heel sits. Its ends can't reach past the centers of the Upper Bout Primary Radius, which a radius tangent to both joins them to: it can be at most the Upper Bout Width minus twice the primary radius.
 
 **Waist Width (WSW)**
-The plate's narrowest width across the waist.
+The plate's narrowest width across the waist. It can't be more than the Upper Bout Width or the Lower Bout Width.
 
 **Waist Radius (WSR)**
 The radius of the arc that forms the waist's outline at its narrowest point.
 
 **Waist Offset from Tail End (WSO)**
-The distance from the tail end to the waist's narrowest point, along the centerline.
+The distance from the tail end to the waist's narrowest point, along the centerline. The waist must be between the bouts' widest points: farther from the tail end than the lower bout's, and closer than the upper bout's.
 
 **Lower Bout Width (LBW)**
 The plate's greatest width across the lower bout.
@@ -309,13 +309,13 @@ The plate's greatest width across the lower bout.
 The radius of the arc that forms the lower bout's outline at its widest point.
 
 **Lower Bout Secondary Offset (LBSO)**
-How far the center of the lower bout's secondary arc is moved from the primary arc's center toward the centerline. Its radius grows by the same amount, so its outer edge stays at the Lower Bout Width. The secondary arc carries the outline from the widest point toward the waist, and a larger offset swells that transition for a fuller waist. At 0 it's the same as the primary arc.
+How far the center of the lower bout's secondary arc is moved from the primary arc's center toward the centerline. Its radius grows by the same amount, so its outer edge stays at the Lower Bout Width. The secondary arc carries the outline from the widest point toward the waist, and a larger offset swells that transition for a fuller waist. At 0 it's the same as the primary arc. The secondary arc can't overlap the Waist Radius; when the offset isn't set, the primary arc can't.
 
 **Lower Bout Offset from Tail End (LBO)**
 The distance from the tail end to the bottom of the Lower Bout Primary Radius's circle, along the centerline. The lower bout's widest point is this offset plus the primary radius from the tail end. At 0, the circle's bottom is level with the tail end.
 
 **Cutaway Type (CTT)**
-Which cutaway the body has: none, Florentine or Venetian. A Florentine cutaway is one arc from the wall to the cutaway's end point on the upper bout, which leaves a sharp point. A Venetian cutaway rounds the point: a valley arc, a point arc and a straight line between them.
+Which cutaway the body has: none, Florentine or Venetian. A Florentine cutaway is one arc from the wall to the cutaway's end point on the upper bout, which leaves a sharp point. A Venetian cutaway rounds the point: a valley arc, a point arc and a straight line between them. With a cutaway, the Cutaway Offset from Neck, Width and Depth are required, and a Venetian cutaway also needs its Valley Radius and Point Radius.
 
 **Cutaway Offset from Neck (CTO)**
 The distance from the fretboard's treble edge where the neck meets the body, square to the centerline, out to the offset line: a line parallel to the centerline that the cutaway's wall runs down. At 0 the wall carries straight on from the fretboard's edge. Above 0 the neck end leaves a step of this width between the fretboard and the cutaway. It can't be negative. The Heel Flat Width doesn't affect it. Florentine and Venetian cutaways both use it.
@@ -342,7 +342,7 @@ The height of the bridge's top above the top plate, measured at the saddle on th
 The height of the saddle's top above the bridge's top, measured on the centerline.
 
 **Top Arching Type (TPAT)**
-The top plate's shape: flat, spherical or custom.
+The top plate's shape: flat, spherical or custom. A spherical top needs the Top Spherical Radius, and a custom top the Top Arching Height at Bridge and Offset from Edge.
 
 **Top Spherical Radius (TPSR)**
 For a spherical top: the radius of the sphere the top plate's surface lies on.
@@ -354,7 +354,7 @@ For a custom top: how far the top plate rises at the bridge, above the plane thr
 For a custom top: the distance from the edge of the soundhole, toward the tail, to where the arch starts. A custom arch is only in the lower bout: it rises from this line to the Top Arching Height at Bridge, then slopes down to the outline's edges. Between the soundhole and this line, the top stays flat.
 
 **Soundhole (SH)**
-Whether the top plate has a soundhole.
+Whether the top plate has a soundhole. With a soundhole, the Soundhole Diameter and Soundhole Offset from Tail End are required.
 
 **Soundhole Diameter (SHD)**
 The soundhole's diameter.
@@ -363,13 +363,13 @@ The soundhole's diameter.
 The distance from the centerline to the soundhole's center, square to the centerline: positive toward the treble side, negative toward the bass side. At 0 the soundhole is centered.
 
 **Soundhole Offset from Tail End (SHOT)**
-The distance from the tail end of the outline to the soundhole's center, along the centerline.
+The distance from the tail end of the outline to the soundhole's center, along the centerline. It must be less than the Body Length minus the Soundhole Diameter.
 
 **Back Plate Thickness (BKT)**
 The back plate's thickness, the same everywhere.
 
 **Back Arching Type (BKAT)**
-The back plate's shape: flat, spherical or custom.
+The back plate's shape: flat, spherical or custom. A spherical back needs the Back Spherical Radius, and a custom back the Back Arching Height at Center and Offset from Edge.
 
 **Back Spherical Radius (BKSR)**
 For a spherical back: the radius of the sphere the back plate's surface lies on.
@@ -525,7 +525,7 @@ The headblock's size along the centerline, from the neck end into the body.
 The tailblock's width across the guitar, square to the centerline. Its height is the Body Depth at Tail End.
 
 **Tailblock Depth (TBD)**
-The tailblock's size along the centerline, from the tail end into the body.
+The tailblock's size along the centerline, from the tail end into the body. The Headblock Depth and Tailblock Depth together must be less than the Body Length.
 
 ## Neck Joint
 

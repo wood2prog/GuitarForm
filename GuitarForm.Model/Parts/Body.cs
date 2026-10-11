@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using GuitarForm.Model.Parameters;
 
 namespace GuitarForm.Model.Parts
@@ -84,5 +87,94 @@ namespace GuitarForm.Model.Parts
 
         public TopPlate TopPlate { get; init; } = new();
         public BackPlate BackPlate { get; init; } = new();
+
+        // Distances from the tail end, along the centerline, to the widest points of the bouts. Null when a value
+        // they need isn't set.
+        public double? LowerBoutWidestOffset => LowerBoutOffsetFromTailEnd.Value + LowerBoutPrimaryRadius.Value;
+        public double? UpperBoutWidestOffset =>
+            Length.Value - UpperBoutOffsetFromNeckEnd.Value - UpperBoutPrimaryRadius.Value;
+
+        // The widest the heel flat can be: its ends can't pass the centers of the upper bout primary radius, since a
+        // radius tangent to both joins them.
+        public double? MaximumHeelFlatWidth => UpperBoutWidth.Value - 2 * UpperBoutPrimaryRadius.Value;
+
+        // How far a bout's secondary radius overlaps the waist radius on the same side; zero or less when they don't
+        // overlap. The bouts and the waist meet by a line tangent to both, so they can't overlap. A secondary offset
+        // that isn't set counts as 0, where the secondary radius is the primary. Null when a value it needs isn't set.
+        public double? UpperBoutWaistOverlap =>
+            WaistOverlap(UpperBoutWidth, UpperBoutPrimaryRadius, UpperBoutSecondaryOffset, UpperBoutWidestOffset);
+
+        public double? LowerBoutWaistOverlap =>
+            WaistOverlap(LowerBoutWidth, LowerBoutPrimaryRadius, LowerBoutSecondaryOffset, LowerBoutWidestOffset);
+
+        double? WaistOverlap(NumberParameter width, NumberParameter primaryRadius, NumberParameter secondaryOffset,
+            double? centerOffset)
+        {
+            if (!(width.Value is double boutWidth && primaryRadius.Value is double primary &&
+                  centerOffset is double boutY && WaistWidth.Value is double waistWidth &&
+                  WaistRadius.Value is double waistRadius && WaistOffsetFromTailEnd.Value is double waistY))
+                return null;
+            double offset = secondaryOffset.Value ?? 0;
+            double boutX = boutWidth / 2 - primary - offset;
+            double waistX = waistWidth / 2 + waistRadius;
+            double distance = Math.Sqrt((waistX - boutX) * (waistX - boutX) + (waistY - boutY) * (waistY - boutY));
+            return primary + offset + waistRadius - distance;
+        }
+
+        protected override IEnumerable<ModelMessage> CheckValues(LengthUnit unit, IFormatProvider culture)
+        {
+            string Format(double millimeters) => (Length with { Value = millimeters }).FormatWithUnit(unit, culture);
+
+            foreach (var bout in new[] { UpperBoutWidth, LowerBoutWidth })
+                if (WaistWidth.Value > bout.Value)
+                    yield return ModelMessage.Error($"{WaistWidth.Label} can't be more than {bout.Label}.");
+
+            if (WaistOffsetFromTailEnd.Value is double waist)
+            {
+                if (LowerBoutWidestOffset is double lower && lower >= waist)
+                    yield return ModelMessage.Error(
+                        $"The lower bout's widest point ({Format(lower)} from the tail end) must be closer to the tail " +
+                        $"end than the waist ({WaistOffsetFromTailEnd.Label}).");
+                if (UpperBoutWidestOffset is double upper && upper <= waist)
+                    yield return ModelMessage.Error(
+                        $"The upper bout's widest point ({Format(upper)} from the tail end) must be farther from the " +
+                        $"tail end than the waist ({WaistOffsetFromTailEnd.Label}).");
+            }
+
+            if (HeelFlatWidth.Value > MaximumHeelFlatWidth)
+                yield return ModelMessage.Error(MaximumHeelFlatWidth < 0
+                    ? $"{UpperBoutPrimaryRadius.Label} is more than half the {UpperBoutWidth.Label}, so its center " +
+                      $"is past the centerline and no heel flat fits."
+                    : $"{HeelFlatWidth.Label} can't reach past the centers of the {UpperBoutPrimaryRadius.Label}: " +
+                      $"it can be at most {Format(MaximumHeelFlatWidth.Value)}.");
+
+            if (UpperBoutWaistOverlap > 0)
+                yield return ModelMessage.Error(
+                    $"The upper bout's secondary radius overlaps the {WaistRadius.Label} by {Format(UpperBoutWaistOverlap.Value)}.");
+            if (LowerBoutWaistOverlap > 0)
+                yield return ModelMessage.Error(
+                    $"The lower bout's secondary radius overlaps the {WaistRadius.Label} by {Format(LowerBoutWaistOverlap.Value)}.");
+
+            if (CutawayType.Value != Parts.CutawayType.None)
+                foreach (var message in RequiredWhen(CutawayType, unit, culture,
+                             CutawayOffsetFromNeck, CutawayWidth, CutawayDepth))
+                    yield return message;
+            if (CutawayType.Value == Parts.CutawayType.Venetian)
+                foreach (var message in RequiredWhen(CutawayType, unit, culture, CutawayValleyRadius, CutawayPointRadius))
+                    yield return message;
+
+            if (HeadblockDepth.Value + TailblockDepth.Value >= Length.Value)
+                yield return ModelMessage.Error(
+                    $"{HeadblockDepth.Label} and {TailblockDepth.Label} together must be less than {Length.Label}.");
+
+            // The soundhole must sit at least a diameter from the neck end. Without a diameter, it must be on the body.
+            var soundhole = TopPlate.SoundholeOffsetFromTailEnd;
+            double? soundholeLimit = Length.Value - (TopPlate.SoundholeDiameter.Value ?? 0);
+            if (TopPlate.Soundhole.Value && soundhole.Value >= soundholeLimit)
+                yield return ModelMessage.Error(TopPlate.SoundholeDiameter.HasValue
+                    ? $"{soundhole.Label} must be less than {Length.Label} minus {TopPlate.SoundholeDiameter.Label} " +
+                      $"({Format(soundholeLimit.Value)})."
+                    : $"{soundhole.Label} must be less than {Length.Label}.");
+        }
     }
 }

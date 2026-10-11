@@ -75,9 +75,9 @@ namespace GuitarForm.Model.Parts
                     $"{BassStringSetback.Label} and {TrebleStringSetback.Label} together must be less than {NutWidth.Label}.");
             if (StringsPerCourse.Value == 2)
             {
-                foreach (var spacing in new[] { CourseStringSpacingAtNut, CourseStringSpacingAtBridge })
-                    if (!spacing.HasValue)
-                        yield return ModelMessage.Error($"{spacing.Label} is required when {StringsPerCourse.Label} is 2.");
+                foreach (var message in RequiredWhen(StringsPerCourse, unit, culture,
+                             CourseStringSpacingAtNut, CourseStringSpacingAtBridge))
+                    yield return message;
             }
 
             foreach (var message in ValidateList(Markers, "Marker", unit, culture))

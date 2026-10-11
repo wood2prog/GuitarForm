@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using GuitarForm.Model.Parameters;
 
 namespace GuitarForm.Model.Parts
@@ -38,6 +41,27 @@ namespace GuitarForm.Model.Parts
         public NumberParameter SoundholeOffsetFromTailEnd { get; init; } = new(Definitions.SoundholeOffsetFromTailEnd);
 
         public Bracing Bracing { get; init; } = new();
+
+        protected override IEnumerable<ModelMessage> CheckValues(LengthUnit unit, IFormatProvider culture)
+        {
+            var messages = ArchingRequires(ArchingType, SphericalRadius, ArchingHeightAtBridge, ArchingOffsetFromEdge,
+                unit, culture);
+            if (Soundhole.Value)
+                messages = messages.Concat(RequiredWhen(Soundhole, unit, culture,
+                    SoundholeDiameter, SoundholeOffsetFromTailEnd));
+            return messages;
+        }
+
+        // The values a plate's arching type needs: the spherical radius for a spherical plate, and the height and
+        // offset from the edge for a custom one.
+        internal static IEnumerable<ModelMessage> ArchingRequires(ChoiceParameter<ArchingType> type,
+            NumberParameter sphericalRadius, NumberParameter height, NumberParameter offsetFromEdge, LengthUnit unit,
+            IFormatProvider culture) => type.Value switch
+            {
+                Parts.ArchingType.Spherical => RequiredWhen(type, unit, culture, sphericalRadius),
+                Parts.ArchingType.Custom => RequiredWhen(type, unit, culture, height, offsetFromEdge),
+                _ => Enumerable.Empty<ModelMessage>(),
+            };
     }
 
     // The back plate: its thickness and arching.
@@ -57,5 +81,9 @@ namespace GuitarForm.Model.Parts
         public NumberParameter SphericalRadius { get; init; } = new(Definitions.SphericalRadius);
         public NumberParameter ArchingHeightAtCenter { get; init; } = new(Definitions.ArchingHeightAtCenter);
         public NumberParameter ArchingOffsetFromEdge { get; init; } = new(Definitions.ArchingOffsetFromEdge);
+
+        protected override IEnumerable<ModelMessage> CheckValues(LengthUnit unit, IFormatProvider culture) =>
+            TopPlate.ArchingRequires(ArchingType, SphericalRadius, ArchingHeightAtCenter, ArchingOffsetFromEdge, unit,
+                culture);
     }
 }

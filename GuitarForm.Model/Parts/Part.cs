@@ -44,6 +44,13 @@ namespace GuitarForm.Model.Parts
         protected virtual IEnumerable<ModelMessage> CheckValues(LengthUnit unit, IFormatProvider culture) =>
             Enumerable.Empty<ModelMessage>();
 
+        // An error for each of the parameters that isn't set, saying the condition's value requires it, e.g. "Soundhole
+        // Diameter (SHD) is required when Soundhole (SH) is Yes."
+        protected static IEnumerable<ModelMessage> RequiredWhen(Parameter condition, LengthUnit unit,
+            IFormatProvider culture, params Parameter[] parameters) =>
+            parameters.Where(parameter => !parameter.HasValue).Select(parameter => ModelMessage.Error(
+                $"{parameter.Label} is required when {condition.Label} is {condition.FormatWithUnit(unit, culture)}."));
+
         // Checks each part in a list, with its place in the list in front of its messages, e.g. "String 3: ...".
         protected static IEnumerable<ModelMessage> ValidateList(IEnumerable<Part> parts, string itemName,
             LengthUnit unit, IFormatProvider culture) =>
