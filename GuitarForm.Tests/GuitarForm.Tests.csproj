@@ -27,6 +27,7 @@
     <ProjectReference Include="..\GuitarForm.Model\GuitarForm.Model.csproj" />
     <ProjectReference Include="..\GuitarForm.Geometry\GuitarForm.Geometry.csproj" />
     <ProjectReference Include="..\GuitarForm.Data\GuitarForm.Data.csproj" />
+    <ProjectReference Include="..\GuitarForm.Shapes\GuitarForm.Shapes.csproj" />
   </ItemGroup>
 
 </Project>
