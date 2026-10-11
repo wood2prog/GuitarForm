@@ -16,6 +16,8 @@ namespace GuitarForm.Model.Parts
     // pattern can be reused in another guitar.
     public sealed record Bracing : Part
     {
+        public override bool IsSavedSeparately => true;
+
         public static class Definitions
         {
             public static readonly ParameterDefinition XBraceOffsetFromNeckEnd = ParameterDefinition.Distance("X Brace Offset from Neck End", "XBO");

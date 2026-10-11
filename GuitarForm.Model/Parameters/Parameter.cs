@@ -29,6 +29,13 @@ namespace GuitarForm.Model.Parameters
             return symbol == "°" ? text + symbol : text + " " + symbol;
         }
 
+        // The value as it's saved: a double, int, bool, string, or a Choice's option name. Null when not set.
+        public abstract object StoredValue { get; }
+
+        // A copy with a saved value: one of the types StoredValue gives, or a long for a whole number (as SQLite
+        // reads them). Null clears the value. Throws FormatException if the value can't be this parameter's.
+        public abstract Parameter WithStoredValue(object value);
+
         // Reads text typed into a field. Empty text clears the value. On failure, error says why.
         public abstract bool TryParse(string text, LengthUnit unit, IFormatProvider culture, out Parameter result,
             out ModelMessage error);

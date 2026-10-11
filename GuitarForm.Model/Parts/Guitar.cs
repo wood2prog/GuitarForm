@@ -8,6 +8,8 @@ namespace GuitarForm.Model.Parts
     // sub-assemblies, each saved on its own so other guitars can use them.
     public sealed record Guitar : Part
     {
+        public override bool IsSavedSeparately => true;
+
         public static class Definitions
         {
             public static readonly ParameterDefinition Name = ParameterDefinition.Text("Instrument Name", "IN", required: true);

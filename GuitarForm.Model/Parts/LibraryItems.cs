@@ -23,6 +23,8 @@ namespace GuitarForm.Model.Parts
     // A fretwire from the library. Necks refer to one rather than owning a copy, since a builder doesn't change it.
     public sealed record Fretwire : Part
     {
+        public override bool IsSavedSeparately => true;
+
         public static class Definitions
         {
             public static readonly ParameterDefinition Manufacturer = ParameterDefinition.Text("Fretwire Manufacturer", "FWM");
@@ -57,6 +59,8 @@ namespace GuitarForm.Model.Parts
     // A manufacturer's string set from the library. Necks refer to one rather than owning a copy.
     public sealed record StringSet : Part
     {
+        public override bool IsSavedSeparately => true;
+
         public static class Definitions
         {
             public static readonly ParameterDefinition Manufacturer = ParameterDefinition.Text("String Set Manufacturer", "SSM");

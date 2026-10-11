@@ -9,6 +9,11 @@ namespace GuitarForm.Model.Parameters
 
         public override string Format(LengthUnit unit, IFormatProvider culture = null) => Value ? "Yes" : "No";
 
+        public override object StoredValue => Value;
+
+        public override Parameter WithStoredValue(object value) =>
+            this with { Value = value != null && Convert.ToBoolean(value, System.Globalization.CultureInfo.InvariantCulture) };
+
         public override bool TryParse(string text, LengthUnit unit, IFormatProvider culture, out Parameter result,
             out ModelMessage error)
         {

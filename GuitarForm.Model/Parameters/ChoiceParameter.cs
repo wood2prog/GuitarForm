@@ -15,6 +15,18 @@ namespace GuitarForm.Model.Parameters
 
         public override string Format(LengthUnit unit, IFormatProvider culture = null) => OptionText(Value);
 
+        // Saved by option name, so reordering the options doesn't change saved values.
+        public override object StoredValue => Value.ToString();
+
+        public override Parameter WithStoredValue(object value)
+        {
+            if (value == null)
+                return this with { Value = default };
+            if (value is string name && Enum.TryParse(name, out T option) && Enum.IsDefined(option))
+                return this with { Value = option };
+            throw new FormatException($"{Label}: \"{value}\" isn't one of its options.");
+        }
+
         public override bool TryParse(string text, LengthUnit unit, IFormatProvider culture, out Parameter result,
             out ModelMessage error)
         {

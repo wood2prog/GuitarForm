@@ -16,6 +16,8 @@ namespace GuitarForm.Model.Parts
     // blocks. It holds the top and back plates.
     public sealed record Body : Part
     {
+        public override bool IsSavedSeparately => true;
+
         public static class Definitions
         {
             public static readonly ParameterDefinition Length = ParameterDefinition.Size("Body Length", "BDL", required: true);

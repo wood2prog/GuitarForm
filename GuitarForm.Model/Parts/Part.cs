@@ -9,7 +9,7 @@ namespace GuitarForm.Model.Parts
 {
     // A piece of the guitar: a set of parameters, plus the parts it's made of. Parts are immutable; change a value
     // with With, which returns a copy.
-    public abstract record Part
+    public abstract partial record Part
     {
         static readonly ConcurrentDictionary<Type, PropertyInfo[]> ParameterPropertiesByType = new();
         static readonly ConcurrentDictionary<Type, PropertyInfo[]> PartPropertiesByType = new();

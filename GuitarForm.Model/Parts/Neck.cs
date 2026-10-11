@@ -10,6 +10,8 @@ namespace GuitarForm.Model.Parts
     // items shared between necks.
     public sealed record Neck : Part
     {
+        public override bool IsSavedSeparately => true;
+
         public static class Definitions
         {
             public static readonly ParameterDefinition Angle = ParameterDefinition.Angle("Neck Angle", "NKA");

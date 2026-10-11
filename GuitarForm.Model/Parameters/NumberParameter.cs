@@ -13,6 +13,11 @@ namespace GuitarForm.Model.Parameters
         public override string Format(LengthUnit unit, IFormatProvider culture = null) =>
             Value is double value ? FormatAmount(value, unit, culture) : "";
 
+        public override object StoredValue => Value;
+
+        public override Parameter WithStoredValue(object value) =>
+            this with { Value = value == null ? null : Convert.ToDouble(value, CultureInfo.InvariantCulture) };
+
         public override string Symbol(LengthUnit unit) => Definition.Kind switch
         {
             ParameterKind.Length => unit.Symbol(),
