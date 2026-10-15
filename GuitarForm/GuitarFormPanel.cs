@@ -128,11 +128,11 @@ namespace GuitarForm
             var tabs = _tabs;
             tabs.Pages.Add(SectionPage("Instrument",
                 new Control[] { PresetRow<Instrument>(() => _design?.Instrument, preset => Apply(d => d with { Instrument = preset })) },
-                Groups(null, _instrument.GroupTitles, _instrument.Rows),
+                Groups(null, _instrument.GroupTitles, _instrument.Rows, "Instrument"),
                 _instrument.Messages));
             tabs.Pages.Add(SectionPage("Body",
                 new Control[] { PresetRow<Body>(() => _design?.Body, preset => Apply(d => d with { Body = preset })) },
-                Groups(NewFields.BodyTab, _body.GroupTitles, _body.Rows),
+                Groups(NewFields.BodyTab, _body.GroupTitles, _body.Rows, "Body"),
                 _body.Messages));
             tabs.Pages.Add(SectionPage("Soundhole",
                 new Control[]
@@ -140,7 +140,7 @@ namespace GuitarForm
                     _hasSoundhole,
                     PresetRow<Soundhole>(() => _design?.Soundhole, preset => Apply(d => d with { Soundhole = preset })),
                 },
-                Groups(null, _soundhole.GroupTitles, _soundhole.Rows),
+                Groups(null, _soundhole.GroupTitles, _soundhole.Rows, "Soundhole"),
                 _soundhole.Messages));
             foreach (string tab in _tabMessages.Keys)
                 tabs.Pages.Add(SectionPage(tab, Array.Empty<Control>(), Groups(tab), _tabMessages[tab]));
@@ -166,16 +166,14 @@ namespace GuitarForm
                         ActionButton("New…", NewDesign),
                         NeedsDesign(ActionButton("Copy", CopyDesign)),
                         NeedsDesign(ActionButton("Rename…", RenameDesign)),
-                        NeedsDesign(ActionButton("Delete", DeleteDesign))),
-                    Buttons(
-                        ActionButton("Import…", ImportDesign),
-                        NeedsDesign(ActionButton("Export…", ExportDesign))),
+                        NeedsDesign(ActionButton("Delete", DeleteDesign)),
+                        MoreButton()),
                     new TableRow(TabsAndMessages()) { ScaleHeight = true },
                     _messagesBar,
                     new TableLayout
                     {
                         Spacing = new Size(UiMetrics.Gap, 0),
-                        Rows = { new TableRow(new TableCell(_showPreview, true), NeedsDesign(ActionButton("Build", Build))) },
+                        Rows = { new TableRow(new TableCell(_showPreview, true), NeedsDesign(BuildButton())) },
                     },
                 },
             };
@@ -186,14 +184,54 @@ namespace GuitarForm
 
         // --- Layout ---
 
+        readonly ButtonMenuItem _exportItem = new ButtonMenuItem { Text = "Export…" };
+
+        // "More ▾": Import… and Export… in a menu, so the design buttons fit on one row.
+        Button MoreButton()
+        {
+            var menu = new ContextMenu();
+            var import = new ButtonMenuItem { Text = "Import…" };
+            import.Click += (_, _) => Run(ImportDesign);
+            _exportItem.Click += (_, _) => Run(ExportDesign);
+            menu.Items.Add(import);
+            menu.Items.Add(_exportItem);
+            var button = new Button { Text = "More ▾", ToolTip = "Import a design, or export the open one" };
+            button.Click += (_, _) => menu.Show(button);
+            return button;
+        }
+
+        // Build is the main action, so its text is bold.
+        Button BuildButton()
+        {
+            var button = ActionButton("Build", Build);
+            button.Font = SystemFonts.Bold();
+            button.ToolTip = "Build the design into the Rhino document";
+            return button;
+        }
+
         // A tab: the controls at its top (preset row, …) and its groups of fields. Its messages are shown below the tabs.
         TabPage SectionPage(string title, Control[] top, IEnumerable<Control> groups, TabMessages messages)
         {
             var content = new StackLayout { Padding = UiMetrics.PagePadding, Spacing = UiMetrics.GroupGap, HorizontalContentAlignment = HorizontalAlignment.Stretch };
-            foreach (var control in top.Concat(groups))
+            foreach (var control in groups)
                 content.Items.Add(control);
             NeedsDesign(content);
-            var page = new TabPage { Text = title, Content = new Scrollable { Content = content, Border = BorderType.None } };
+
+            // The controls at the top (the preset row) stay put above the scrolling fields.
+            var pinned = new StackLayout
+            {
+                Padding = new Padding(UiMetrics.PagePadding, UiMetrics.PagePadding, UiMetrics.PagePadding, 0),
+                Spacing = UiMetrics.GroupGap,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            };
+            foreach (var control in top)
+                pinned.Items.Add(control);
+            NeedsDesign(pinned);
+            var layout = new TableLayout();
+            if (top.Length > 0)
+                layout.Rows.Add(pinned);
+            layout.Rows.Add(new TableRow(new Scrollable { Content = content, Border = BorderType.None }) { ScaleHeight = true });
+            var page = new TabPage { Text = title, Content = layout };
             _pageMessages[page] = messages;
             messages.Changed += () =>
             {
@@ -224,11 +262,12 @@ namespace GuitarForm
 
         // A tab's groups: the old section's groups, each with any new fields of the same title added after its own,
         // then the tab's other new-field groups.
-        IEnumerable<Control> Groups(string tab, IReadOnlyList<string> oldTitles = null, Func<string, IEnumerable<TableRow>> oldRows = null)
+        IEnumerable<Control> Groups(string tab, IReadOnlyList<string> oldTitles = null, Func<string, IEnumerable<TableRow>> oldRows = null, string section = null)
         {
+            section ??= tab;
             oldTitles ??= Array.Empty<string>();
             var titles = oldTitles.Concat(NewFields.Groups.Where(g => g.Tab == tab).Select(g => g.Title)).Distinct();
-            return titles.Select(title => FieldLayout.Group(title,
+            return titles.Select(title => FieldLayout.Group(section, title,
                 (oldRows?.Invoke(title) ?? Enumerable.Empty<TableRow>()).Concat(NewFieldRows(tab, title)))).ToList();
         }
 
@@ -717,6 +756,7 @@ namespace GuitarForm
             foreach (var control in _needDesign)
                 control.Enabled = _design != null;
             _soundhole.Enabled = _design?.Soundhole != null;
+            _exportItem.Enabled = _design != null;
             UpdateDirtyUi();
             Redraw();
         }

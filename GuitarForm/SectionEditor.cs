@@ -246,13 +246,34 @@ namespace GuitarForm
             return new TableRow(text, new TableCell(cell, true), unitCell);
         }
 
-        // A titled box holding related fields.
-        public static GroupBox Group(string title, IEnumerable<TableRow> rows)
+        // Whether each group is expanded, by section and title, kept for the session.
+        static readonly Dictionary<string, bool> GroupState = new Dictionary<string, bool>();
+
+        // A titled group of related fields, with a header that collapses and expands it. Groups start expanded.
+        public static Control Group(string section, string title, IEnumerable<TableRow> rows)
         {
             var layout = new TableLayout { Spacing = new Size(UiMetrics.Gap, UiMetrics.RowGap) };
             foreach (var row in rows)
                 layout.Rows.Add(row);
-            return new GroupBox { Text = title, Padding = new Padding(UiMetrics.GroupPadding), Content = layout };
+            var body = new Panel { Padding = new Padding(UiMetrics.GroupPadding), Content = layout };
+            var header = new Button { Text = "", Font = SystemFonts.Bold() };
+            string key = section + "|" + title;
+            void Update()
+            {
+                bool open = !GroupState.TryGetValue(key, out bool expanded) || expanded;
+                header.Text = (open ? "v  " : ">  ") + title;
+                body.Visible = open;
+            }
+            header.Click += (_, _) =>
+            {
+                GroupState[key] = !(!GroupState.TryGetValue(key, out bool expanded) || expanded);
+                Update();
+            };
+            Update();
+            var group = new StackLayout { Spacing = 0, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+            group.Items.Add(header);
+            group.Items.Add(body);
+            return group;
         }
 
         public static string Level(MessageLevel level) => level switch
