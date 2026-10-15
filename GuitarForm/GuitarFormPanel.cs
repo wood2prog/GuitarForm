@@ -20,9 +20,11 @@ using ShowPanelReason = Rhino.UI.ShowPanelReason;
 namespace GuitarForm
 {
     // The dockable GuitarForm panel: the list of designs, a tab for each section of the open design, the Settings tab,
-    // and Preview / Build. The first edit after a design is opened asks whether to overwrite it or save the change as a
-    // copy; after that every edit is saved as it's made. The library is opened for each operation and closed again, so
-    // the file is free for backing up, restoring and moving.
+    // and Preview / Build. Edits change a working copy of the open design in memory; nothing reaches the library until
+    // Save (the first Save of a design asks whether to overwrite it or save a new design), Save as… or Revert. Unsaved
+    // work is autosaved to a recovery file (RecoveryStore) and offered back when the design is next opened, and
+    // switching designs, New, Import, Copy or changing the library asks to save first. The library is opened for each
+    // operation and closed again, so the file is free for backing up, restoring and moving.
     [Guid("b27065af-ab08-4c16-aeef-415d7616b93c")]
     public class GuitarFormPanel : Panel, IPanel
     {
@@ -504,8 +506,9 @@ namespace GuitarForm
             Run(() => Open(id, false));
         }
 
-        // Opens a design from the library as the working copy. A design that was just made (new, copied or imported)
-        // needs no first-save prompt.
+        // Opens a design from the library as the working copy, dropping any unsaved changes the user chose to discard.
+        // An existing design (confirmed false) offers its recovery file if there is one; a design that was just made
+        // (new, copied, imported or saved as) needs no first-save prompt.
         void Open(long id, bool confirmed)
         {
             var loaded = WithLibrary(library => library.LoadDesign(id));
