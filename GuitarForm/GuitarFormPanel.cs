@@ -76,6 +76,10 @@ namespace GuitarForm
         bool _savePrompted;
         readonly Label _dirtyLabel = new Label { Text = "", VerticalAlignment = VerticalAlignment.Center };
         readonly Button _saveButton = new Button { Text = "Save" };
+        // Unsaved work is written to a recovery file shortly after the last edit.
+        readonly RecoveryStore _recovery = new RecoveryStore(RecoveryStore.DefaultFolder);
+        readonly UITimer _recoveryTimer = new UITimer { Interval = 2 };
+        internal static GuitarFormPanel Current { get; private set; }
         bool _showing;
         bool _panelVisible = true;
 
@@ -86,6 +90,8 @@ namespace GuitarForm
 
         public GuitarFormPanel()
         {
+            Current = this;
+            _recoveryTimer.Elapsed += (_, _) => FlushRecovery();
             _instrument.Changed += instrument => Apply(d => d with { Instrument = instrument });
             _body.Changed += body => Apply(d => d with { Body = body });
             _soundhole.Changed += soundhole => Apply(d => d with { Soundhole = soundhole });
@@ -445,8 +451,37 @@ namespace GuitarForm
             _newFields = NewFields.Load(id);
             Array.Clear(_newFieldErrors);
             _markersError = null;
+            if (!confirmed)
+                OfferRecovery(id);
             ShowDesignList(id);
             ShowDesign();
+        }
+
+        // If the design has a recovery file, asks whether to take it back as the working copy.
+        void OfferRecovery(long id)
+        {
+            var recovery = _recovery.TryRead(id);
+            if (recovery == null)
+            {
+                _recovery.Delete(id); // An unreadable file is no use.
+                return;
+            }
+            if (MessageBox.Show(this, $"Recover unsaved changes to \"{_design.Name}\"?", "GuitarForm",
+                    MessageBoxButtons.YesNo, MessageBoxType.Question) == DialogResult.Yes)
+            {
+                try
+                {
+                    _design = DesignDocument.FromJson(recovery.Document);
+                    _newFields = NewFields.ReadFromDocument(recovery.Document) ?? new Guitar();
+                    MarkDirty();
+                    return;
+                }
+                catch (Exception e)
+                {
+                    MessageBox.Show(this, $"The recovery file couldn't be read: {e.Message}", "GuitarForm", MessageBoxType.Error);
+                }
+            }
+            _recovery.Delete(id);
         }
 
         void CloseDesign()
@@ -474,6 +509,32 @@ namespace GuitarForm
         {
             _dirty = true;
             UpdateDirtyUi();
+            _recoveryTimer.Stop();
+            _recoveryTimer.Start();
+        }
+
+        // Writes the unsaved working copy to its recovery file now (also on hiding, closing and shutting down).
+        internal void FlushRecovery()
+        {
+            _recoveryTimer.Stop();
+            if (!_dirty || _design == null || _designId == null)
+                return;
+            try
+            {
+                _recovery.Write(_designId.Value, _design.Name, NewFields.AddToDocument(DesignDocument.ToJson(_design), _newFields));
+            }
+            catch (Exception e)
+            {
+                RhinoApp.WriteLine($"GuitarForm: couldn't write the recovery file: {e.Message}");
+            }
+        }
+
+        // Removes the open design's recovery file: its unsaved work was saved or thrown away.
+        void ClearRecovery()
+        {
+            _recoveryTimer.Stop();
+            if (_designId != null)
+                _recovery.Delete(_designId.Value);
         }
 
         // Writes the working copy to the library (and its new fields beside it). The first Save of a design asks
@@ -509,6 +570,7 @@ namespace GuitarForm
             _savePrompted = true;
             _savedName = name;
             _dirty = false;
+            ClearRecovery();
             ShowDesignList(id);
             UpdateDirtyUi();
         }
@@ -533,6 +595,7 @@ namespace GuitarForm
             var design = _design with { Name = name };
             long id = WithLibrary(library => library.CreateDesign(design));
             NewFields.Save(id, _newFields);
+            ClearRecovery();
             Open(id, true);
         }
 
@@ -548,6 +611,7 @@ namespace GuitarForm
                 return false;
             if (answer == DialogResult.No)
             {
+                ClearRecovery();
                 _dirty = false;
                 UpdateDirtyUi();
                 return true;
@@ -568,6 +632,7 @@ namespace GuitarForm
         {
             if (_designId == null)
                 return;
+            ClearRecovery();
             Open(_designId.Value, _savePrompted);
         }
 
@@ -777,6 +842,8 @@ namespace GuitarForm
                 return;
             long id = _designId.Value;
             WithLibrary(library => library.DeleteDesign(id));
+            _dirty = false;
+            ClearRecovery();
             CloseDesign();
             ShowDesignList(null);
         }
@@ -826,12 +893,14 @@ namespace GuitarForm
         public void PanelHidden(uint documentSerialNumber, ShowPanelReason reason)
         {
             _panelVisible = false;
+            FlushRecovery();
             Redraw();
         }
 
         public void PanelClosing(uint documentSerialNumber, bool onCloseDocument)
         {
             _panelVisible = false;
+            FlushRecovery();
             Redraw();
         }
     }

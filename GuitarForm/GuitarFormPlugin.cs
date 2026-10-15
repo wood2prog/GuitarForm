@@ -29,6 +29,7 @@ namespace GuitarForm
 
         protected override void OnShutdown()
         {
+            GuitarFormPanel.Current?.FlushRecovery();
             BackupScheduler?.Dispose();
             base.OnShutdown();
         }
