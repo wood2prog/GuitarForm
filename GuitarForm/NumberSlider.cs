@@ -12,17 +12,19 @@ namespace GuitarForm
     // text, like a TextBox's, and TextChanged is raised for each step and each edit.
     sealed class NumberSlider : Panel, IFieldBox
     {
-        const int ControlWidth = 240;
-        const int ControlHeight = 24;
-        const int LeverWidth = 64;
-        const int LeverHeight = 20;
+        // The sizes below are scaled to the screen with UiMetrics.Scale. The slider fills the width it is given, from
+        // SliderMinWidth up; past SliderMaxWidth the track stops growing and the extra space is left empty.
+        static readonly int ControlHeight = UiMetrics.Scale(26);
+        static readonly int LeverWidth = UiMetrics.Scale(72);
+        static readonly int LeverHeight = UiMetrics.Scale(22);
 
         // Pixels the lever moves for one step, and before a press on it counts as a drag rather than a click.
-        const int PixelsPerStep = 2;
-        const int DragThreshold = 3;
+        static readonly int PixelsPerStep = UiMetrics.Scale(2);
+        static readonly int DragThreshold = UiMetrics.Scale(3);
+        static readonly float TickSpacing = UiMetrics.Scale(10);
 
-        readonly Drawable _bar = new Drawable { CanFocus = true, Size = new Size(ControlWidth, ControlHeight) };
-        readonly TextBox _textBox = new TextBox { Visible = false, Size = new Size(LeverWidth, LeverHeight) };
+        readonly Drawable _bar = new Drawable { CanFocus = true, Cursor = Cursors.Default };
+        readonly TextBox _textBox = new TextBox();
         string _text = "";
         string _textBeforeEdit;
         bool _editing;
@@ -50,12 +52,15 @@ namespace GuitarForm
 
         public NumberSlider()
         {
-            var layout = new PixelLayout();
-            layout.Add(_bar, 0, 0);
-            layout.Add(_textBox, (ControlWidth - LeverWidth) / 2, (ControlHeight - LeverHeight) / 2);
-            Content = layout;
-            Size = new Size(ControlWidth, ControlHeight);
+            // The bar fills the cell; while typing, the text box takes its place across the same width.
+            _bar.MinimumSize = new Size(UiMetrics.Scale(UiMetrics.SliderMinWidth), ControlHeight);
+            _bar.Height = ControlHeight;
+            _textBox.Height = ControlHeight;
+            Content = _bar;
 
+            _bar.GotFocus += (_, _) => _bar.Invalidate();
+            _bar.LostFocus += (_, _) => _bar.Invalidate();
+            _bar.MouseLeave += (_, _) => _bar.Cursor = Cursors.Default;
             _bar.Paint += (_, e) => Paint(e.Graphics);
             _bar.MouseDown += OnMouseDown;
             _bar.MouseMove += OnMouseMove;
@@ -65,6 +70,13 @@ namespace GuitarForm
                 if (e.Key == Keys.Enter || e.Key == Keys.F2)
                 {
                     StartEditing();
+                    e.Handled = true;
+                }
+                else if ((e.Key == Keys.Left || e.Key == Keys.Right) && _bar.Enabled && !_editing)
+                {
+                    // One step per press; Shift takes a finer step and Ctrl a coarse one (ten steps).
+                    double step = e.Modifiers.HasFlag(Keys.Control) ? Step * 10 : CurrentStep(e.Modifiers.HasFlag(Keys.Shift));
+                    SetValue(CurrentValue + (e.Key == Keys.Left ? -step : step));
                     e.Handled = true;
                 }
             };
@@ -142,7 +154,7 @@ namespace GuitarForm
             _editing = true;
             _textBeforeEdit = _text;
             _textBox.Text = _text;
-            _textBox.Visible = true;
+            Content = _textBox;
             _textBox.Focus();
             _textBox.SelectAll();
             _bar.Invalidate();
@@ -153,16 +165,19 @@ namespace GuitarForm
             if (!_editing)
                 return;
             _editing = false;
-            _textBox.Visible = false;
+            Content = _bar;
             _bar.Invalidate();
         }
 
         // --- Dragging ---
 
-        float Center => _bar.Width / 2f;
+        // The track is as wide as the bar, up to SliderMaxWidth, and starts at the bar's left edge.
+        float TrackWidth => Math.Min(_bar.Width, UiMetrics.Scale(UiMetrics.SliderMaxWidth));
+
+        float Center => TrackWidth / 2f;
 
         // How far the lever's center can move from the middle of the track.
-        float Travel => (_bar.Width - LeverWidth) / 2f - 2;
+        float Travel => Math.Max(0, (TrackWidth - LeverWidth) / 2f - UiMetrics.Scale(2));
 
         RectangleF LeverBounds => new RectangleF(Center + _leverOffset - LeverWidth / 2f,
             (_bar.Height - LeverHeight) / 2f, LeverWidth, LeverHeight);
@@ -194,7 +209,11 @@ namespace GuitarForm
         void OnMouseMove(object sender, MouseEventArgs e)
         {
             if (!_pressedOnLever)
+            {
+                // The typed value is on the lever, so the pointer shows a text cursor over it.
+                _bar.Cursor = _bar.Enabled && LeverBounds.Contains(e.Location) ? Cursors.IBeam : Cursors.Default;
                 return;
+            }
             float moved = e.Location.X - _pressX;
             if (!_dragging && Math.Abs(moved) < DragThreshold)
                 return;
@@ -248,22 +267,27 @@ namespace GuitarForm
             float height = _bar.Height;
             float middle = height / 2f;
             var groove = enabled ? SystemColors.ControlText : SystemColors.DisabledText;
-            var tick = SystemColors.DisabledText;
+            var tick = UiMetrics.MutedTickColor;
+            float s1 = UiMetrics.Scale(1), four = UiMetrics.Scale(4), nine = UiMetrics.Scale(9);
 
             // The track: a groove the length of the lever's travel, with ticks along it and a longer one at the middle.
             float left = Center - Travel;
             float right = Center + Travel;
-            for (float x = Center; x <= right + 0.5f; x += 10)
+            for (float x = Center; x <= right + 0.5f; x += TickSpacing)
             {
-                float length = x == Center ? 9 : 4;
-                g.DrawLine(tick, x, middle - length, x, middle - 4);
-                g.DrawLine(tick, x, middle + 4, x, middle + length);
+                float length = x == Center ? nine : four;
+                g.DrawLine(tick, x, middle - length, x, middle - four);
+                g.DrawLine(tick, x, middle + four, x, middle + length);
                 float mirrored = 2 * Center - x;
-                g.DrawLine(tick, mirrored, middle - length, mirrored, middle - 4);
-                g.DrawLine(tick, mirrored, middle + 4, mirrored, middle + length);
+                g.DrawLine(tick, mirrored, middle - length, mirrored, middle - four);
+                g.DrawLine(tick, mirrored, middle + four, mirrored, middle + length);
             }
-            g.FillRectangle(SystemColors.Control, left, middle - 2, right - left, 4);
-            g.DrawRectangle(groove, left, middle - 2, right - left, 4);
+            g.FillRectangle(SystemColors.Control, left, middle - 2 * s1, right - left, four);
+            g.DrawRectangle(groove, left, middle - 2 * s1, right - left, four);
+
+            // A focus ring around the whole slider, in the theme's highlight colour.
+            if (_bar.HasFocus && enabled)
+                g.DrawRectangle(new Pen(SystemColors.Highlight, 2 * s1), s1, s1, width - 2 * s1, height - 2 * s1);
 
             // The lever, with the value on it. While typing, the text box covers it.
             if (_editing)
@@ -277,8 +301,9 @@ namespace GuitarForm
             bool empty = _text.Length == 0;
             string text = empty ? PlaceholderText : _text;
             var textSize = g.MeasureString(font, text);
+            float textY = lever.Y + (lever.Height - textSize.Height) / 2;
             var textColor = empty || !enabled ? SystemColors.DisabledText : SystemColors.ControlText;
-            g.DrawText(font, textColor, lever.X + (lever.Width - textSize.Width) / 2, lever.Y + (lever.Height - textSize.Height) / 2, text);
+            g.DrawText(font, textColor, lever.X + (lever.Width - textSize.Width) / 2, textY, text);
         }
     }
 }
