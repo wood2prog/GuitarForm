@@ -49,7 +49,7 @@ namespace GuitarForm
         }).ToArray();
         readonly Label[] _newFieldUnits = NewFields.Fields.Select(_ => FieldLayout.UnitLabel()).ToArray();
         readonly string[] _newFieldErrors = new string[NewFields.Fields.Length];
-        readonly TextBox _markers = new TextBox { Width = 160, ToolTip = "Each marker's fret, with :2 for two dots, e.g. 3 5 7 9 12:2" };
+        readonly TextBox _markers = new TextBox { Width = UiMetrics.ChoiceBoxWidth, ToolTip = "Each marker's fret, with :2 for two dots, e.g. 3 5 7 9 12:2" };
         string _markersError;
         readonly Dictionary<string, TabMessages> _tabMessages = new[] { NewFields.BracingTab, NewFields.FretboardTab, NewFields.NeckTab }
             .ToDictionary(tab => tab, _ => new TabMessages());
@@ -149,14 +149,14 @@ namespace GuitarForm
 
             Content = new TableLayout
             {
-                Padding = new Padding(6),
-                Spacing = new Size(6, 6),
+                Padding = new Padding(UiMetrics.Gap),
+                Spacing = new Size(UiMetrics.Gap, UiMetrics.Gap),
                 Rows =
                 {
                     // In its own layout, so the outer one has a single column and the tabs get its full width.
                     new TableLayout
                     {
-                        Spacing = new Size(6, 0),
+                        Spacing = new Size(UiMetrics.Gap, 0),
                         Rows = { new TableRow(new Label { Text = "Design", VerticalAlignment = VerticalAlignment.Center }, new TableCell(_designs, true), _dirtyLabel) },
                     },
                     Buttons(
@@ -174,7 +174,7 @@ namespace GuitarForm
                     new TableRow(TabsAndMessages()) { ScaleHeight = true },
                     new TableLayout
                     {
-                        Spacing = new Size(6, 0),
+                        Spacing = new Size(UiMetrics.Gap, 0),
                         Rows = { new TableRow(new TableCell(_showPreview, true), NeedsDesign(ActionButton("Build", Build))) },
                     },
                 },
@@ -189,7 +189,7 @@ namespace GuitarForm
         // A tab: the controls at its top (preset row, …) and its groups of fields. Its messages are shown beside the tabs.
         TabPage SectionPage(string title, Control[] top, IEnumerable<Control> groups, TabMessages messages)
         {
-            var content = new StackLayout { Padding = 10, Spacing = 10, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+            var content = new StackLayout { Padding = UiMetrics.PagePadding, Spacing = UiMetrics.GroupGap, HorizontalContentAlignment = HorizontalAlignment.Stretch };
             foreach (var control in top.Concat(groups))
                 content.Items.Add(control);
             NeedsDesign(content);
@@ -297,7 +297,7 @@ namespace GuitarForm
 
         static Control Buttons(params Control[] buttons)
         {
-            var row = new StackLayout { Orientation = Orientation.Horizontal, Spacing = 6 };
+            var row = new StackLayout { Orientation = Orientation.Horizontal, Spacing = UiMetrics.Gap };
             foreach (var button in buttons)
                 row.Items.Add(button);
             return row;

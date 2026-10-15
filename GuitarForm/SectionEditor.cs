@@ -180,7 +180,7 @@ namespace GuitarForm
     {
         public FieldDropDown(IEnumerable<string> options)
         {
-            Width = 140;
+            Width = UiMetrics.ChoiceBoxWidth;
             foreach (string option in options)
                 Items.Add(option);
             SelectedIndexChanged += (_, _) => TextChanged?.Invoke(this, EventArgs.Empty);
@@ -218,30 +218,48 @@ namespace GuitarForm
         // A box for a field's value: a NumberSlider for a decimal number when slider is true, else a text box.
         public static IFieldBox Box(bool slider, string toolTip = null, double step = 0.1) => slider
             ? new NumberSlider { ToolTip = toolTip, Step = step }
-            : new FieldTextBox { Width = 90, ToolTip = toolTip };
+            : new FieldTextBox { Width = UiMetrics.CountBoxWidth, ToolTip = toolTip };
 
-        public static Label UnitLabel() => new Label { Width = 24, VerticalAlignment = VerticalAlignment.Center };
+        // The unit after a box. Row gives its column at least UnitWidth, and more if the text needs it.
+        public static Label UnitLabel() => new Label { VerticalAlignment = VerticalAlignment.Center };
 
-        // A field's label, its box and the unit after it.
-        public static TableRow Row(string label, string toolTip, Control box, Label unit) => new TableRow(
-            new TableCell(new Label { Text = label, ToolTip = toolTip, VerticalAlignment = VerticalAlignment.Center }, true),
-            box,
-            unit);
+        // A field's row: its label (a fixed column that wraps long text), its box (a slider fills the column; any other
+        // box keeps its own width at the left of it) and the unit after it.
+        public static TableRow Row(string label, string toolTip, Control box, Label unit)
+        {
+            var text = new Label
+            {
+                Text = label,
+                ToolTip = toolTip,
+                VerticalAlignment = VerticalAlignment.Center,
+                Wrap = WrapMode.Word,
+                Width = UiMetrics.LabelMinWidth,
+            };
+            Control cell = box;
+            if (box is not NumberSlider)
+            {
+                var holder = new StackLayout { Orientation = Orientation.Horizontal, VerticalContentAlignment = VerticalAlignment.Center };
+                holder.Items.Add(box);
+                cell = holder;
+            }
+            var unitCell = new Panel { Content = unit, MinimumSize = new Size(UiMetrics.UnitWidth, 0) };
+            return new TableRow(text, new TableCell(cell, true), unitCell);
+        }
 
         // A titled box holding related fields.
         public static GroupBox Group(string title, IEnumerable<TableRow> rows)
         {
-            var layout = new TableLayout { Spacing = new Size(6, 4) };
+            var layout = new TableLayout { Spacing = new Size(UiMetrics.Gap, UiMetrics.RowGap) };
             foreach (var row in rows)
                 layout.Rows.Add(row);
-            return new GroupBox { Text = title, Padding = new Padding(6), Content = layout };
+            return new GroupBox { Text = title, Padding = new Padding(UiMetrics.GroupPadding), Content = layout };
         }
 
         // Messages one per line, red when any of them is an error.
         public static void ShowMessages(TextArea box, IReadOnlyList<GeometryMessage> messages)
         {
             box.Text = string.Join("\n", messages.Select(m => $"{Level(m.Level)}: {m.Text}"));
-            box.TextColor = messages.Any(m => m.Level == MessageLevel.Error) ? Colors.Red : SystemColors.ControlText;
+            box.TextColor = messages.Any(m => m.Level == MessageLevel.Error) ? UiMetrics.ErrorColor : SystemColors.ControlText;
         }
 
         static string Level(MessageLevel level) => level switch
