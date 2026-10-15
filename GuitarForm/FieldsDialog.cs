@@ -10,14 +10,15 @@ namespace GuitarForm
     sealed class FieldsDialog : Dialog<bool>
     {
         readonly TextBox[] _boxes;
-        readonly Label _error = new Label { TextColor = Colors.Red, Wrap = WrapMode.Word };
+        readonly Label _error = new Label { TextColor = UiMetrics.ErrorColor, Wrap = WrapMode.Word };
 
         FieldsDialog(string title, (string Label, string Text)[] fields, Func<string[], string> validate)
         {
             Title = title;
-            Padding = 10;
-            Resizable = false;
-            _boxes = fields.Select(f => new TextBox { Text = f.Text, Width = 220 }).ToArray();
+            Padding = UiMetrics.PagePadding;
+            Resizable = true;
+            MinimumSize = new Size(UiMetrics.LabelMinWidth + UiMetrics.DialogTextWidth + 4 * UiMetrics.PagePadding, 0);
+            _boxes = fields.Select(f => new TextBox { Text = f.Text, Width = UiMetrics.DialogTextWidth }).ToArray();
 
             var ok = new Button { Text = "OK" };
             ok.Click += (_, _) =>
@@ -31,14 +32,14 @@ namespace GuitarForm
             DefaultButton = ok;
             AbortButton = cancel;
 
-            var layout = new TableLayout { Spacing = new Size(6, 6) };
+            var layout = new TableLayout { Spacing = new Size(UiMetrics.Gap, UiMetrics.Gap) };
             for (int i = 0; i < fields.Length; i++)
-                layout.Rows.Add(new TableRow(new Label { Text = fields[i].Label, VerticalAlignment = VerticalAlignment.Center }, _boxes[i]));
+                layout.Rows.Add(new TableRow(new Label { Text = fields[i].Label, VerticalAlignment = VerticalAlignment.Center, Wrap = WrapMode.Word }, new TableCell(_boxes[i], true)));
             layout.Rows.Add(new TableRow(null, _error));
             layout.Rows.Add(new TableRow(null, new StackLayout
             {
                 Orientation = Orientation.Horizontal,
-                Spacing = 6,
+                Spacing = UiMetrics.Gap,
                 Items = { ok, cancel },
             }));
             Content = layout;

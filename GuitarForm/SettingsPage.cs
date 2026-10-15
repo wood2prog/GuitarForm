@@ -18,7 +18,7 @@ namespace GuitarForm
         readonly NumericStepper _keepLast = Stepper(1, 1000, 0);
         readonly NumericStepper _keepDays = Stepper(0, 3650, 0);
         readonly NumericStepper _drawingGap = Stepper(0, 10000, 2);
-        readonly Label _drawingGapLabel = new Label { VerticalAlignment = VerticalAlignment.Center };
+        readonly Label _drawingGapLabel = FieldLayout.UnitLabel();
         readonly Label _status = new Label { Wrap = WrapMode.Word };
 
         // True while the controls are being filled from the settings, so their change events don't save them back.
@@ -43,44 +43,43 @@ namespace GuitarForm
             _keepDays.ValueChanged += (_, _) => SaveBackupNumbers();
             _drawingGap.ValueChanged += (_, _) => SaveDrawingGap();
 
-            Content = new TableLayout
+            var backupButtons = new StackLayout { Spacing = UiMetrics.Gap, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+            backupButtons.Items.Add(ActionButton("Back up now", BackUpNow));
+            backupButtons.Items.Add(ActionButton("Restore…", Restore));
+            backupButtons.Items.Add(ActionButton("Open backup folder", OpenBackupFolder));
+
+            // The same label / box / unit rows as the other tabs, in groups that collapse like theirs.
+            var content = new StackLayout { Padding = UiMetrics.PagePadding, Spacing = UiMetrics.GroupGap, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+            content.Items.Add(FieldLayout.Group("Settings", "Library", new[]
             {
-                Padding = 10,
-                Spacing = new Size(6, 6),
-                Rows =
-                {
-                    new Label { Text = "Library folder (kept on this computer)" },
-                    Row(_libraryFolder, ActionButton("Change…", ChangeLibraryFolder)),
-                    new Label { Text = "Backup folder (e.g. in OneDrive)" },
-                    Row(_backupFolder, ActionButton("Change…", ChangeBackupFolder)),
-                    Row(new Label { Text = "Back up every (minutes)" }, _interval),
-                    Row(new Label { Text = "Keep the last (backups)" }, _keepLast),
-                    Row(new Label { Text = "Also keep one a day for (days)" }, _keepDays),
-                    new StackLayout
-                    {
-                        Orientation = Orientation.Horizontal,
-                        Spacing = 6,
-                        Items =
-                        {
-                            ActionButton("Back up now", BackUpNow),
-                            ActionButton("Restore…", Restore),
-                            ActionButton("Open backup folder", OpenBackupFolder),
-                        },
-                    },
-                    _status,
-                    Row(_drawingGapLabel, _drawingGap),
-                    new TableRow { ScaleHeight = true },
-                },
-            };
+                FolderRow("Library folder (kept on this computer)", _libraryFolder, ActionButton("Change…", ChangeLibraryFolder)),
+            }));
+            content.Items.Add(FieldLayout.Group("Settings", "Backups", new[]
+            {
+                FolderRow("Backup folder (e.g. in OneDrive)", _backupFolder, ActionButton("Change…", ChangeBackupFolder)),
+                FieldLayout.Row("Back up every", null, _interval, UnitLabel("minutes")),
+                FieldLayout.Row("Keep the last", null, _keepLast, UnitLabel("backups")),
+                FieldLayout.Row("Also keep one a day for", null, _keepDays, UnitLabel("days")),
+                new TableRow(null, new TableCell(backupButtons, true)),
+            }));
+            content.Items.Add(FieldLayout.Group("Settings", "Drawing", new[]
+            {
+                FieldLayout.Row("Gap between plate and side view", null, _drawingGap, _drawingGapLabel),
+            }));
+            content.Items.Add(_status);
+            Content = content;
             ShowSettings();
         }
 
-        static NumericStepper Stepper(int min, int max, int decimals) =>
-            new NumericStepper { MinValue = min, MaxValue = max, DecimalPlaces = decimals, Increment = 1, Width = 80 };
+        static Label UnitLabel(string text) => new Label { Text = text, VerticalAlignment = VerticalAlignment.Center };
 
-        // A control that stretches, followed by one that keeps its size.
-        static TableLayout Row(Control stretch, Control fixedSize) =>
-            new TableLayout(new TableRow(new TableCell(stretch, true), fixedSize)) { Spacing = new Size(6, 0) };
+        static TableRow FolderRow(string label, TextBox box, Button change) => new TableRow(
+            new Label { Text = label, Wrap = WrapMode.Word, Width = UiMetrics.LabelMinWidth, VerticalAlignment = VerticalAlignment.Center },
+            new TableCell(box, true),
+            change);
+
+        static NumericStepper Stepper(int min, int max, int decimals) =>
+            new NumericStepper { MinValue = min, MaxValue = max, DecimalPlaces = decimals, Increment = 1, Width = UiMetrics.BoxWidth };
 
         // A button whose action's errors are shown in a message box. The settings and status are shown again after.
         Button ActionButton(string text, Action action)
@@ -111,10 +110,11 @@ namespace GuitarForm
             _keepLast.Value = settings.KeepLastBackups;
             _keepDays.Value = settings.KeepDailyBackupsDays;
             var units = DisplayUnits.Current;
-            _drawingGapLabel.Text = $"Gap between plate and side view ({units.Abbreviation})";
+            _drawingGapLabel.Text = units.Abbreviation;
             _drawingGap.Value = units.FromMillimetres(settings.DrawingGap);
             _showing = false;
             _status.Text = Status(settings);
+            _status.TextColor = _status.Text.Contains("Couldn't") ? UiMetrics.ErrorColor : UiMetrics.NoteColor;
         }
 
         static string Status(GuitarFormSettings settings)
