@@ -255,18 +255,87 @@ namespace GuitarForm
             return new GroupBox { Text = title, Padding = new Padding(UiMetrics.GroupPadding), Content = layout };
         }
 
-        // Messages one per line, red when any of them is an error.
-        public static void ShowMessages(TextArea box, IReadOnlyList<GeometryMessage> messages)
-        {
-            box.Text = string.Join("\n", messages.Select(m => $"{Level(m.Level)}: {m.Text}"));
-            box.TextColor = messages.Any(m => m.Level == MessageLevel.Error) ? UiMetrics.ErrorColor : SystemColors.ControlText;
-        }
-
-        static string Level(MessageLevel level) => level switch
+        public static string Level(MessageLevel level) => level switch
         {
             MessageLevel.Error => "Error",
             MessageLevel.Warning => "Warning",
             _ => "Note",
         };
+    }
+    // The selected tab's messages below the tabs: a header with the counts (click it to expand or collapse) and, when
+    // expanded, one line per message, coloured by severity and prefixed with its level. Hidden when there are none,
+    // and opened when errors appear.
+    sealed class MessagesBar : StackLayout
+    {
+        const int MaxListHeight = 110;
+        const int LineHeight = 20;
+
+        readonly Button _header = new Button { Style = null };
+        readonly Scrollable _scroll = new Scrollable { Border = BorderType.None };
+        readonly StackLayout _list = new StackLayout { Spacing = 2, Padding = new Padding(UiMetrics.Gap, 2), HorizontalContentAlignment = HorizontalAlignment.Stretch };
+        IReadOnlyList<GeometryMessage> _messages = Array.Empty<GeometryMessage>();
+        bool _expanded;
+        int _errors;
+
+        public MessagesBar()
+        {
+            Spacing = 2;
+            HorizontalContentAlignment = HorizontalAlignment.Stretch;
+            _scroll.Content = _list;
+            _header.Click += (_, _) =>
+            {
+                _expanded = !_expanded;
+                Refresh();
+            };
+            Items.Add(_header);
+            Items.Add(_scroll);
+            Visible = false;
+        }
+
+        public void Show(IReadOnlyList<GeometryMessage> messages)
+        {
+            _messages = messages ?? Array.Empty<GeometryMessage>();
+            int errors = _messages.Count(m => m.Level == MessageLevel.Error);
+            if (errors > 0 && _errors == 0)
+                _expanded = true;
+            _errors = errors;
+            Refresh();
+        }
+
+        void Refresh()
+        {
+            Visible = _messages.Count > 0;
+            if (!Visible)
+                return;
+
+            int warnings = _messages.Count(m => m.Level == MessageLevel.Warning);
+            int notes = _messages.Count - _errors - warnings;
+            var counts = new List<string>();
+            if (_errors > 0)
+                counts.Add(_errors == 1 ? "1 error" : $"{_errors} errors");
+            if (warnings > 0)
+                counts.Add(warnings == 1 ? "1 warning" : $"{warnings} warnings");
+            if (notes > 0)
+                counts.Add(notes == 1 ? "1 note" : $"{notes} notes");
+            _header.Text = $"{(_expanded ? "v" : ">")} Messages: {string.Join(", ", counts)}";
+
+            _list.Items.Clear();
+            foreach (var message in _messages)
+            {
+                _list.Items.Add(new Label
+                {
+                    Text = $"{FieldLayout.Level(message.Level)}: {message.Text}",
+                    Wrap = WrapMode.Word,
+                    TextColor = message.Level switch
+                    {
+                        MessageLevel.Error => UiMetrics.ErrorColor,
+                        MessageLevel.Warning => UiMetrics.WarningColor,
+                        _ => UiMetrics.NoteColor,
+                    },
+                });
+            }
+            _scroll.Visible = _expanded;
+            _scroll.Height = Math.Min(UiMetrics.Scale(MaxListHeight), _messages.Count * UiMetrics.Scale(LineHeight) + UiMetrics.Scale(8));
+        }
     }
 }

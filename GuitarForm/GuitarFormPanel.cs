@@ -57,8 +57,7 @@ namespace GuitarForm
         // The selected tab's messages, in a box to the right of the tabs; the divider between them can be dragged.
         readonly TabControl _tabs = new TabControl();
         readonly Dictionary<TabPage, TabMessages> _pageMessages = new Dictionary<TabPage, TabMessages>();
-        readonly TextArea _messageBox = new TextArea { ReadOnly = true, Wrap = true };
-        const string SplitterPositionKey = "PanelSplitterPosition";
+        readonly MessagesBar _messagesBar = new MessagesBar();
         Guitar _newFields = new Guitar();
         Dictionary<string, List<GeometryMessage>> _newTabMessages = new Dictionary<string, List<GeometryMessage>>();
 
@@ -172,6 +171,7 @@ namespace GuitarForm
                         ActionButton("Import…", ImportDesign),
                         NeedsDesign(ActionButton("Export…", ExportDesign))),
                     new TableRow(TabsAndMessages()) { ScaleHeight = true },
+                    _messagesBar,
                     new TableLayout
                     {
                         Spacing = new Size(UiMetrics.Gap, 0),
@@ -186,7 +186,7 @@ namespace GuitarForm
 
         // --- Layout ---
 
-        // A tab: the controls at its top (preset row, …) and its groups of fields. Its messages are shown beside the tabs.
+        // A tab: the controls at its top (preset row, …) and its groups of fields. Its messages are shown below the tabs.
         TabPage SectionPage(string title, Control[] top, IEnumerable<Control> groups, TabMessages messages)
         {
             var content = new StackLayout { Padding = UiMetrics.PagePadding, Spacing = UiMetrics.GroupGap, HorizontalContentAlignment = HorizontalAlignment.Stretch };
@@ -197,43 +197,30 @@ namespace GuitarForm
             _pageMessages[page] = messages;
             messages.Changed += () =>
             {
+                page.Text = TabTitle(title, messages);
                 if (_tabs.SelectedPage == page)
                     ShowSelectedMessages();
             };
             return page;
         }
 
-        // The tabs on the left and the selected tab's messages on the right, with a divider that remembers where it
-        // was dragged to.
+        // The tabs, whose selected tab's messages are shown in the bar below them.
         Control TabsAndMessages()
         {
             _tabs.SelectedIndexChanged += (_, _) => ShowSelectedMessages();
-            var splitter = new Splitter
-            {
-                Orientation = Orientation.Horizontal,
-                FixedPanel = SplitterFixedPanel.Panel1,
-                Position = Plugin.Settings.GetInteger(SplitterPositionKey, 430),
-                Panel1MinimumSize = 200,
-                Panel2MinimumSize = 80,
-                Panel1 = _tabs,
-                Panel2 = new TableLayout
-                {
-                    Padding = new Padding(6, 0, 0, 0),
-                    Spacing = new Size(4, 4),
-                    Rows =
-                    {
-                        new Label { Text = "Messages" },
-                        new TableRow(_messageBox) { ScaleHeight = true },
-                    },
-                },
-            };
-            splitter.PositionChanged += (_, _) => Plugin.Settings.SetInteger(SplitterPositionKey, splitter.Position);
-            return splitter;
+            return _tabs;
         }
 
-        void ShowSelectedMessages() => FieldLayout.ShowMessages(_messageBox,
+        void ShowSelectedMessages() => _messagesBar.Show(
             _tabs.SelectedPage != null && _pageMessages.TryGetValue(_tabs.SelectedPage, out var messages)
                 ? messages.Messages : Array.Empty<GeometryMessage>());
+
+        // A tab's title carries the number of errors in its section, e.g. "Body (2)".
+        static string TabTitle(string title, TabMessages messages)
+        {
+            int errors = messages.Messages.Count(m => m.Level == MessageLevel.Error);
+            return errors == 0 ? title : $"{title} ({errors})";
+        }
 
         // A tab's groups: the old section's groups, each with any new fields of the same title added after its own,
         // then the tab's other new-field groups.
