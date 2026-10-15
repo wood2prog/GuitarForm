@@ -29,6 +29,10 @@ namespace GuitarForm
         // Raised when the library was replaced, moved or switched, so open designs should be reloaded.
         public event Action LibraryChanged;
 
+        // Asked just before the library is replaced, moved or switched; false cancels (the panel offers to save its edits).
+        public Func<bool> ConfirmLibraryChange { get; set; }
+        bool ConfirmChange() => ConfirmLibraryChange?.Invoke() ?? true;
+
         // Raised when a drawing setting changed, so the preview should be redrawn.
         public event Action DrawingChanged;
 
@@ -174,6 +178,8 @@ namespace GuitarForm
                 if (MessageBox.Show(this, $"There's already a library in {dialog.Directory}. Use it?\n\nThe current library stays where it is.",
                         "GuitarForm", MessageBoxButtons.OKCancel, MessageBoxType.Question) != DialogResult.Ok)
                     return;
+                if (!ConfirmChange())
+                    return;
                 using (Library.Open(path)) { } // Refuses a file that isn't a library before switching to it.
             }
             else if (File.Exists(settings.LibraryPath))
@@ -181,7 +187,7 @@ namespace GuitarForm
                 var answer = MessageBox.Show(this,
                     $"Move the current library to {dialog.Directory}?\n\nYes moves it. No starts a new, empty library there and leaves the current one where it is.",
                     "GuitarForm", MessageBoxButtons.YesNoCancel, MessageBoxType.Question);
-                if (answer == DialogResult.Cancel)
+                if (answer == DialogResult.Cancel || !ConfirmChange())
                     return;
                 if (answer == DialogResult.Yes)
                     Plugin.BackupScheduler.MoveLibrary(settings.LibraryPath, path);
@@ -221,6 +227,8 @@ namespace GuitarForm
             if (MessageBox.Show(this,
                     $"Replace the library with {Path.GetFileName(dialog.FileName)}?\n\nThe current library is backed up first.",
                     "GuitarForm", MessageBoxButtons.OKCancel, MessageBoxType.Warning) != DialogResult.Ok)
+                return;
+            if (!ConfirmChange())
                 return;
 
             string safety = Plugin.BackupScheduler.Restore(dialog.FileName);

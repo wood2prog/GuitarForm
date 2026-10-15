@@ -98,6 +98,7 @@ namespace GuitarForm
             RhinoDoc.DocumentPropertiesChanged += (_, _) => Application.Instance.AsyncInvoke(OnUnitsMaybeChanged);
             RhinoDoc.EndOpenDocument += (_, _) => Application.Instance.AsyncInvoke(OnUnitsMaybeChanged);
             RhinoDoc.NewDocument += (_, _) => Application.Instance.AsyncInvoke(OnUnitsMaybeChanged);
+            _settings.ConfirmLibraryChange = ConfirmDiscard;
             _settings.LibraryChanged += () =>
             {
                 CloseDesign();
@@ -418,9 +419,17 @@ namespace GuitarForm
             if (_showing || _designs.SelectedKey == null)
                 return;
             long id = long.Parse(_designs.SelectedKey, CultureInfo.InvariantCulture);
-            // S2: guard unsaved changes before switching designs.
-            if (id != _designId)
-                Run(() => Open(id, false));
+            if (id == _designId)
+                return;
+            if (!ConfirmDiscard())
+            {
+                // Cancelled: put the previous design back in the drop-down.
+                _showing = true;
+                _designs.SelectedKey = _designId?.ToString(CultureInfo.InvariantCulture);
+                _showing = false;
+                return;
+            }
+            Run(() => Open(id, false));
         }
 
         // Opens a design from the library as the working copy. A design that was just made (new, copied or imported)
@@ -524,8 +533,35 @@ namespace GuitarForm
             var design = _design with { Name = name };
             long id = WithLibrary(library => library.CreateDesign(design));
             NewFields.Save(id, _newFields);
-            // S2: the working copy is saved here, so switching needs no guard.
             Open(id, true);
+        }
+
+        // True when it's fine to replace the working copy: there are no unsaved changes, or the user saved them or chose
+        // to discard them. False when they cancelled, or the save didn't happen.
+        bool ConfirmDiscard()
+        {
+            if (!_dirty || _design == null)
+                return true;
+            var answer = MessageBox.Show(this, $"Save changes to \"{_design.Name}\"?", "GuitarForm",
+                MessageBoxButtons.YesNoCancel, MessageBoxType.Question);
+            if (answer == DialogResult.Cancel)
+                return false;
+            if (answer == DialogResult.No)
+            {
+                _dirty = false;
+                UpdateDirtyUi();
+                return true;
+            }
+            try
+            {
+                SaveDesign();
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(this, e.Message, "GuitarForm", MessageBoxType.Error);
+                return false;
+            }
+            return !_dirty;
         }
 
         void RevertDesign()
@@ -675,7 +711,8 @@ namespace GuitarForm
 
         void NewDesign()
         {
-            // S2: guard unsaved changes before New, Copy, Import and Delete.
+            if (!ConfirmDiscard())
+                return;
             double length = 0, scale = 0;
             int fret = 0;
             var units = DisplayUnits.Current;
@@ -709,9 +746,12 @@ namespace GuitarForm
 
         void CopyDesign()
         {
+            if (!ConfirmDiscard())
+                return;
+            // The saved design is copied, with its saved new fields (the working copy was just saved or discarded).
             long original = _designId.Value;
             long copy = WithLibrary(library => library.CopyDesign(original));
-            NewFields.Save(copy, _newFields);
+            NewFields.Save(copy, NewFields.Load(original));
             Open(copy, true);
         }
 
@@ -731,7 +771,8 @@ namespace GuitarForm
 
         void DeleteDesign()
         {
-            if (MessageBox.Show(this, $"Delete the design \"{_design.Name}\"? This can't be undone, except by restoring a backup.",
+            string unsaved = _dirty ? " Its unsaved changes are lost too." : "";
+            if (MessageBox.Show(this, $"Delete the design \"{_design.Name}\"? This can't be undone, except by restoring a backup.{unsaved}",
                     "GuitarForm", MessageBoxButtons.OKCancel, MessageBoxType.Warning) != DialogResult.Ok)
                 return;
             long id = _designId.Value;
@@ -762,6 +803,8 @@ namespace GuitarForm
             if (dialog.ShowDialog(this) != DialogResult.Ok)
                 return;
 
+            if (!ConfirmDiscard())
+                return;
             string json = File.ReadAllText(dialog.FileName);
             var design = DesignDocument.FromJson(json);
             var newFields = NewFields.ReadFromDocument(json);
