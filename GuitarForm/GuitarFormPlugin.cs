@@ -29,9 +29,15 @@ namespace GuitarForm
 
         protected override void OnShutdown()
         {
-            GuitarFormPanel.Current?.FlushRecovery();
-            BackupScheduler?.Dispose();
-            base.OnShutdown();
+            try
+            {
+                GuitarFormPanel.Current?.FlushRecovery();
+            }
+            finally
+            {
+                BackupScheduler?.Dispose();
+                base.OnShutdown();
+            }
         }
 
         // Saves the settings straight away and restarts the backup timer with them.

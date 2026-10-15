@@ -178,9 +178,9 @@ namespace GuitarForm
                 if (MessageBox.Show(this, $"There's already a library in {dialog.Directory}. Use it?\n\nThe current library stays where it is.",
                         "GuitarForm", MessageBoxButtons.OKCancel, MessageBoxType.Question) != DialogResult.Ok)
                     return;
+                using (Library.Open(path)) { } // Refuses a file that isn't a library before switching to it.
                 if (!ConfirmChange())
                     return;
-                using (Library.Open(path)) { } // Refuses a file that isn't a library before switching to it.
             }
             else if (File.Exists(settings.LibraryPath))
             {

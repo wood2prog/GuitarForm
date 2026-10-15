@@ -79,7 +79,11 @@ namespace GuitarForm
             }
         }
 
-        /// <summary>Scales a size in pixels by the screen's scale factor.</summary>
-        public static int Scale(int px) => (int)Math.Round(px * ScreenScale);
+        /// <summary>
+        /// Returns the size unchanged. Rhino 8's Eto on Windows (WPF) already works in device-independent units, so
+        /// scaling by the screen factor as well would double-scale on a high-DPI screen. Call sites keep using it so
+        /// there is one place to change if that ever stops being true.
+        /// </summary>
+        public static int Scale(int px) => px;
     }
 }

@@ -7,6 +7,8 @@ namespace GuitarForm.Tests
 {
     public class RecoveryStoreTests
     {
+        static readonly string Lib = Path.Combine(Path.GetTempPath(), "GuitarFormTests", "lib", "GuitarForm.db");
+        static readonly string Other = Path.Combine(Path.GetTempPath(), "GuitarFormTests", "other", "GuitarForm.db");
         string _folder;
         RecoveryStore _store;
 
@@ -27,9 +29,9 @@ namespace GuitarForm.Tests
         [Test]
         public void RoundTrips()
         {
-            _store.Write(3, "OM", "{\"a\":1}");
-            var recovery = _store.TryRead(3);
-            Assert.That(_store.Exists(3));
+            _store.Write(Lib, 3, "OM", "{\"a\":1}");
+            var recovery = _store.TryRead(Lib, 3);
+            Assert.That(_store.Exists(Lib, 3));
             Assert.That(recovery.Name, Is.EqualTo("OM"));
             Assert.That(recovery.Document, Is.EqualTo("{\"a\":1}"));
             Assert.That(recovery.SavedAtUtc, Is.EqualTo(DateTime.UtcNow).Within(TimeSpan.FromMinutes(1)));
@@ -38,39 +40,61 @@ namespace GuitarForm.Tests
         [Test]
         public void OverwriteReplacesAndLeavesNoTempFile()
         {
-            _store.Write(1, "A", "first");
-            _store.Write(1, "B", "second");
-            Assert.That(_store.TryRead(1).Document, Is.EqualTo("second"));
+            _store.Write(Lib, 1, "A", "first");
+            _store.Write(Lib, 1, "B", "second");
+            Assert.That(_store.TryRead(Lib, 1).Document, Is.EqualTo("second"));
             Assert.That(Directory.GetFiles(_folder), Has.Length.EqualTo(1));
         }
 
         [Test]
         public void DeleteRemovesTheFileAndIgnoresAMissingOne()
         {
-            _store.Write(1, "A", "x");
-            _store.Delete(1);
-            Assert.That(_store.Exists(1), Is.False);
-            Assert.DoesNotThrow(() => _store.Delete(1));
+            _store.Write(Lib, 1, "A", "x");
+            _store.Delete(Lib, 1);
+            Assert.That(_store.Exists(Lib, 1), Is.False);
+            Assert.DoesNotThrow(() => _store.Delete(Lib, 1));
         }
 
         [Test]
-        public void MissingFileReadsAsNull() => Assert.That(_store.TryRead(9), Is.Null);
+        public void MissingFileReadsAsNull() => Assert.That(_store.TryRead(Lib, 9), Is.Null);
 
         [Test]
         public void CorruptFileReadsAsNull()
         {
-            Directory.CreateDirectory(_folder);
-            File.WriteAllText(Path.Combine(_folder, "4.json"), "{ not json");
-            Assert.That(_store.TryRead(4), Is.Null);
+            _store.Write(Lib, 4, "x", "y");
+            File.WriteAllText(Directory.GetFiles(_folder)[0], "{ not json");
+            Assert.That(_store.TryRead(Lib, 4), Is.Null);
         }
 
         [Test]
         public void DesignsAreKeptSeparately()
         {
-            _store.Write(1, "A", "one");
-            _store.Write(2, "B", "two");
-            Assert.That(_store.TryRead(1).Document, Is.EqualTo("one"));
-            Assert.That(_store.TryRead(2).Document, Is.EqualTo("two"));
+            _store.Write(Lib, 1, "A", "one");
+            _store.Write(Lib, 2, "B", "two");
+            Assert.That(_store.TryRead(Lib, 1).Document, Is.EqualTo("one"));
+            Assert.That(_store.TryRead(Lib, 2).Document, Is.EqualTo("two"));
+        }
+
+        [Test]
+        public void ADifferentLibraryDoesNotSeeTheFile()
+        {
+            _store.Write(Lib, 1, "A", "one");
+            Assert.That(_store.TryRead(Other, 1), Is.Null);
+            _store.Write(Other, 1, "B", "two");
+            Assert.That(_store.TryRead(Lib, 1).Document, Is.EqualTo("one"));
+            Assert.That(_store.TryRead(Other, 1).Document, Is.EqualTo("two"));
+        }
+
+        [Test]
+        public void StaleFilesForMissingDesignsAreDeleted()
+        {
+            _store.Write(Lib, 1, "A", "one");
+            _store.Write(Lib, 2, "B", "two");
+            _store.Write(Other, 2, "C", "three");
+            _store.DeleteStale(Lib, new long[] { 1 });
+            Assert.That(_store.Exists(Lib, 1));
+            Assert.That(_store.Exists(Lib, 2), Is.False);
+            Assert.That(_store.Exists(Other, 2), Is.True);
         }
     }
 }

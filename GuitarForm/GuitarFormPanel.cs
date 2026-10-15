@@ -80,6 +80,12 @@ namespace GuitarForm
         readonly RecoveryStore _recovery = new RecoveryStore(RecoveryStore.DefaultFolder);
         readonly UITimer _recoveryTimer = new UITimer { Interval = 2 };
         internal static GuitarFormPanel Current { get; private set; }
+        // The library the open design came from, which its recovery file is keyed by.
+        string _recoveryLibrary;
+        // The user chose "Don't save"; the working copy is dropped when a design is actually opened in its place.
+        bool _discardChosen;
+
+        static string CurrentLibraryPath => Plugin.GuitarFormSettings.LibraryPath;
         bool _showing;
         bool _panelVisible = true;
 
@@ -406,8 +412,10 @@ namespace GuitarForm
             try
             {
                 _designs.Items.Clear();
-                foreach (var design in WithLibrary(library => library.ListDesigns()))
+                var designs = WithLibrary(library => library.ListDesigns());
+                foreach (var design in designs)
                     _designs.Items.Add(new ListItem { Text = design.Name, Key = design.Id.ToString(CultureInfo.InvariantCulture) });
+                _recovery.DeleteStale(CurrentLibraryPath, designs.Select(d => d.Id));
                 _designs.SelectedKey = select?.ToString(CultureInfo.InvariantCulture);
             }
             catch (Exception e)
@@ -442,9 +450,12 @@ namespace GuitarForm
         // needs no first-save prompt.
         void Open(long id, bool confirmed)
         {
-            _design = WithLibrary(library => library.LoadDesign(id));
+            var loaded = WithLibrary(library => library.LoadDesign(id));
+            DiscardWorkingCopy();
+            _design = loaded;
             _designId = id;
             _savedName = _design.Name;
+            _recoveryLibrary = CurrentLibraryPath;
             _dirty = false;
             _savePrompted = confirmed;
             _lastSoundhole = null;
@@ -460,10 +471,10 @@ namespace GuitarForm
         // If the design has a recovery file, asks whether to take it back as the working copy.
         void OfferRecovery(long id)
         {
-            var recovery = _recovery.TryRead(id);
+            var recovery = _recovery.TryRead(_recoveryLibrary, id);
             if (recovery == null)
             {
-                _recovery.Delete(id); // An unreadable file is no use.
+                _recovery.Delete(_recoveryLibrary, id); // An unreadable file is no use.
                 return;
             }
             if (MessageBox.Show(this, $"Recover unsaved changes to \"{_design.Name}\"?", "GuitarForm",
@@ -481,11 +492,12 @@ namespace GuitarForm
                     MessageBox.Show(this, $"The recovery file couldn't be read: {e.Message}", "GuitarForm", MessageBoxType.Error);
                 }
             }
-            _recovery.Delete(id);
+            _recovery.Delete(_recoveryLibrary, id);
         }
 
         void CloseDesign()
         {
+            DiscardWorkingCopy();
             _design = null;
             _designId = null;
             _dirty = false;
@@ -494,7 +506,7 @@ namespace GuitarForm
 
         Control SaveButton()
         {
-            _saveButton.Click += (_, _) => Run(SaveDesign);
+            _saveButton.Click += (_, _) => Run(() => SaveDesign());
             return _saveButton;
         }
 
@@ -508,6 +520,7 @@ namespace GuitarForm
         void MarkDirty()
         {
             _dirty = true;
+            _discardChosen = false;
             UpdateDirtyUi();
             _recoveryTimer.Stop();
             _recoveryTimer.Start();
@@ -516,12 +529,13 @@ namespace GuitarForm
         // Writes the unsaved working copy to its recovery file now (also on hiding, closing and shutting down).
         internal void FlushRecovery()
         {
-            _recoveryTimer.Stop();
-            if (!_dirty || _design == null || _designId == null)
-                return;
             try
             {
-                _recovery.Write(_designId.Value, _design.Name, NewFields.AddToDocument(DesignDocument.ToJson(_design), _newFields));
+                _recoveryTimer.Stop();
+                if (!_dirty || _design == null || _designId == null || _recoveryLibrary == null)
+                    return;
+                _recovery.Write(_recoveryLibrary, _designId.Value, _design.Name,
+                    NewFields.AddToDocument(DesignDocument.ToJson(_design), _newFields));
             }
             catch (Exception e)
             {
@@ -532,18 +546,48 @@ namespace GuitarForm
         // Removes the open design's recovery file: its unsaved work was saved or thrown away.
         void ClearRecovery()
         {
-            _recoveryTimer.Stop();
-            if (_designId != null)
-                _recovery.Delete(_designId.Value);
+            try
+            {
+                _recoveryTimer.Stop();
+                if (_designId != null && _recoveryLibrary != null)
+                    _recovery.Delete(_recoveryLibrary, _designId.Value);
+            }
+            catch (Exception e)
+            {
+                RhinoApp.WriteLine($"GuitarForm: couldn't delete the recovery file: {e.Message}");
+            }
+        }
+
+        // Drops the working copy's unsaved state once the user's "Don't save" is carried out.
+        void DiscardWorkingCopy()
+        {
+            if (!_discardChosen)
+                return;
+            _discardChosen = false;
+            ClearRecovery();
+            _dirty = false;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _recoveryTimer.Stop();
+                _recoveryTimer.Dispose();
+                if (Current == this)
+                    Current = null;
+            }
+            base.Dispose(disposing);
         }
 
         // Writes the working copy to the library (and its new fields beside it). The first Save of a design asks
         // whether to overwrite it or save a new design instead.
-        void SaveDesign()
+        // overwriteConfirmed: the user already said Yes to saving over this design, so the first-save question is skipped.
+        void SaveDesign(bool overwriteConfirmed = false)
         {
             if (_design == null || _designId == null)
                 return;
-            if (!_savePrompted)
+            if (!_savePrompted && !overwriteConfirmed)
             {
                 var answer = MessageBox.Show(this,
                     $"Save your changes to \"{_savedName}\"?\n\nYes overwrites \"{_savedName}\".\nNo saves them as a new design and leaves \"{_savedName}\" as it was.\nCancel doesn't save.",
@@ -594,7 +638,22 @@ namespace GuitarForm
 
             var design = _design with { Name = name };
             long id = WithLibrary(library => library.CreateDesign(design));
-            NewFields.Save(id, _newFields);
+            try
+            {
+                NewFields.Save(id, _newFields);
+            }
+            catch
+            {
+                // No orphan: the design that was just created is removed again.
+                try
+                {
+                    WithLibrary(library => library.DeleteDesign(id));
+                }
+                catch (Exception)
+                {
+                }
+                throw;
+            }
             ClearRecovery();
             Open(id, true);
         }
@@ -605,20 +664,23 @@ namespace GuitarForm
         {
             if (!_dirty || _design == null)
                 return true;
-            var answer = MessageBox.Show(this, $"Save changes to \"{_design.Name}\"?", "GuitarForm",
-                MessageBoxButtons.YesNoCancel, MessageBoxType.Question);
+            _discardChosen = false;
+            // A design's first Save would ask overwrite-or-new next, so that choice is folded into this one question.
+            string question = _savePrompted
+                ? $"Save changes to \"{_design.Name}\"?"
+                : $"Save changes to \"{_savedName}\"?\n\nYes overwrites \"{_savedName}\" (use Save as… to keep it).\nNo discards the changes.";
+            var answer = MessageBox.Show(this, question, "GuitarForm", MessageBoxButtons.YesNoCancel, MessageBoxType.Question);
             if (answer == DialogResult.Cancel)
                 return false;
             if (answer == DialogResult.No)
             {
-                ClearRecovery();
-                _dirty = false;
-                UpdateDirtyUi();
+                // Only the choice is recorded; the changes are dropped when the replacement really happens.
+                _discardChosen = true;
                 return true;
             }
             try
             {
-                SaveDesign();
+                SaveDesign(true);
             }
             catch (Exception e)
             {
@@ -631,6 +693,9 @@ namespace GuitarForm
         void RevertDesign()
         {
             if (_designId == null)
+                return;
+            if (_dirty && MessageBox.Show(this, $"Discard unsaved changes to \"{_savedName}\"?", "GuitarForm",
+                    MessageBoxButtons.OKCancel, MessageBoxType.Warning) != DialogResult.Ok)
                 return;
             ClearRecovery();
             Open(_designId.Value, _savePrompted);
@@ -776,8 +841,6 @@ namespace GuitarForm
 
         void NewDesign()
         {
-            if (!ConfirmDiscard())
-                return;
             double length = 0, scale = 0;
             int fret = 0;
             var units = DisplayUnits.Current;
@@ -797,7 +860,7 @@ namespace GuitarForm
                         return "Neck join fret must be a whole number, 1 or more.";
                     return null;
                 });
-            if (values == null)
+            if (values == null || !ConfirmDiscard())
                 return;
 
             var design = new GuitarDesign
@@ -870,11 +933,11 @@ namespace GuitarForm
             if (dialog.ShowDialog(this) != DialogResult.Ok)
                 return;
 
-            if (!ConfirmDiscard())
-                return;
             string json = File.ReadAllText(dialog.FileName);
             var design = DesignDocument.FromJson(json);
             var newFields = NewFields.ReadFromDocument(json);
+            if (!ConfirmDiscard())
+                return;
             string name = string.IsNullOrWhiteSpace(design.Name) ? Path.GetFileNameWithoutExtension(dialog.FileName) : design.Name;
             long id = WithLibrary(library => library.CreateDesign(design with { Name = library.UnusedDesignName(name) }));
             if (newFields != null)
