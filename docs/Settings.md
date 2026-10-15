@@ -13,6 +13,8 @@ All designs and presets are kept in one SQLite database, `GuitarForm.db`. The ma
 
 The file is marked as a GuitarForm library; GuitarForm won't open another kind of database, or a library made by a newer version of GuitarForm. A library made by an older version is upgraded when it's opened.
 
+If the open design has unsaved changes, changing the library folder first asks whether to save them (**Yes**), discard them (**No**) or cancel. Unsaved changes are kept in a recovery file in `%LOCALAPPDATA%\GuitarForm\recovery`, not in the library; see [Using the panel](../README.md#using-the-panel).
+
 ## Backups
 
 Backups are complete copies of the library, written to the backup folder as `GuitarForm 2026-10-08 183005.db` (the date and time). By default the folder is `Documents\GuitarForm\Backups`, which OneDrive usually syncs, so the backups are kept off this computer too. Each backup is written under a temporary name and renamed when it's complete, so the folder only ever holds whole files.
@@ -24,7 +26,7 @@ Backups are complete copies of the library, written to the backup folder as `Gui
 | Also keep one a day for (days) | 30 | The newest backup from each of these days is kept as well (today counts as one). Older backups are deleted after each backup. |
 
 - **Back up now** makes a backup straight away, changed or not.
-- **Restore…** replaces the library with a backup you choose. The current library is backed up first, so a restore can be undone by restoring that backup. A file that isn't a GuitarForm library is refused and the library left alone. Restore is also how you start on another computer: point the backup folder at the synced folder and restore the newest backup.
+- **Restore…** replaces the library with a backup you choose. The current library is backed up first, so a restore can be undone by restoring that backup. If the open design has unsaved changes, you're asked first whether to save them (**Yes**), discard them (**No**) or cancel. A file that isn't a GuitarForm library is refused and the library left alone. Restore is also how you start on another computer: point the backup folder at the synced folder and restore the newest backup.
 - **Open backup folder** opens it in File Explorer.
 
 Backups don't merge changes made on two computers: whichever library is restored last wins.

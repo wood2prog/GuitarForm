@@ -25,4 +25,4 @@ Order: S1 -> S2 -> S3 -> U1 -> U2 -> U3 -> U4 -> U5 -> U6 -> U7 -> U8 -> S4. Tas
 
 ## Status
 (update as tasks complete: Pending / In progress / Completed / Verified)
-S1 Pending, S2 Pending, S3 Pending, U1 Pending, U2 Pending, U3 Pending, U4 Pending, U5 Pending, U6 Pending, U7 Pending, U8 Pending, S4 Pending
+S1 Completed, S2 Completed, S3 Completed, U1 Completed, U2 Completed, U3 Completed, U4 Completed, U5 Completed, U6 Completed, U7 Completed, U8 Completed, S4 Completed, F1 Completed (verification pending the owner's check in Rhino)

@@ -12,7 +12,7 @@ The guitar is drawn vertically from the origin up +Y. Lengths are shown and type
 
 The soundhole is a circle of radius Diameter / 2, centred at (Horizontal offset, Tail offset).
 
-**Quick test:** in a document in millimetres, tick the soundhole box and type these values:
+**Quick test:** in a document in millimetres, tick the soundhole box and type these values. They change the working copy until you press **Save**:
 
 | Field | Value | Result |
 |---|---|---|

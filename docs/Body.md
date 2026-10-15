@@ -110,7 +110,7 @@ The side view is drawn once both TD and ND are set; until then a note says so. I
 
 ## Quick test
 
-In a document in millimetres, make a design with body length 600 and type these values on the Body tab:
+In a document in millimetres, make a design with body length 600 and type these values on the Body tab. They change the working copy until you press **Save**:
 
 | Field | Value | Result |
 |---|---|---|
