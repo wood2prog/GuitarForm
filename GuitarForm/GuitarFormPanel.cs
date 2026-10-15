@@ -69,7 +69,13 @@ namespace GuitarForm
         long? _designId;
         GuitarDesign _design;
         DisplayUnits _units = DisplayUnits.Current;
-        bool _editConfirmed;
+        // Edits change only the working copy (_design, _newFields); Save writes it to the library.
+        bool _dirty;
+        string _savedName;
+        // Whether the first Save of this design has been asked about (overwrite or save as new).
+        bool _savePrompted;
+        readonly Label _dirtyLabel = new Label { Text = "", VerticalAlignment = VerticalAlignment.Center };
+        readonly Button _saveButton = new Button { Text = "Save" };
         bool _showing;
         bool _panelVisible = true;
 
@@ -138,8 +144,12 @@ namespace GuitarForm
                     new TableLayout
                     {
                         Spacing = new Size(6, 0),
-                        Rows = { new TableRow(new Label { Text = "Design", VerticalAlignment = VerticalAlignment.Center }, new TableCell(_designs, true)) },
+                        Rows = { new TableRow(new Label { Text = "Design", VerticalAlignment = VerticalAlignment.Center }, new TableCell(_designs, true), _dirtyLabel) },
                     },
+                    Buttons(
+                        SaveButton(),
+                        NeedsDesign(ActionButton("Save as…", () => SaveAs(null))),
+                        NeedsDesign(ActionButton("Revert", RevertDesign))),
                     Buttons(
                         ActionButton("New…", NewDesign),
                         NeedsDesign(ActionButton("Copy", CopyDesign)),
@@ -250,7 +260,7 @@ namespace GuitarForm
             if (changed != null)
             {
                 _newFields = changed;
-                Run(() => NewFields.Save(_designId.Value, _newFields));
+                MarkDirty();
             }
             Redraw();
         }
@@ -265,7 +275,7 @@ namespace GuitarForm
             {
                 _newFieldErrors[index] = null;
                 _newFields = field.Set(_newFields, parsed);
-                Run(() => NewFields.Save(_designId.Value, _newFields));
+                MarkDirty();
             }
             else
                 _newFieldErrors[index] = error.Text;
@@ -408,16 +418,20 @@ namespace GuitarForm
             if (_showing || _designs.SelectedKey == null)
                 return;
             long id = long.Parse(_designs.SelectedKey, CultureInfo.InvariantCulture);
+            // S2: guard unsaved changes before switching designs.
             if (id != _designId)
                 Run(() => Open(id, false));
         }
 
-        // Opens a design. A design that was just made (new, copied or imported) needs no overwrite-or-copy prompt.
+        // Opens a design from the library as the working copy. A design that was just made (new, copied or imported)
+        // needs no first-save prompt.
         void Open(long id, bool confirmed)
         {
             _design = WithLibrary(library => library.LoadDesign(id));
             _designId = id;
-            _editConfirmed = confirmed;
+            _savedName = _design.Name;
+            _dirty = false;
+            _savePrompted = confirmed;
             _lastSoundhole = null;
             _newFields = NewFields.Load(id);
             Array.Clear(_newFieldErrors);
@@ -430,7 +444,95 @@ namespace GuitarForm
         {
             _design = null;
             _designId = null;
+            _dirty = false;
             ShowDesign();
+        }
+
+        Control SaveButton()
+        {
+            _saveButton.Click += (_, _) => Run(SaveDesign);
+            return _saveButton;
+        }
+
+        void UpdateDirtyUi()
+        {
+            _dirtyLabel.Text = _dirty ? "Unsaved changes" : "";
+            _saveButton.Enabled = _dirty && _design != null;
+        }
+
+        // Records an edit of the working copy; nothing is written until Save.
+        void MarkDirty()
+        {
+            _dirty = true;
+            UpdateDirtyUi();
+        }
+
+        // Writes the working copy to the library (and its new fields beside it). The first Save of a design asks
+        // whether to overwrite it or save a new design instead.
+        void SaveDesign()
+        {
+            if (_design == null || _designId == null)
+                return;
+            if (!_savePrompted)
+            {
+                var answer = MessageBox.Show(this,
+                    $"Save your changes to \"{_savedName}\"?\n\nYes overwrites \"{_savedName}\".\nNo saves them as a new design and leaves \"{_savedName}\" as it was.\nCancel doesn't save.",
+                    "GuitarForm", MessageBoxButtons.YesNoCancel, MessageBoxType.Question);
+                if (answer == DialogResult.Cancel)
+                    return;
+                if (answer == DialogResult.No)
+                {
+                    SaveAs(WithLibrary(library => library.UnusedDesignName(_design.Name + " copy")));
+                    return;
+                }
+            }
+
+            string name = _design.Name;
+            if (name.Length == 0)
+                throw new InvalidOperationException("Enter a name for the design.");
+            if (!string.Equals(name, _savedName, StringComparison.OrdinalIgnoreCase) && WithLibrary(library => library.DesignExists(name)))
+                throw new InvalidOperationException($"There's already a design called \"{name}\".");
+
+            long id = _designId.Value;
+            var design = _design;
+            WithLibrary(library => library.SaveDesign(id, design));
+            NewFields.Save(id, _newFields);
+            _savePrompted = true;
+            _savedName = name;
+            _dirty = false;
+            ShowDesignList(id);
+            UpdateDirtyUi();
+        }
+
+        // Saves the working copy as a new design and switches to it; the original is left as it was. With no name
+        // given, asks for one.
+        void SaveAs(string name)
+        {
+            if (_design == null)
+                return;
+            if (name == null)
+            {
+                string initial = WithLibrary(library => library.UnusedDesignName(_design.Name + " copy"));
+                var values = FieldsDialog.Ask(this, "Save as", new[] { ("Name", initial) }, v =>
+                    v[0].Length == 0 ? "Enter a name." :
+                    WithLibrary(library => library.DesignExists(v[0])) ? $"There's already a design called \"{v[0]}\"." : null);
+                if (values == null)
+                    return;
+                name = values[0];
+            }
+
+            var design = _design with { Name = name };
+            long id = WithLibrary(library => library.CreateDesign(design));
+            NewFields.Save(id, _newFields);
+            // S2: the working copy is saved here, so switching needs no guard.
+            Open(id, true);
+        }
+
+        void RevertDesign()
+        {
+            if (_designId == null)
+                return;
+            Open(_designId.Value, _savePrompted);
         }
 
         void OnUnitsMaybeChanged()
@@ -462,11 +564,11 @@ namespace GuitarForm
             foreach (var control in _needDesign)
                 control.Enabled = _design != null;
             _soundhole.Enabled = _design?.Soundhole != null;
+            UpdateDirtyUi();
             Redraw();
         }
 
-        // Saves a change to the open design. On the first change after opening it, asks whether to overwrite the
-        // design or save the change in a copy; cancelling undoes the change.
+        // Changes the working copy of the open design; nothing is written to the library until Save.
         void Apply(Func<GuitarDesign, GuitarDesign> change)
         {
             if (_design == null || _designId == null)
@@ -475,41 +577,8 @@ namespace GuitarForm
             if (changed == _design)
                 return;
 
-            try
-            {
-                if (!_editConfirmed)
-                {
-                    var answer = MessageBox.Show(this,
-                        $"Save this change to \"{_design.Name}\"?\n\n" +
-                        $"Yes overwrites \"{_design.Name}\".\nNo saves the change in a copy and leaves \"{_design.Name}\" as it was.\nCancel undoes the change.",
-                        "GuitarForm", MessageBoxButtons.YesNoCancel, MessageBoxType.Question);
-                    if (answer == DialogResult.Cancel)
-                    {
-                        Application.Instance.AsyncInvoke(ShowDesign);
-                        return;
-                    }
-                    if (answer == DialogResult.No)
-                    {
-                        long original = _designId.Value;
-                        long copy = WithLibrary(library => library.CopyDesign(original));
-                        NewFields.Save(copy, _newFields);
-                        changed = changed with { Name = WithLibrary(library => library.LoadDesign(copy).Name) };
-                        _designId = copy;
-                        ShowDesignList(copy);
-                    }
-                    _editConfirmed = true;
-                }
-
-                long id = _designId.Value;
-                WithLibrary(library => library.SaveDesign(id, changed));
-                _design = changed;
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show(this, e.Message, "GuitarForm", MessageBoxType.Error);
-                Application.Instance.AsyncInvoke(ShowDesign);
-                return;
-            }
+            _design = changed;
+            MarkDirty();
             Redraw();
         }
 
@@ -599,13 +668,14 @@ namespace GuitarForm
         {
             var doc = RhinoDoc.ActiveDoc ?? throw new InvalidOperationException("There's no Rhino document to build into.");
             int added = DesignBuilder.Build(doc, _designId.Value, _design.Name, Draw());
-            RhinoApp.WriteLine($"GuitarForm: built \"{_design.Name}\" ({added} objects).");
+            RhinoApp.WriteLine($"GuitarForm: built \"{_design.Name}\"{(_dirty ? " (unsaved)" : "")} ({added} objects).");
         }
 
         // --- Design list buttons ---
 
         void NewDesign()
         {
+            // S2: guard unsaved changes before New, Copy, Import and Delete.
             double length = 0, scale = 0;
             int fret = 0;
             var units = DisplayUnits.Current;
@@ -655,11 +725,8 @@ namespace GuitarForm
             if (values == null || values[0] == current)
                 return;
 
-            var renamed = _design with { Name = values[0] };
-            long id = _designId.Value;
-            WithLibrary(library => library.SaveDesign(id, renamed));
-            _design = renamed;
-            ShowDesignList(id);
+            // Applied to the library on Save.
+            Apply(d => d with { Name = values[0] });
         }
 
         void DeleteDesign()

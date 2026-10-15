@@ -267,7 +267,10 @@ namespace GuitarForm
         {
             string path = FilePath(designId);
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
-            File.WriteAllText(path, JsonSerializer.Serialize(ToTexts(guitar), new JsonSerializerOptions { WriteIndented = true }));
+            // Written to a temporary file and moved over the old one, so an interrupted save can't leave half a file.
+            string temp = path + ".tmp";
+            File.WriteAllText(temp, JsonSerializer.Serialize(ToTexts(guitar), new JsonSerializerOptions { WriteIndented = true }));
+            File.Move(temp, path, true);
         }
 
         // A design document (see DesignDocument) can carry the new fields in a "newFields" object beside the design,
