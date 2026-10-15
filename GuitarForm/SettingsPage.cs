@@ -113,13 +113,14 @@ namespace GuitarForm
             _drawingGapLabel.Text = units.Abbreviation;
             _drawingGap.Value = units.FromMillimetres(settings.DrawingGap);
             _showing = false;
-            _status.Text = Status(settings);
-            _status.TextColor = _status.Text.Contains("Couldn't") ? UiMetrics.ErrorColor : UiMetrics.NoteColor;
+            (_status.Text, bool failed) = Status(settings);
+            _status.TextColor = failed ? UiMetrics.ErrorColor : UiMetrics.NoteColor;
         }
 
-        static string Status(GuitarFormSettings settings)
+        static (string Text, bool Failed) Status(GuitarFormSettings settings)
         {
             string library;
+            bool failed = false;
             try
             {
                 using var opened = Library.Open(settings.LibraryPath);
@@ -129,11 +130,12 @@ namespace GuitarForm
             catch (Exception e)
             {
                 library = $"Couldn't open the library: {e.Message}";
+                failed = true;
             }
 
             var newest = Backups.List(settings.BackupFolder).FirstOrDefault();
             string backup = newest == null ? "Not backed up yet." : $"Last backup: {newest.Time:g}.";
-            return library + "\n" + backup;
+            return (library + "\n" + backup, failed);
         }
 
         void SaveBackupNumbers()

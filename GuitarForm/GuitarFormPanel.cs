@@ -214,14 +214,16 @@ namespace GuitarForm
         {
             var content = new StackLayout { Padding = UiMetrics.PagePadding, Spacing = UiMetrics.GroupGap, HorizontalContentAlignment = HorizontalAlignment.Stretch };
             var groupList = groups.ToList();
+            Label hint = null;
             if (groupList.Any(FieldLayout.HasSlider))
             {
-                content.Items.Add(new Label
+                hint = new Label
                 {
                     Text = "Click a value to type · Arrow keys step · Shift = fine · Ctrl = coarse",
                     Wrap = WrapMode.Word,
                     TextColor = UiMetrics.MutedTickColor,
-                });
+                };
+                content.Items.Add(hint);
             }
             foreach (var control in groupList)
                 content.Items.Add(control);
@@ -240,7 +242,10 @@ namespace GuitarForm
             var layout = new TableLayout();
             if (top.Length > 0)
                 layout.Rows.Add(pinned);
-            layout.Rows.Add(new TableRow(new Scrollable { Content = content, Border = BorderType.None }) { ScaleHeight = true });
+            var scroll = new Scrollable { Content = content, Border = BorderType.None };
+            if (hint != null)
+                FieldLayout.WrapToViewport(scroll, 2 * UiMetrics.PagePadding, width => hint.Width = width);
+            layout.Rows.Add(new TableRow(scroll) { ScaleHeight = true });
             var page = new TabPage { Text = title, Content = layout };
             _pageMessages[page] = messages;
             messages.Changed += () =>

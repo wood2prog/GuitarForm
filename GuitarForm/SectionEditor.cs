@@ -268,13 +268,28 @@ namespace GuitarForm
             return new TableRow(text, new TableCell(cell, true), unitCell);
         }
 
+        // Keeps a wrapping label as wide as the scrolling area it is in (less padding and a scroll bar), because a
+        // wrapping label in a scroller can otherwise measure itself unbounded and never wrap.
+        public static void WrapToViewport(Scrollable scroll, int margin, Action<int> setWidth)
+        {
+            void Update()
+            {
+                int width = scroll.ClientSize.Width - margin - UiMetrics.ScrollbarWidth;
+                if (scroll.ClientSize.Width > 0 && width > 0)
+                    setWidth(width);
+            }
+            scroll.SizeChanged += (_, _) => Update();
+            Update();
+        }
+
         // Whether each group is expanded, by section and title, kept for the session.
         static readonly Dictionary<string, bool> GroupState = new Dictionary<string, bool>();
 
         // True for a group made with Group that holds a slider.
-        public static bool HasSlider(Control group) => SliderGroups.Contains(group);
+        public static bool HasSlider(Control group) => SliderGroups.TryGetValue(group, out _);
 
-        static readonly HashSet<Control> SliderGroups = new HashSet<Control>();
+        // Weak, so it doesn't keep groups alive.
+        static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Control, object> SliderGroups = new();
 
         // A titled group of related fields, with a header that collapses and expands it. Groups start expanded.
         public static Control Group(string section, string title, IEnumerable<TableRow> rows)
@@ -301,7 +316,7 @@ namespace GuitarForm
             group.Items.Add(header);
             group.Items.Add(body);
             if (layout.Rows.Any(r => r.Cells.Any(c => c.Control is NumberSlider)))
-                SliderGroups.Add(group);
+                SliderGroups.Add(group, new object());
             return group;
         }
 
@@ -320,10 +335,11 @@ namespace GuitarForm
         const int MaxListHeight = 110;
         const int LineHeight = 20;
 
-        readonly Button _header = new Button { Style = null };
+        readonly Button _header = new Button();
         readonly Scrollable _scroll = new Scrollable { Border = BorderType.None };
         readonly StackLayout _list = new StackLayout { Spacing = 2, Padding = new Padding(UiMetrics.Gap, 2), HorizontalContentAlignment = HorizontalAlignment.Stretch };
         IReadOnlyList<GeometryMessage> _messages = Array.Empty<GeometryMessage>();
+        int _lineWidth;
         bool _expanded;
         int _errors;
 
@@ -332,6 +348,12 @@ namespace GuitarForm
             Spacing = 2;
             HorizontalContentAlignment = HorizontalAlignment.Stretch;
             _scroll.Content = _list;
+            FieldLayout.WrapToViewport(_scroll, 2 * UiMetrics.Gap, width =>
+            {
+                _lineWidth = width;
+                foreach (var label in _list.Items.Select(i => i.Control).OfType<Label>())
+                    label.Width = width;
+            });
             _header.Click += (_, _) =>
             {
                 _expanded = !_expanded;
@@ -376,6 +398,7 @@ namespace GuitarForm
                 {
                     Text = $"{FieldLayout.Level(message.Level)}: {message.Text}",
                     Wrap = WrapMode.Word,
+                    Width = _lineWidth > 0 ? _lineWidth : -1,
                     TextColor = message.Level switch
                     {
                         MessageLevel.Error => UiMetrics.ErrorColor,

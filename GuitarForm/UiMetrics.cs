@@ -17,13 +17,13 @@ namespace GuitarForm
         public const int RowGap = 4;
 
         /// <summary>Padding inside a group box, in pixels.</summary>
-        public const int GroupPadding = 6;
+        public const int GroupPadding = 4;
 
         /// <summary>Padding inside a tab page, in pixels.</summary>
-        public const int PagePadding = 8;
+        public const int PagePadding = 6;
 
         /// <summary>Width of a field's label column (longer labels wrap), in pixels.</summary>
-        public const int LabelMinWidth = 100;
+        public const int LabelMinWidth = 92;
 
         /// <summary>Width of the unit column, enough for "mm", "mm²", "deg" and "%".</summary>
         public const int UnitWidth = 32;
@@ -38,7 +38,10 @@ namespace GuitarForm
         public const int ChoiceBoxWidth = 120;
 
         /// <summary>Narrowest a slider gets, in pixels.</summary>
-        public const int SliderMinWidth = 120;
+        public const int SliderMinWidth = 96;
+
+        /// <summary>Allowance for a vertical scroll bar when sizing wrapping text to a scrolling area, in pixels.</summary>
+        public const int ScrollbarWidth = 17;
 
         /// <summary>Widest a slider gets, in pixels.</summary>
         public const int SliderMaxWidth = 260;

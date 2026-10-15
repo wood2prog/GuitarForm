@@ -90,17 +90,19 @@ namespace GuitarForm
             {
                 if (e.Key == Keys.Enter)
                 {
-                    StopEditing();
+                    StopEditing(true);
                     e.Handled = true;
                 }
                 else if (e.Key == Keys.Escape)
                 {
                     _textBox.Text = _textBeforeEdit;
-                    StopEditing();
+                    StopEditing(true);
                     e.Handled = true;
                 }
             };
             _textBox.LostFocus += (_, _) => StopEditing();
+            // Removed from the window while typing: finish, so edit mode can't be left stuck.
+            UnLoad += (_, _) => StopEditing();
         }
 
         public string Text
@@ -155,18 +157,28 @@ namespace GuitarForm
             _textBeforeEdit = _text;
             _textBox.Text = _text;
             Content = _textBox;
-            _textBox.Focus();
-            _textBox.SelectAll();
             _bar.Invalidate();
+            // The text box isn't loaded until the layout has run, so focusing it now can silently fail.
+            Application.Instance.AsyncInvoke(() =>
+            {
+                if (!_editing)
+                    return;
+                _textBox.Focus();
+                _textBox.SelectAll();
+            });
         }
 
-        void StopEditing()
+        // Ends typing, keeping what was typed (Esc puts the old text back first). After Enter or Esc the bar takes the
+        // focus back, so arrow keys and Tab carry on from here; when focus went elsewhere it is left there.
+        void StopEditing(bool refocus = false)
         {
             if (!_editing)
                 return;
             _editing = false;
             Content = _bar;
             _bar.Invalidate();
+            if (refocus)
+                _bar.Focus();
         }
 
         // --- Dragging ---
