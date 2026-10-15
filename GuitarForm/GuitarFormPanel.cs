@@ -31,7 +31,7 @@ namespace GuitarForm
         readonly SectionEditor<Body> _body = new SectionEditor<Body>(Sections.Body);
         readonly SectionEditor<Soundhole> _soundhole = new SectionEditor<Soundhole>(Sections.Soundhole);
         readonly CheckBox _hasSoundhole = new CheckBox { Text = "This design has a soundhole" };
-        readonly CheckBox _showPreview = new CheckBox { Text = "Preview", Checked = true };
+        readonly CheckBox _showPreview = new CheckBox { Text = "&Preview", Checked = true };
         readonly SettingsPage _settings = new SettingsPage();
         readonly DesignPreview _preview = new DesignPreview();
 
@@ -74,7 +74,7 @@ namespace GuitarForm
         // Whether the first Save of this design has been asked about (overwrite or save as new).
         bool _savePrompted;
         readonly Label _dirtyLabel = new Label { Text = "", VerticalAlignment = VerticalAlignment.Center };
-        readonly Button _saveButton = new Button { Text = "Save" };
+        readonly Button _saveButton = new Button { Text = "&Save" };
         // Unsaved work is written to a recovery file shortly after the last edit.
         readonly RecoveryStore _recovery = new RecoveryStore(RecoveryStore.DefaultFolder);
         readonly UITimer _recoveryTimer = new UITimer { Interval = 2 };
@@ -160,13 +160,13 @@ namespace GuitarForm
                     },
                     Buttons(
                         SaveButton(),
-                        NeedsDesign(ActionButton("Save as…", () => SaveAs(null))),
-                        NeedsDesign(ActionButton("Revert", RevertDesign))),
+                        NeedsDesign(ActionButton("Save &as…", () => SaveAs(null))),
+                        NeedsDesign(ActionButton("Re&vert", RevertDesign))),
                     Buttons(
-                        ActionButton("New…", NewDesign),
-                        NeedsDesign(ActionButton("Copy", CopyDesign)),
-                        NeedsDesign(ActionButton("Rename…", RenameDesign)),
-                        NeedsDesign(ActionButton("Delete", DeleteDesign)),
+                        ActionButton("&New…", NewDesign),
+                        NeedsDesign(ActionButton("&Copy", CopyDesign)),
+                        NeedsDesign(ActionButton("R&ename…", RenameDesign)),
+                        NeedsDesign(ActionButton("&Delete", DeleteDesign)),
                         MoreButton()),
                     new TableRow(TabsAndMessages()) { ScaleHeight = true },
                     _messagesBar,
@@ -195,7 +195,7 @@ namespace GuitarForm
             _exportItem.Click += (_, _) => Run(ExportDesign);
             menu.Items.Add(import);
             menu.Items.Add(_exportItem);
-            var button = new Button { Text = "More ▾", ToolTip = "Import a design, or export the open one" };
+            var button = new Button { Text = "Mo&re ▾", ToolTip = "Import a design, or export the open one" };
             button.Click += (_, _) => menu.Show(button);
             return button;
         }
@@ -203,7 +203,7 @@ namespace GuitarForm
         // Build is the main action, so its text is bold.
         Button BuildButton()
         {
-            var button = ActionButton("Build", Build);
+            var button = ActionButton("&Build", Build);
             button.Font = SystemFonts.Bold();
             button.ToolTip = "Build the design into the Rhino document";
             return button;
