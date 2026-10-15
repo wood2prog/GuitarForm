@@ -213,7 +213,17 @@ namespace GuitarForm
         TabPage SectionPage(string title, Control[] top, IEnumerable<Control> groups, TabMessages messages)
         {
             var content = new StackLayout { Padding = UiMetrics.PagePadding, Spacing = UiMetrics.GroupGap, HorizontalContentAlignment = HorizontalAlignment.Stretch };
-            foreach (var control in groups)
+            var groupList = groups.ToList();
+            if (groupList.Any(FieldLayout.HasSlider))
+            {
+                content.Items.Add(new Label
+                {
+                    Text = "Click a value to type · Arrow keys step · Shift = fine · Ctrl = coarse",
+                    Wrap = WrapMode.Word,
+                    TextColor = UiMetrics.MutedTickColor,
+                });
+            }
+            foreach (var control in groupList)
                 content.Items.Add(control);
             NeedsDesign(content);
 
@@ -282,12 +292,29 @@ namespace GuitarForm
                 foreach (var field in group.Fields)
                 {
                     if (group.Tab == tab && group.Title == title)
-                        yield return FieldLayout.Row(field.Get(_newFields).Label, null, (Control)_newFieldBoxes[index], _newFieldUnits[index]);
+                        {
+                        var definition = field.Get(_newFields).Definition;
+                        yield return FieldLayout.Row(field.Get(_newFields).Label, null, (Control)_newFieldBoxes[index], _newFieldUnits[index],
+                            () => NewFieldLimits(definition));
+                    }
                     index++;
                 }
             }
             if (tab == NewFields.FretboardTab && title == NewFields.MarkersGroup)
                 yield return FieldLayout.Row("Marker frets", _markers.ToolTip, _markers, FieldLayout.UnitLabel());
+        }
+
+        // "Minimum: …  Maximum: …" for a new field, in the units it's shown in; null when it has neither.
+        string NewFieldLimits(ParameterDefinition definition)
+        {
+            string Show(double value) => definition.Kind == ParameterKind.Length
+                ? _units.FormatLength(value) : value.ToString("0.#####", CultureInfo.CurrentCulture);
+            var parts = new List<string>();
+            if (definition.Minimum is double min)
+                parts.Add("Minimum: " + (definition.MinimumExclusive ? "above " : "") + Show(min));
+            if (definition.Maximum is double max)
+                parts.Add("Maximum: " + (definition.MaximumExclusive ? "below " : "") + Show(max));
+            return parts.Count == 0 ? null : string.Join(", ", parts);
         }
 
         void OnMarkersChanged()

@@ -72,7 +72,9 @@ namespace GuitarForm
                     _boxes[index].PlaceholderText = field.Required ? "required" : "";
                     _boxes[index].TextChanged += (_, _) => OnTextChanged(index);
                     _unitLabels[index] = FieldLayout.UnitLabel();
-                    rows.Add(FieldLayout.Row(field.Label, field.Description, (Control)_boxes[index], _unitLabels[index]));
+                    rows.Add(FieldLayout.Row(field.Label, field.Description, (Control)_boxes[index], _unitLabels[index],
+                        () => field.Minimum is double minimum
+                            ? "Minimum: " + (field.IsLength ? _units.FormatLength(minimum) : Format(minimum)) : null));
                 }
             }
         }
@@ -225,7 +227,7 @@ namespace GuitarForm
 
         // A field's row: its label (a fixed column that wraps long text), its box (a slider fills the column; any other
         // box keeps its own width at the left of it) and the unit after it.
-        public static TableRow Row(string label, string toolTip, Control box, Label unit)
+        public static TableRow Row(string label, string toolTip, Control box, Label unit, Func<string> limits = null)
         {
             var text = new Label
             {
@@ -235,6 +237,26 @@ namespace GuitarForm
                 Wrap = WrapMode.Word,
                 Width = UiMetrics.LabelMinWidth,
             };
+            // The same tooltip on the label and the box: the description, the unit and any limits.
+            void RefreshToolTip()
+            {
+                var lines = new List<string>();
+                if (!string.IsNullOrEmpty(toolTip))
+                    lines.Add(toolTip);
+                if (!string.IsNullOrEmpty(unit.Text))
+                    lines.Add("Unit: " + unit.Text);
+                string range = limits?.Invoke();
+                if (!string.IsNullOrEmpty(range))
+                    lines.Add(range);
+                string tip = lines.Count == 0 ? null : string.Join("\n", lines);
+                text.ToolTip = tip;
+                if (box is NumberSlider slider)
+                    slider.ToolTip = tip;
+                else
+                    box.ToolTip = tip;
+            }
+            unit.TextChanged += (_, _) => RefreshToolTip();
+            RefreshToolTip();
             Control cell = box;
             if (box is not NumberSlider)
             {
@@ -248,6 +270,11 @@ namespace GuitarForm
 
         // Whether each group is expanded, by section and title, kept for the session.
         static readonly Dictionary<string, bool> GroupState = new Dictionary<string, bool>();
+
+        // True for a group made with Group that holds a slider.
+        public static bool HasSlider(Control group) => SliderGroups.Contains(group);
+
+        static readonly HashSet<Control> SliderGroups = new HashSet<Control>();
 
         // A titled group of related fields, with a header that collapses and expands it. Groups start expanded.
         public static Control Group(string section, string title, IEnumerable<TableRow> rows)
@@ -273,6 +300,8 @@ namespace GuitarForm
             var group = new StackLayout { Spacing = 0, HorizontalContentAlignment = HorizontalAlignment.Stretch };
             group.Items.Add(header);
             group.Items.Add(body);
+            if (layout.Rows.Any(r => r.Cells.Any(c => c.Control is NumberSlider)))
+                SliderGroups.Add(group);
             return group;
         }
 
