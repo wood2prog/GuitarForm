@@ -54,6 +54,7 @@ Every length in GuitarForm is shown and typed in the **Rhino document's units**,
 | Bracing | The top's X brace, graft, upper transverse bar, finger braces, tone bars and soundhole braces. | Not yet documented; see [docs/Glossary.md](docs/Glossary.md) |
 | Fretboard | Its width and string spacing, frets, thickness and radius, and dot markers. | Not yet documented; see [docs/Glossary.md](docs/Glossary.md) |
 | Neck | Its angle, nut, thickness, profiles (squareness, asymmetry and blend) at the first and selected frets, and the heel. | [docs/Neck.md](docs/Neck.md) |
+| Strings | The library of string sets: each string's description, diameter, construction, unit weight and core, and the set each guitar uses. | [docs/Strings.md](docs/Strings.md) |
 | Settings | Where the library and its backups are kept, backup timing, and the drawing gap. | [docs/Settings.md](docs/Settings.md) |
 
 ## Library and backups
