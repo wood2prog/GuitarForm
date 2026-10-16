@@ -4,14 +4,26 @@ The neck: its angle and overstand, the thickness at the first and selected frets
 
 The profiles are drawn beside the side view, fretboard (or heel/body joint) side up with the treble side to the right. Lengths are shown and typed in the Rhino document's units and stored in millimetres; see [Units](../README.md#units).
 
-## Profile mode
+## Profiles
 
-**Profile Advanced Mode (PADV)** switches the profile fields between two ways of describing the same shape. Each profile, at the first fret, the selected fret, the heel section and the heel end, has its own squareness, asymmetry and blend.
+A neck profile is a cross-section through the neck, drawn fretboard (or heel/body joint) side up with the treble side to the right. Four are drawn, called stations:
 
-| Mode | Fields shown | What sets the shape |
+- **First fret**, at the first fret, set by Neck Thickness at First Fret.
+- **Selected fret**, at the Neck Thickness Fret, set by Neck Thickness at Selected Fret.
+- **Heel section** and **heel end**, through the heel at those places, set by Heel Section Thickness and Heel End Thickness.
+
+Each station has its own squareness, asymmetry and blend, and the heel stations also have a side length. The shape of each profile is only the part below the shoulder; the top is fixed by the fretboard (neck stations) or by the heel/body joint (heel stations).
+
+### Basic and advanced mode
+
+**Profile Advanced Mode (PADV)** is one setting for all four stations. The same curve is described two ways:
+
+| Mode | Fields used | What sets the shape |
 |---|---|---|
-| Simple (unticked, the default) | Squareness, Asymmetry | Squareness alone; any Blend value is ignored. |
-| Advanced (ticked) | Blend, Asymmetry | Blend alone; any Squareness value is ignored. |
+| Basic (unticked, the default) | Squareness, Asymmetry | Squareness; any Blend value is ignored. |
+| Advanced (ticked) | Blend, Asymmetry | Blend; any Squareness value is ignored. |
+
+Use basic mode to set an exact exponent, and advanced mode to move between the V, the round C and the D with one control. The values you aren't using are kept, so switching modes loses nothing.
 
 | Field | Abbreviations (first fret / selected fret / heel section / heel end) | Range | When blank |
 |---|---|---|---|
@@ -19,14 +31,45 @@ The profiles are drawn beside the side view, fretboard (or heel/body joint) side
 | Asymmetry | PASF / PASS / PASH / PASE | -50 to 50 (%) | 0 |
 | Blend | PBLF / PBLS / PBLH / PBLE | 0 to 100 (%) | 50 (a round C) |
 
-- **Squareness** is how square the back of the neck is: 1 is a V, 2 a round C, and higher values a squarer D.
-- **Asymmetry** moves the fullest point (the apex) of the profile off the neck's centerline, as a percentage of half the profile's width: positive toward the treble side, negative toward the bass side. The profile's overall width and depth don't change.
-- **Blend** (advanced mode) is a position along three reference shapes: 0 is a V (squareness 1), 50 a round C (squareness 2) and 100 a D (squareness 3.2). Between two references the outlines are blended point for point.
-- **Profile Includes Fretboard** (PIFF, PIFS) says whether the shoulder starts at the top of the fretboard edge (ticked) or at its underside (unticked).
-- **Profile Uses First Fret** (PUFS, PUFH, PUFE) makes that profile use the first fret's squareness, asymmetry, blend and mode instead of its own.
-- **Side length** (PSLE, PSLH) is the length of the heel's straight sides at the heel end and heel section. It must be 0 or more (at 0 the curves start at the joint) and less than the thickness there.
+Blank values use the defaults silently, with no message.
 
-Each profile group has a **Starting shape** list. Choosing one fills in that profile's squareness, asymmetry and blend, which you can then adjust:
+### Squareness
+
+Each half of the profile is a superellipse quadrant. With half-width a, height b and squareness n:
+
+x = a cos^(2/n) t, y = b (1 - sin^(2/n) t), for t from 0 (the shoulder, where the curve is vertical) to 90 degrees (the apex, where it is level)
+
+| n | Shape |
+|---|---|
+| 1 | V: straight sides meeting at the apex |
+| 1.5 | Soft V |
+| 2 | Round C: a half ellipse |
+| 3.2 | D |
+| 4 and up | Squarer: the sides stay wide lower down and turn sharply into the bottom |
+
+The profile's width and depth don't depend on n, only how full the curve is between them.
+
+### Asymmetry
+
+Asymmetry moves the apex off the neck's centerline: by half-width x asymmetry / 100, toward the treble side when positive, toward the bass side when negative. The shoulders stay where they are, so the profile's overall width and depth don't change. With half-width a and asymmetry s (as a fraction, so 20% is 0.2), the treble half is a(1 - s) wide and the bass half a(1 + s), measured from the apex to its shoulder. Each half keeps the same squareness or blend, so the shallower side is steeper. Asymmetry applies in both modes.
+
+### Blend
+
+Blend is a position along three reference shapes: the V (n = 1) at 0%, the round C (n = 2) at 50% and the D (n = 3.2) at 100%. A blend between two neighbouring references is the point-for-point mix of their curves: for the same angle t, each point is (1 - w) x the lower reference's point + w x the upper's, where w is how far along between the two the blend is (blend / 50 between 0 and 50, and (blend - 50) / 50 between 50 and 100). It isn't a curve of any single squareness, so blend 25 is close to, but not the same as, squareness 1.5.
+
+Examples, at t = 45 degrees, as a fraction of the half-width across from the apex and of the height up from the bottom:
+
+| Blend | Mix | Point (across, up) |
+|---|---|---|
+| 0 | V | 0.500, 0.500 |
+| 25 | half V, half round C | 0.604, 0.396 |
+| 50 | round C | 0.707, 0.293 |
+| 75 | half round C, half D | 0.756, 0.244 |
+| 100 | D | 0.805, 0.195 |
+
+### Starting shapes
+
+Each profile group has a **Starting shape** list. Choosing one fills in that profile's squareness, asymmetry and blend, which you can then adjust. Nothing remembers which shape was chosen.
 
 | Starting shape | Squareness | Asymmetry | Blend |
 |---|---|---|---|
@@ -36,17 +79,19 @@ Each profile group has a **Starting shape** list. Choosing one fills in that pro
 | D | 3.2 | 0 | 100 |
 | Asymmetric | 2.0 | 15 | 50 |
 
+### Other profile settings
+
+- **Profile Includes Fretboard** (PIFF, PIFS), at the first and selected frets, says whether the shoulder starts at the top of the fretboard edge (ticked) or at its underside (unticked). Ticked, the profile outline includes the fretboard's edge, and the Neck Thickness must be more than the drop of the fretboard's surface at its edge. The heel profiles have no fretboard, so don't use it.
+- **Profile Side Length** (PSLH, PSLE), at the heel section and heel end only, is the length of the heel's straight sides running down from the heel/body joint before the curves start. It must be 0 or more (at 0 the curves start at the joint) and less than the thickness there.
+- **Profile Uses First Fret** (PUFS, PUFH, PUFE) makes that profile use the first fret's squareness, asymmetry and blend instead of its own. Its own thickness (and, for the heel, width and side length) still apply. The selected fret also takes the first fret's Profile Includes Fretboard.
+
 Profiles saved before this version used a bottom radius, shoulder angle, midshoulder radius and center offset. Those values aren't converted: they're dropped when the design is opened, and every profile starts from the defaults above.
 
 ## Geometry
 
-A neck profile's top is the fretboard's playing surface, an arc of the Fretboard Radius across the fretboard's width at that fret. Its fretboard is as thick at the centerline as the taper from Fretboard Thickness at Nut to Fretboard Thickness at End makes it there. A heel profile's top is the heel/body joint, a straight line as wide as the heel, with the heel's straight sides running down from it by the Profile Side Length.
+A neck profile's top is the fretboard's playing surface, an arc of the Fretboard Radius across the fretboard's width at that fret, which must be at least half that width. Its fretboard is as thick at the centerline as the taper from Fretboard Thickness at Nut to Fretboard Thickness at End makes it there, and the neck thickness must be more than that. A heel profile's top is the heel/body joint, a straight line as wide as the heel, with the heel's straight sides running down from it by the Profile Side Length.
 
-Below that, the profile runs from the shoulder start down to the bottom, which is the neck thickness below the crown (the heel thickness below the joint). The shoulder start is the top or underside of the fretboard edge (per Profile Includes Fretboard), or the end of the heel's straight side. Each half is a superellipse quadrant that is vertical at the shoulder and level at the apex. With half-width a, height b and squareness n:
-
-x = a cos^(2/n) t, y = b (1 - sin^(2/n) t), for t from 0 to 90 degrees
-
-so n = 1 is a straight-sided V, n = 2 a half ellipse (a round C) and larger n squarer. Asymmetry shifts the apex by that percentage of a, so the two halves have half-widths a(1 - asymmetry) and a(1 + asymmetry) toward the treble and bass sides. In advanced mode the squareness is ignored and the blend mixes the reference shapes n = 1 (blend 0), n = 2 (50) and n = 3.2 (100) point for point.
+Below that, the profile runs from the shoulder start down to the bottom, which is the neck thickness below the crown (the heel thickness below the joint). The shoulder start is the top or underside of the fretboard edge (per Profile Includes Fretboard), or the end of the heel's straight side. The curve is sampled by splitting the quarter turn into eight pieces and subdividing each until its chord is within half the document tolerance of the curve (down to six levels), so squarer curves get more points.
 
 The neck profiles share a centerline, the drawing gap right of the side view, each centered on the height of its fret on the playing surface. The heel section and then the heel end follow, each the drawing gap further right, level with the heel.
 

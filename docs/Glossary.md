@@ -223,43 +223,74 @@ Whether the heel section profile uses the first fret's profile settings instead 
 At the heel section, the length of the heel's straight sides, running out from the heel/body joint before the profile's curves start. Zero or more (at 0 the curves start at the joint), and less than the Heel Section Thickness.
 
 **Profile Advanced Mode (PADV)**
-Whether the neck profile's squareness and blend are set separately at each station (advanced) rather than by a starting shape.
+Whether the neck profiles are shaped in advanced mode (true) or basic mode (false, the default). One setting for all four profiles. In basic mode the squareness sets each profile's shape and any blend is ignored; in advanced mode the blend sets it and any squareness is ignored. The asymmetry applies in both modes.
 
 **Profile Squareness at First Fret (PSQF)**
-At the first fret, how square the profile's back is: 1 is a V, 2 a round C, and higher values a squarer D. Between 1 and 10; 2 when not set.
+At the first fret, the squareness of the profile's back (the superellipse exponent) in basic mode: 1 is a V, 1.5 a soft V, 2 a round C, 3.2 a D, and larger values squarer. A number from 1 to 10; 2 when not set. Ignored in advanced mode.
 
 **Profile Asymmetry at First Fret (PASF)**
-At the first fret, how far the profile's fullest point is shifted from the neck's centerline, as a percentage of half the profile's width: positive toward the treble side, negative toward the bass side. Between -50 and 50; 0 when not set.
+At the first fret, how far the profile's apex (its lowest point) is moved off the neck's centerline, as a percentage of half the profile's width there. Positive moves it toward the treble side, negative toward the bass side. A number from -50 to 50 (%); 0 when not set. The profile's width and depth don't change. Applies in both modes.
 
 **Profile Blend at First Fret (PBLF)**
-At the first fret, the profile's shape as a percentage along the reference shapes: 0 is a V (squareness 1), 50 a round C (squareness 2) and 100 a D (squareness 3.2). Between two of them the outlines are blended point for point. Between 0 and 100; 50 when not set.
+At the first fret, in advanced mode, the profile's shape as a position along the reference shapes: 0% is a V (squareness 1), 50% a round C (squareness 2) and 100% a D (squareness 3.2). Between two references the shape is mixed point for point. A number from 0 to 100 (%); 50 when not set. Ignored in basic mode.
 
 **Profile Squareness at Selected Fret (PSQS)**
-At the Neck Thickness Fret, how square the profile's back is: 1 is a V, 2 a round C, and higher values a squarer D. Between 1 and 10; 2 when not set.
+At the Neck Thickness Fret, the squareness of the profile's back (the superellipse exponent) in basic mode: 1 is a V, 1.5 a soft V, 2 a round C, 3.2 a D, and larger values squarer. A number from 1 to 10; 2 when not set. Ignored in advanced mode.
 
 **Profile Asymmetry at Selected Fret (PASS)**
-At the Neck Thickness Fret, how far the profile's fullest point is shifted from the neck's centerline, as a percentage of half the profile's width: positive toward the treble side, negative toward the bass side. Between -50 and 50; 0 when not set.
+At the Neck Thickness Fret, how far the profile's apex (its lowest point) is moved off the neck's centerline, as a percentage of half the profile's width there. Positive moves it toward the treble side, negative toward the bass side. A number from -50 to 50 (%); 0 when not set. The profile's width and depth don't change. Applies in both modes.
 
 **Profile Blend at Selected Fret (PBLS)**
-At the Neck Thickness Fret, the profile's shape as a percentage along the reference shapes: 0 is a V (squareness 1), 50 a round C (squareness 2) and 100 a D (squareness 3.2). Between two of them the outlines are blended point for point. Between 0 and 100; 50 when not set.
+At the Neck Thickness Fret, in advanced mode, the profile's shape as a position along the reference shapes: 0% is a V (squareness 1), 50% a round C (squareness 2) and 100% a D (squareness 3.2). Between two references the shape is mixed point for point. A number from 0 to 100 (%); 50 when not set. Ignored in basic mode.
 
 **Profile Squareness at Heel Section (PSQH)**
-At the heel section, how square the profile's back is: 1 is a V, 2 a round C, and higher values a squarer D. Between 1 and 10; 2 when not set.
+At the heel section, the squareness of the profile's back (the superellipse exponent) in basic mode: 1 is a V, 1.5 a soft V, 2 a round C, 3.2 a D, and larger values squarer. A number from 1 to 10; 2 when not set. Ignored in advanced mode.
 
 **Profile Asymmetry at Heel Section (PASH)**
-At the heel section, how far the profile's fullest point is shifted from the neck's centerline, as a percentage of half the profile's width: positive toward the treble side, negative toward the bass side. Between -50 and 50; 0 when not set.
+At the heel section, how far the profile's apex (its lowest point) is moved off the neck's centerline, as a percentage of half the profile's width there. Positive moves it toward the treble side, negative toward the bass side. A number from -50 to 50 (%); 0 when not set. The profile's width and depth don't change. Applies in both modes.
 
 **Profile Blend at Heel Section (PBLH)**
-At the heel section, the profile's shape as a percentage along the reference shapes: 0 is a V (squareness 1), 50 a round C (squareness 2) and 100 a D (squareness 3.2). Between two of them the outlines are blended point for point. Between 0 and 100; 50 when not set.
+At the heel section, in advanced mode, the profile's shape as a position along the reference shapes: 0% is a V (squareness 1), 50% a round C (squareness 2) and 100% a D (squareness 3.2). Between two references the shape is mixed point for point. A number from 0 to 100 (%); 50 when not set. Ignored in basic mode.
 
 **Profile Squareness at Heel End (PSQE)**
-At the heel end, how square the profile's back is: 1 is a V, 2 a round C, and higher values a squarer D. Between 1 and 10; 2 when not set.
+At the heel end, the squareness of the profile's back (the superellipse exponent) in basic mode: 1 is a V, 1.5 a soft V, 2 a round C, 3.2 a D, and larger values squarer. A number from 1 to 10; 2 when not set. Ignored in advanced mode.
 
 **Profile Asymmetry at Heel End (PASE)**
-At the heel end, how far the profile's fullest point is shifted from the neck's centerline, as a percentage of half the profile's width: positive toward the treble side, negative toward the bass side. Between -50 and 50; 0 when not set.
+At the heel end, how far the profile's apex (its lowest point) is moved off the neck's centerline, as a percentage of half the profile's width there. Positive moves it toward the treble side, negative toward the bass side. A number from -50 to 50 (%); 0 when not set. The profile's width and depth don't change. Applies in both modes.
 
 **Profile Blend at Heel End (PBLE)**
-At the heel end, the profile's shape as a percentage along the reference shapes: 0 is a V (squareness 1), 50 a round C (squareness 2) and 100 a D (squareness 3.2). Between two of them the outlines are blended point for point. Between 0 and 100; 50 when not set.
+At the heel end, in advanced mode, the profile's shape as a position along the reference shapes: 0% is a V (squareness 1), 50% a round C (squareness 2) and 100% a D (squareness 3.2). Between two references the shape is mixed point for point. A number from 0 to 100 (%); 50 when not set. Ignored in basic mode.
+
+### Neck profile terms
+
+These describe the neck profile settings above; they aren't settings themselves and have no abbreviation.
+
+**Squareness**
+The superellipse exponent n that sets how square the back of a profile is. Each half of the profile is the curve x = a cos^(2/n) t, y = b (1 - sin^(2/n) t), with half-width a and height b. 1 is a straight-sided V, 2 a half ellipse (a round C), 3.2 a D, and larger values squarer; the plug-in accepts 1 to 10. Used in basic mode.
+
+**Asymmetry**
+The offset of the apex from the neck's centerline, as a percentage of half the profile's width. The apex moves by half-width x asymmetry / 100, toward the treble side when positive. The treble half is then half-width x (1 - asymmetry / 100) wide and the bass half half-width x (1 + asymmetry / 100). Used in both modes.
+
+**Blend**
+The V-C-D position used in advanced mode: 0% is the V, 50% the round C, 100% the D. Between two neighbouring reference shapes the profile is the point-for-point mix of them, weighted by how far along it is (25% is half V and half round C; 75% is half round C and half D).
+
+**Basic mode**
+Profile Advanced Mode off. A profile is set by its squareness and asymmetry; the blend is ignored.
+
+**Advanced mode**
+Profile Advanced Mode on. A profile is set by its blend and asymmetry; the squareness is ignored.
+
+**Starting shape (preset)**
+A named set of squareness, asymmetry and blend (Modern C, Soft V, Hard V, D, Asymmetric) that fills in one profile's values when chosen. The values stay editable and nothing records which shape was chosen.
+
+**Apex**
+The lowest point of a profile, where its curve is level: the back of the neck's centerline unless the asymmetry moves it.
+
+**Shoulder**
+Where a profile's curve starts at each side, with the curve vertical there: the top or underside of the fretboard edge (per Profile Includes Fretboard) on the neck profiles, and the end of the heel's straight side (at the joint when its length is 0) on the heel profiles.
+
+**Reference shapes (V, round C, D)**
+The three squareness values the blend runs between: the V (n = 1, at 0%), the round C (n = 2, at 50%) and the D (n = 3.2, at 100%).
 
 ## Body
 
