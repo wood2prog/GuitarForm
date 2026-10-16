@@ -367,6 +367,27 @@ namespace GuitarForm.Tests
         }
 
         [Test]
+        public void HeelProfiles_WithNoStraightSides_StartTheirCurvesAtTheJoint()
+        {
+            var profiles = Solve(TestGuitar(n => n with
+            {
+                SideLengthAtHeelEnd = new(Neck.Definitions.SideLengthAtHeelEnd, 0),
+                SideLengthAtHeelSection = new(Neck.Definitions.SideLengthAtHeelSection, 0),
+            }));
+            foreach (var profile in new[] { profiles.HeelEnd, profiles.HeelSection })
+            {
+                Assert.That(profile, Is.Not.Null);
+                Assert.That(profile.Outline.IsClosed, Is.True);
+                var joint = profile.Outline.Segments[0];
+                var (treble, bass) = Halves(profile);
+                AssertPoint(treble[0], joint.End.X, joint.End.Y);
+                AssertPoint(bass[^1], joint.Start.X, joint.Start.Y);
+                Assert.That(SidePoints(profile).All(p => double.IsFinite(p.X) && double.IsFinite(p.Y)), Is.True);
+            }
+            Assert.That(profiles.Messages.Where(m => m.Level == MessageLevel.Error), Is.Empty);
+        }
+
+        [Test]
         public void HeelEnd_IsAHalfEllipseBelowItsStraightSides()
         {
             // 50 wide and 50 thick, straight sides 5 long: the half ellipse is 25 across and 45 deep.

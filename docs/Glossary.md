@@ -202,7 +202,7 @@ The heel cap's thickness. The cap's outer face stays at the Heel End Offset from
 Whether the heel end profile uses the first fret's profile settings instead of its own.
 
 **Profile Side Length at Heel End (PSLE)**
-At the heel end, the length of the heel's straight sides, running out from the heel/body joint before the profile's curves start.
+At the heel end, the length of the heel's straight sides, running out from the heel/body joint before the profile's curves start. Zero or more (at 0 the curves start at the joint), and less than the Heel End Thickness.
 
 **Heel Section Thickness (HLCT)**
 At the heel section, the distance from the heel/body joint to the front of the heel's profile.
@@ -220,7 +220,7 @@ The heel's width at the heel section. Calculated when Heel Outline Straight Side
 Whether the heel section profile uses the first fret's profile settings instead of its own.
 
 **Profile Side Length at Heel Section (PSLH)**
-At the heel section, the length of the heel's straight sides, running out from the heel/body joint before the profile's curves start.
+At the heel section, the length of the heel's straight sides, running out from the heel/body joint before the profile's curves start. Zero or more (at 0 the curves start at the joint), and less than the Heel Section Thickness.
 
 **Profile Advanced Mode (PADV)**
 Whether the neck profile's squareness and blend are set separately at each station (advanced) rather than by a starting shape.

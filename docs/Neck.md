@@ -24,7 +24,7 @@ The profiles are drawn beside the side view, fretboard (or heel/body joint) side
 - **Blend** (advanced mode) is a position along three reference shapes: 0 is a V (squareness 1), 50 a round C (squareness 2) and 100 a D (squareness 3.2). Between two references the outlines are blended point for point.
 - **Profile Includes Fretboard** (PIFF, PIFS) says whether the shoulder starts at the top of the fretboard edge (ticked) or at its underside (unticked).
 - **Profile Uses First Fret** (PUFS, PUFH, PUFE) makes that profile use the first fret's squareness, asymmetry, blend and mode instead of its own.
-- **Side length** (PSLE, PSLH) is the length of the heel's straight sides at the heel end and heel section. It must be less than the thickness there.
+- **Side length** (PSLE, PSLH) is the length of the heel's straight sides at the heel end and heel section. It must be 0 or more (at 0 the curves start at the joint) and less than the thickness there.
 
 Each profile group has a **Starting shape** list. Choosing one fills in that profile's squareness, asymmetry and blend, which you can then adjust:
 

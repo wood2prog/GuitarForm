@@ -167,6 +167,28 @@ namespace GuitarForm.Tests
         }
 
         [Test]
+        public void HeelSideLengths_AreAtLeastZero()
+        {
+            Neck With(double end, double section) => new Neck
+            {
+                HeelEndThickness = new(Neck.Definitions.HeelEndThickness, 60),
+                SideLengthAtHeelEnd = new(Neck.Definitions.SideLengthAtHeelEnd, end),
+                HeelSectionThickness = new(Neck.Definitions.HeelSectionThickness, 50),
+                SideLengthAtHeelSection = new(Neck.Definitions.SideLengthAtHeelSection, section),
+            };
+
+            Assert.That(Messages(With(0, 0)), Is.Empty);
+            var negative = Messages(With(-1, -1)).ToList();
+            Assert.That(negative, Has.Count.EqualTo(2));
+            Assert.That(negative[0], Does.Contain("(PSLE)"));
+            Assert.That(negative[1], Does.Contain("(PSLH)"));
+            Assert.That(Neck.Definitions.SideLengthAtHeelEnd.Minimum, Is.EqualTo(0));
+            Assert.That(Neck.Definitions.SideLengthAtHeelEnd.MinimumExclusive, Is.False);
+            Assert.That(Neck.Definitions.SideLengthAtHeelSection.Minimum, Is.EqualTo(0));
+            Assert.That(Neck.Definitions.SideLengthAtHeelSection.MinimumExclusive, Is.False);
+        }
+
+        [Test]
         public void ReliefFretAndMarkerPastLastFret_AreErrors()
         {
             var fretboard = new Fretboard
