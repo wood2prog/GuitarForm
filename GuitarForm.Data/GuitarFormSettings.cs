@@ -25,6 +25,9 @@ namespace GuitarForm.Data
         // Space in mm between the plate outline's widest point and the side view to its right.
         public double DrawingGap { get; init; } = 50;
 
+        // Whether the Strings tab shows and takes the unit weight in lb/in (true) or kg/m. Display only.
+        public bool StringUnitWeightInLbPerIn { get; init; } = true;
+
         // The settings with empty paths replaced by the defaults and numbers brought into range.
         public GuitarFormSettings Corrected() => this with
         {

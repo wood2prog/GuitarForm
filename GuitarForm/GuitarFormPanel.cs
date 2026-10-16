@@ -66,11 +66,15 @@ namespace GuitarForm
         readonly Dictionary<TabPage, TabMessages> _pageMessages = new Dictionary<TabPage, TabMessages>();
         readonly MessagesBar _messagesBar = new MessagesBar();
         Guitar _newFields = new Guitar();
+        string _stringSetNote; // Why the guitar has no string set although it was saved with one.
         Dictionary<string, List<GeometryMessage>> _newTabMessages = new Dictionary<string, List<GeometryMessage>>();
 
         // Controls that only work with a design open, and the preset lists to refresh when the library changes.
         readonly List<Control> _needDesign = new List<Control>();
         readonly List<Action> _refreshPresets = new List<Action>();
+
+        // The Strings tab: the library of string sets, with its own working copy.
+        StringsTab _strings;
 
         long? _designId;
         GuitarDesign _design;
@@ -116,11 +120,19 @@ namespace GuitarForm
             RhinoDoc.DocumentPropertiesChanged += (_, _) => Application.Instance.AsyncInvoke(OnUnitsMaybeChanged);
             RhinoDoc.EndOpenDocument += (_, _) => Application.Instance.AsyncInvoke(OnUnitsMaybeChanged);
             RhinoDoc.NewDocument += (_, _) => Application.Instance.AsyncInvoke(OnUnitsMaybeChanged);
-            _settings.ConfirmLibraryChange = ConfirmDiscard;
+            _settings.ConfirmLibraryChange = () => ConfirmDiscard() && (_strings?.ConfirmDiscard() ?? true);
             _settings.LibraryChanged += () =>
             {
                 CloseDesign();
                 ShowDesignList(null);
+                try
+                {
+                    _strings?.Reload();
+                }
+                catch (Exception e)
+                {
+                    RhinoApp.WriteLine($"GuitarForm: couldn't list the string sets: {e.Message}");
+                }
                 foreach (var refresh in _refreshPresets)
                     refresh();
             };
@@ -151,6 +163,11 @@ namespace GuitarForm
                 _soundhole.Messages));
             foreach (string tab in _tabMessages.Keys)
                 tabs.Pages.Add(SectionPage(tab, Array.Empty<Control>(), Groups(tab), _tabMessages[tab]));
+            // The string set library works with no design open.
+            _strings = new StringsTab(() => CurrentLibraryPath);
+            _strings.UseRequested += OnUseStringSet;
+            _strings.LibraryItemChanged += OnStringLibraryChanged;
+            tabs.Pages.Add(MessagesPage("Strings", _strings, _strings.Messages));
             tabs.Pages.Add(new TabPage { Text = "Settings", Content = new Scrollable { Content = _settings, Border = BorderType.None } });
 
             Content = new TableLayout
@@ -253,8 +270,15 @@ namespace GuitarForm
             if (hint != null)
                 FieldLayout.WrapToViewport(scroll, 2 * UiMetrics.PagePadding, width => hint.Width = width);
             layout.Rows.Add(new TableRow(scroll) { ScaleHeight = true });
-            var page = new TabPage { Text = title, Content = layout };
+            return MessagesPage(title, layout, messages);
+        }
+
+        // A tab whose messages are shown below the tabs, and whose title carries their error count.
+        TabPage MessagesPage(string title, Control content, TabMessages messages)
+        {
+            var page = new TabPage { Text = title, Content = content };
             _pageMessages[page] = messages;
+            page.Text = TabTitle(title, messages);
             messages.Changed += () =>
             {
                 page.Text = TabTitle(title, messages);
@@ -598,7 +622,7 @@ namespace GuitarForm
             _dirty = false;
             _savePrompted = confirmed;
             _lastSoundhole = null;
-            _newFields = NewFields.Load(id);
+            _newFields = ResolveStringSet(NewFields.Load(id));
             Array.Clear(_newFieldErrors);
             _markersError = null;
             if (!confirmed)
@@ -622,7 +646,7 @@ namespace GuitarForm
                 try
                 {
                     _design = DesignDocument.FromJson(recovery.Document);
-                    _newFields = NewFields.ReadFromDocument(recovery.Document) ?? new Guitar();
+                    _newFields = ResolveStringSet(NewFields.ReadFromDocument(recovery.Document) ?? new Guitar());
                     MarkDirty();
                     return;
                 }
@@ -632,6 +656,45 @@ namespace GuitarForm
                 }
             }
             _recovery.Delete(_recoveryLibrary, id);
+        }
+
+        // The guitar with its string set (known only by id after loading) read from the library. Sets the note shown on
+        // the Strings tab when the saved set no longer exists. With expectedName, a set of another name counts as missing.
+        Guitar ResolveStringSet(Guitar guitar, string expectedName = null)
+        {
+            _stringSetNote = null;
+            if (guitar.Neck.StringSet == null)
+                return guitar;
+            var resolved = WithLibrary(library => NewFields.ResolveStringSet(guitar, library, out bool missing, expectedName));
+            if (resolved.Neck.StringSet == null)
+                _stringSetNote = "the string set this guitar used is no longer in the library";
+            return resolved;
+        }
+
+        // Tells the Strings tab whether a design is open and which set its guitar uses.
+        void UpdateStringsState() =>
+            _strings?.ShowAssigned(_design != null, _newFields.Neck.StringSet, _stringSetNote);
+
+        // "Use for this guitar": the saved set becomes the working guitar's string set, as an unsaved edit.
+        void OnUseStringSet(StringSet set)
+        {
+            if (_design == null || _designId == null)
+                return;
+            _newFields = _newFields with { Neck = _newFields.Neck with { StringSet = set } };
+            _stringSetNote = null;
+            MarkDirty();
+            UpdateStringsState();
+            Redraw();
+        }
+
+        // A string set was saved or deleted in the library: the guitar's copy is read again (not an edit of the design).
+        void OnStringLibraryChanged()
+        {
+            if (_design == null || _newFields.Neck.StringSet?.Id == null)
+                return;
+            _newFields = ResolveStringSet(_newFields);
+            UpdateStringsState();
+            Redraw();
         }
 
         void CloseDesign()
@@ -845,6 +908,7 @@ namespace GuitarForm
             if (DisplayUnits.Current == _units)
                 return;
             ShowDesign();
+            _strings?.RefreshUnits();
             _settings.ShowSettings();
         }
 
@@ -866,6 +930,7 @@ namespace GuitarForm
             _soundhole.Enabled = _design?.Soundhole != null;
             _exportItem.Enabled = _design != null;
             UpdateDirtyUi();
+            UpdateStringsState();
             Redraw();
         }
 
@@ -1074,6 +1139,9 @@ namespace GuitarForm
             var newFields = NewFields.ReadFromDocument(json);
             if (!ConfirmDiscard())
                 return;
+            // The file's string set id belongs to the library it was exported from, so it counts only if the name matches.
+            if (newFields != null)
+                newFields = ResolveStringSet(newFields, NewFields.DocumentStringSetName(json) ?? "");
             string name = string.IsNullOrWhiteSpace(design.Name) ? Path.GetFileNameWithoutExtension(dialog.FileName) : design.Name;
             long id = WithLibrary(library => library.CreateDesign(design with { Name = library.UnusedDesignName(name) }));
             if (newFields != null)

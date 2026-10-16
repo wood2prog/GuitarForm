@@ -15,6 +15,14 @@ namespace GuitarForm.Tests
             Assert.That(settings.KeepLastBackups, Is.EqualTo(20));
             Assert.That(settings.KeepDailyBackupsDays, Is.EqualTo(30));
             Assert.That(settings.DrawingGap, Is.EqualTo(50));
+            Assert.That(settings.StringUnitWeightInLbPerIn, Is.True);
+        }
+
+        [Test]
+        public void StringUnitWeightInLbPerIn_SurvivesCorrected()
+        {
+            var corrected = new GuitarFormSettings { StringUnitWeightInLbPerIn = false }.Corrected();
+            Assert.That(corrected.StringUnitWeightInLbPerIn, Is.False);
         }
 
         [Test]

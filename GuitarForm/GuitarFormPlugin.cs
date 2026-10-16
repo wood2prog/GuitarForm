@@ -50,6 +50,7 @@ namespace GuitarForm
             Settings.SetInteger(nameof(GuitarFormSettings.KeepLastBackups), GuitarFormSettings.KeepLastBackups);
             Settings.SetInteger(nameof(GuitarFormSettings.KeepDailyBackupsDays), GuitarFormSettings.KeepDailyBackupsDays);
             Settings.SetDouble(nameof(GuitarFormSettings.DrawingGap), GuitarFormSettings.DrawingGap);
+            Settings.SetBool(nameof(GuitarFormSettings.StringUnitWeightInLbPerIn), GuitarFormSettings.StringUnitWeightInLbPerIn);
             SaveSettings();
             BackupScheduler?.Restart();
         }
@@ -65,6 +66,7 @@ namespace GuitarForm
                 KeepLastBackups = Settings.GetInteger(nameof(defaults.KeepLastBackups), defaults.KeepLastBackups),
                 KeepDailyBackupsDays = Settings.GetInteger(nameof(defaults.KeepDailyBackupsDays), defaults.KeepDailyBackupsDays),
                 DrawingGap = Settings.GetDouble(nameof(defaults.DrawingGap), defaults.DrawingGap),
+                StringUnitWeightInLbPerIn = Settings.GetBool(nameof(defaults.StringUnitWeightInLbPerIn), defaults.StringUnitWeightInLbPerIn),
             }.Corrected();
         }
 

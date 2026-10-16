@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using GuitarForm.Data;
 using GuitarForm.Model;
 using GuitarForm.Model.Parameters;
 using GuitarForm.Model.Parts;
@@ -324,8 +325,11 @@ namespace GuitarForm
         }
 
         // The new fields' values copied from one guitar into another.
-        public static Guitar CopyFields(Guitar from, Guitar to) =>
-            WithMarkers(Fields.Aggregate(to, (guitar, field) => field.Set(guitar, field.Get(from))), FormatMarkers(from));
+        public static Guitar CopyFields(Guitar from, Guitar to)
+        {
+            var copied = WithMarkers(Fields.Aggregate(to, (guitar, field) => field.Set(guitar, field.Get(from))), FormatMarkers(from));
+            return copied with { Neck = copied.Neck with { StringSet = from.Neck.StringSet } };
+        }
 
         static string FilePath(long designId) =>
             System.IO.Path.Combine(System.IO.Path.GetDirectoryName(GuitarFormPlugin.Instance.GuitarFormSettings.LibraryPath)!,
@@ -361,7 +365,10 @@ namespace GuitarForm
         public static string AddToDocument(string json, Guitar guitar)
         {
             var document = JsonNode.Parse(json)!.AsObject();
-            document["newFields"] = JsonSerializer.SerializeToNode(ToTexts(guitar));
+            var texts = ToTexts(guitar);
+            if (guitar.Neck.StringSet is { } set && SetName(set).Length > 0)
+                texts[StringSetNameKey] = SetName(set);
+            document["newFields"] = JsonSerializer.SerializeToNode(texts);
             return document.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
         }
 
@@ -378,6 +385,10 @@ namespace GuitarForm
             }
             if (texts.TryGetValue(MarkersKey, out string markers))
                 guitar = WithMarkers(guitar, markers) ?? guitar;
+            // Only the id is known here: the neck gets a stand-in with that id until ResolveStringSet fills it in.
+            if (texts.TryGetValue(StringSetIdKey, out string id) &&
+                long.TryParse(id, NumberStyles.Integer, CultureInfo.InvariantCulture, out long setId))
+                guitar = guitar with { Neck = guitar.Neck with { StringSet = new StringSet { Id = setId } } };
             return guitar;
         }
 
@@ -386,7 +397,41 @@ namespace GuitarForm
             var texts = Fields.Select(field => field.Get(guitar)).Where(p => p.HasValue).ToDictionary(
                 p => p.Definition.Abbreviation, p => p.Format(LengthUnit.Millimeters, CultureInfo.InvariantCulture));
             texts[MarkersKey] = FormatMarkers(guitar);
+            if (guitar.Neck.StringSet?.Id is long id)
+                texts[StringSetIdKey] = id.ToString(CultureInfo.InvariantCulture);
             return texts;
         }
+
+        const string StringSetIdKey = "StringSetId";
+        const string StringSetNameKey = "StringSetName";
+
+        // The neck's string set from the library by the id it carries (see Load and ReadFromDocument, which leave only
+        // the id). A set that no longer exists leaves the neck with none, and missing is true. If expectedName is given
+        // (an import), a set whose name differs is a different set, so it's treated as missing too.
+        public static Guitar ResolveStringSet(Guitar guitar, Library library, out bool missing, string expectedName = null)
+        {
+            missing = false;
+            if (guitar.Neck.StringSet?.Id is not long id)
+                return guitar;
+            StringSet set = null;
+            try
+            {
+                set = library.LoadLibraryItem<StringSet>(id);
+            }
+            catch (Exception e) when (e is InvalidOperationException || e is KeyNotFoundException)
+            {
+            }
+            if (set != null && expectedName != null &&
+                !string.Equals(SetName(set), expectedName, StringComparison.OrdinalIgnoreCase))
+                set = null;
+            missing = set == null;
+            return guitar with { Neck = guitar.Neck with { StringSet = set } };
+        }
+
+        public static string SetName(StringSet set) => $"{set.Manufacturer.Value} {set.Name.Value}".Trim();
+
+        // The string set name a design document carries, or null.
+        public static string DocumentStringSetName(string json) =>
+            JsonNode.Parse(json)?["newFields"]?[StringSetNameKey]?.GetValue<string>();
     }
 }
