@@ -78,6 +78,25 @@ namespace GuitarForm.Model.Parts
         // The strings, from the first (treble) to the last (bass).
         public IReadOnlyList<GuitarString> Strings { get; init; } = Array.Empty<GuitarString>();
 
+        // The set with these strings, and its string count set to match.
+        public StringSet WithStrings(IReadOnlyList<GuitarString> strings) =>
+            this with { Strings = strings, StringCount = StringCount with { Value = strings.Count } };
+
+        // The set with a plain string added at the end (the bass).
+        public StringSet WithAddedString() =>
+            WithStrings(Strings.Concat(new[]
+            {
+                new GuitarString { Construction = new(GuitarString.Definitions.Construction, StringConstruction.Plain) },
+            }).ToList());
+
+        // The set without the string at index (counted from the treble).
+        public StringSet WithRemovedString(int index)
+        {
+            if (index < 0 || index >= Strings.Count)
+                throw new ArgumentOutOfRangeException(nameof(index), index, "There's no string at that index.");
+            return WithStrings(Strings.Where((_, i) => i != index).ToList());
+        }
+
         protected override IEnumerable<ModelMessage> CheckValues(LengthUnit unit, IFormatProvider culture)
         {
             if (StringCount.Value is int count && count != Strings.Count)
@@ -113,6 +132,15 @@ namespace GuitarForm.Model.Parts
         public NumberParameter CoreModulus { get; init; } = new(Definitions.CoreModulus);
         public NumberParameter CoreStrength { get; init; } = new(Definitions.CoreStrength);
         public FlagParameter UsedInSaddleCompensation { get; init; } = new(Definitions.UsedInSaddleCompensation);
+
+        // Whether the string is wound. An unset construction counts as plain.
+        public bool IsWound => Construction.Value == StringConstruction.Wound;
+
+        // Which settings apply to this string: the core settings to wound strings, and the modulus and strength
+        // only when the core material isn't specified.
+        public bool UsesCoreMaterial => IsWound;
+        public bool UsesHexCore => IsWound;
+        public bool UsesCoreProperties => IsWound && CoreMaterial.Value == StringCoreMaterial.NotSpecified;
 
         protected override IEnumerable<ModelMessage> CheckValues(LengthUnit unit, IFormatProvider culture) =>
             Construction.Value == StringConstruction.Wound && CoreMaterial.Value == StringCoreMaterial.NotSpecified
