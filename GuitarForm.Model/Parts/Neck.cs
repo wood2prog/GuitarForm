@@ -12,29 +12,29 @@ namespace GuitarForm.Model.Parts
     {
         public override bool IsSavedSeparately => true;
 
+        // Used for a station's squareness, asymmetry or blend that isn't set. A blend of 50 and a squareness of 2 are
+        // both a round C.
+        public const double DefaultSquareness = 2;
+        public const double DefaultAsymmetry = 0;
+        public const double DefaultBlend = 50;
+        public const double MinimumAsymmetry = -50;
+        public const double MaximumAsymmetry = 50;
+
+        public double SquarenessOrDefault(NumberParameter squareness) => squareness.Value ?? DefaultSquareness;
+        public double AsymmetryOrDefault(NumberParameter asymmetry) => asymmetry.Value ?? DefaultAsymmetry;
+        public double BlendOrDefault(NumberParameter blend) => blend.Value ?? DefaultBlend;
+
         public static class Definitions
         {
-            // Above 0°, a shoulder line is flat across; at 90° it runs straight down.
-            static ParameterDefinition ShoulderAngle(string name, string abbreviation) =>
-                ParameterDefinition.Angle(name, abbreviation, 0, 90) with { MinimumExclusive = true };
-
             public static readonly ParameterDefinition Angle = ParameterDefinition.Angle("Neck Angle", "NKA");
             public static readonly ParameterDefinition Overstand = ParameterDefinition.Distance("Overstand", "OVS");
             public static readonly ParameterDefinition ThicknessAtFirstFret = ParameterDefinition.Size("Neck Thickness at First Fret", "NKTF");
             public static readonly ParameterDefinition ThicknessAtSelectedFret = ParameterDefinition.Size("Neck Thickness at Selected Fret", "NKTS");
             public static readonly ParameterDefinition ThicknessFret = ParameterDefinition.Count("Neck Thickness Fret", "NKSF", 1);
 
-            public static readonly ParameterDefinition BottomRadiusAtFirstFret = ParameterDefinition.Size("Profile Bottom Radius at First Fret", "PBRF");
-            public static readonly ParameterDefinition ShoulderAngleAtFirstFret = ShoulderAngle("Profile Shoulder Angle at First Fret", "PSAF");
-            public static readonly ParameterDefinition MidshoulderRadiusAtFirstFret = ParameterDefinition.Size("Profile Midshoulder Radius at First Fret", "PMRF");
-            public static readonly ParameterDefinition CenterOffsetAtFirstFret = ParameterDefinition.Offset("Profile Center Offset at First Fret", "PCOF");
             public static readonly ParameterDefinition IncludesFretboardAtFirstFret = ParameterDefinition.Flag("Profile Includes Fretboard at First Fret", "PIFF");
 
             public static readonly ParameterDefinition UsesFirstFretAtSelectedFret = ParameterDefinition.Flag("Profile Uses First Fret at Selected Fret", "PUFS");
-            public static readonly ParameterDefinition BottomRadiusAtSelectedFret = ParameterDefinition.Size("Profile Bottom Radius at Selected Fret", "PBRS");
-            public static readonly ParameterDefinition ShoulderAngleAtSelectedFret = ShoulderAngle("Profile Shoulder Angle at Selected Fret", "PSAS");
-            public static readonly ParameterDefinition MidshoulderRadiusAtSelectedFret = ParameterDefinition.Size("Profile Midshoulder Radius at Selected Fret", "PMRS");
-            public static readonly ParameterDefinition CenterOffsetAtSelectedFret = ParameterDefinition.Offset("Profile Center Offset at Selected Fret", "PCOS");
             public static readonly ParameterDefinition IncludesFretboardAtSelectedFret = ParameterDefinition.Flag("Profile Includes Fretboard at Selected Fret", "PIFS");
 
             public static readonly ParameterDefinition HeelShaftRadius = ParameterDefinition.Size("Heel Shaft Radius", "HLSR");
@@ -46,9 +46,6 @@ namespace GuitarForm.Model.Parts
             public static readonly ParameterDefinition HeelCap = ParameterDefinition.Flag("Heel Cap", "HCP");
             public static readonly ParameterDefinition HeelCapThickness = ParameterDefinition.Size("Heel Cap Thickness", "HCPT");
             public static readonly ParameterDefinition UsesFirstFretAtHeelEnd = ParameterDefinition.Flag("Profile Uses First Fret at Heel End", "PUFE");
-            public static readonly ParameterDefinition BottomRadiusAtHeelEnd = ParameterDefinition.Size("Profile Bottom Radius at Heel End", "PBRE");
-            public static readonly ParameterDefinition ShoulderAngleAtHeelEnd = ShoulderAngle("Profile Shoulder Angle at Heel End", "PSAE");
-            public static readonly ParameterDefinition MidshoulderRadiusAtHeelEnd = ParameterDefinition.Size("Profile Midshoulder Radius at Heel End", "PMRE");
             public static readonly ParameterDefinition SideLengthAtHeelEnd = ParameterDefinition.Distance("Profile Side Length at Heel End", "PSLE");
 
             public static readonly ParameterDefinition HeelSectionThickness = ParameterDefinition.Size("Heel Section Thickness", "HLCT");
@@ -56,10 +53,29 @@ namespace GuitarForm.Model.Parts
             public static readonly ParameterDefinition HeelOutlineStraightSides = ParameterDefinition.Flag("Heel Outline Straight Sides", "HLOS");
             public static readonly ParameterDefinition HeelSectionWidth = ParameterDefinition.Size("Heel Section Width", "HLCW");
             public static readonly ParameterDefinition UsesFirstFretAtHeelSection = ParameterDefinition.Flag("Profile Uses First Fret at Heel Section", "PUFH");
-            public static readonly ParameterDefinition BottomRadiusAtHeelSection = ParameterDefinition.Size("Profile Bottom Radius at Heel Section", "PBRH");
-            public static readonly ParameterDefinition ShoulderAngleAtHeelSection = ShoulderAngle("Profile Shoulder Angle at Heel Section", "PSAH");
-            public static readonly ParameterDefinition MidshoulderRadiusAtHeelSection = ParameterDefinition.Size("Profile Midshoulder Radius at Heel Section", "PMRH");
             public static readonly ParameterDefinition SideLengthAtHeelSection = ParameterDefinition.Distance("Profile Side Length at Heel Section", "PSLH");
+
+            // The advanced profile: squareness, asymmetry and blend at each station.
+            static ParameterDefinition Squareness(string name, string abbreviation) =>
+                ParameterDefinition.Number(name, abbreviation, "", 0.1) with { Minimum = 1, MinimumExclusive = false, Maximum = 10 };
+            static ParameterDefinition Asymmetry(string name, string abbreviation) =>
+                ParameterDefinition.Number(name, abbreviation, "%", 1) with { Minimum = MinimumAsymmetry, MinimumExclusive = false, Maximum = MaximumAsymmetry };
+            static ParameterDefinition Blend(string name, string abbreviation) =>
+                ParameterDefinition.Number(name, abbreviation, "%", 1) with { Minimum = 0, MinimumExclusive = false, Maximum = 100 };
+
+            public static readonly ParameterDefinition ProfileAdvancedMode = ParameterDefinition.Flag("Profile Advanced Mode", "PADV");
+            public static readonly ParameterDefinition SquarenessAtFirstFret = Squareness("Profile Squareness at First Fret", "PSQF");
+            public static readonly ParameterDefinition AsymmetryAtFirstFret = Asymmetry("Profile Asymmetry at First Fret", "PASF");
+            public static readonly ParameterDefinition BlendAtFirstFret = Blend("Profile Blend at First Fret", "PBLF");
+            public static readonly ParameterDefinition SquarenessAtSelectedFret = Squareness("Profile Squareness at Selected Fret", "PSQS");
+            public static readonly ParameterDefinition AsymmetryAtSelectedFret = Asymmetry("Profile Asymmetry at Selected Fret", "PASS");
+            public static readonly ParameterDefinition BlendAtSelectedFret = Blend("Profile Blend at Selected Fret", "PBLS");
+            public static readonly ParameterDefinition SquarenessAtHeelSection = Squareness("Profile Squareness at Heel Section", "PSQH");
+            public static readonly ParameterDefinition AsymmetryAtHeelSection = Asymmetry("Profile Asymmetry at Heel Section", "PASH");
+            public static readonly ParameterDefinition BlendAtHeelSection = Blend("Profile Blend at Heel Section", "PBLH");
+            public static readonly ParameterDefinition SquarenessAtHeelEnd = Squareness("Profile Squareness at Heel End", "PSQE");
+            public static readonly ParameterDefinition AsymmetryAtHeelEnd = Asymmetry("Profile Asymmetry at Heel End", "PASE");
+            public static readonly ParameterDefinition BlendAtHeelEnd = Blend("Profile Blend at Heel End", "PBLE");
         }
 
         public NumberParameter Angle { get; init; } = new(Definitions.Angle);
@@ -68,17 +84,9 @@ namespace GuitarForm.Model.Parts
         public NumberParameter ThicknessAtSelectedFret { get; init; } = new(Definitions.ThicknessAtSelectedFret);
         public CountParameter ThicknessFret { get; init; } = new(Definitions.ThicknessFret);
 
-        public NumberParameter BottomRadiusAtFirstFret { get; init; } = new(Definitions.BottomRadiusAtFirstFret);
-        public NumberParameter ShoulderAngleAtFirstFret { get; init; } = new(Definitions.ShoulderAngleAtFirstFret);
-        public NumberParameter MidshoulderRadiusAtFirstFret { get; init; } = new(Definitions.MidshoulderRadiusAtFirstFret);
-        public NumberParameter CenterOffsetAtFirstFret { get; init; } = new(Definitions.CenterOffsetAtFirstFret);
         public FlagParameter IncludesFretboardAtFirstFret { get; init; } = new(Definitions.IncludesFretboardAtFirstFret);
 
         public FlagParameter UsesFirstFretAtSelectedFret { get; init; } = new(Definitions.UsesFirstFretAtSelectedFret);
-        public NumberParameter BottomRadiusAtSelectedFret { get; init; } = new(Definitions.BottomRadiusAtSelectedFret);
-        public NumberParameter ShoulderAngleAtSelectedFret { get; init; } = new(Definitions.ShoulderAngleAtSelectedFret);
-        public NumberParameter MidshoulderRadiusAtSelectedFret { get; init; } = new(Definitions.MidshoulderRadiusAtSelectedFret);
-        public NumberParameter CenterOffsetAtSelectedFret { get; init; } = new(Definitions.CenterOffsetAtSelectedFret);
         public FlagParameter IncludesFretboardAtSelectedFret { get; init; } = new(Definitions.IncludesFretboardAtSelectedFret);
 
         public NumberParameter HeelShaftRadius { get; init; } = new(Definitions.HeelShaftRadius);
@@ -90,9 +98,6 @@ namespace GuitarForm.Model.Parts
         public FlagParameter HeelCap { get; init; } = new(Definitions.HeelCap);
         public NumberParameter HeelCapThickness { get; init; } = new(Definitions.HeelCapThickness);
         public FlagParameter UsesFirstFretAtHeelEnd { get; init; } = new(Definitions.UsesFirstFretAtHeelEnd);
-        public NumberParameter BottomRadiusAtHeelEnd { get; init; } = new(Definitions.BottomRadiusAtHeelEnd);
-        public NumberParameter ShoulderAngleAtHeelEnd { get; init; } = new(Definitions.ShoulderAngleAtHeelEnd);
-        public NumberParameter MidshoulderRadiusAtHeelEnd { get; init; } = new(Definitions.MidshoulderRadiusAtHeelEnd);
         public NumberParameter SideLengthAtHeelEnd { get; init; } = new(Definitions.SideLengthAtHeelEnd);
 
         public NumberParameter HeelSectionThickness { get; init; } = new(Definitions.HeelSectionThickness);
@@ -100,10 +105,21 @@ namespace GuitarForm.Model.Parts
         public FlagParameter HeelOutlineStraightSides { get; init; } = new(Definitions.HeelOutlineStraightSides);
         public NumberParameter HeelSectionWidth { get; init; } = new(Definitions.HeelSectionWidth);
         public FlagParameter UsesFirstFretAtHeelSection { get; init; } = new(Definitions.UsesFirstFretAtHeelSection);
-        public NumberParameter BottomRadiusAtHeelSection { get; init; } = new(Definitions.BottomRadiusAtHeelSection);
-        public NumberParameter ShoulderAngleAtHeelSection { get; init; } = new(Definitions.ShoulderAngleAtHeelSection);
-        public NumberParameter MidshoulderRadiusAtHeelSection { get; init; } = new(Definitions.MidshoulderRadiusAtHeelSection);
         public NumberParameter SideLengthAtHeelSection { get; init; } = new(Definitions.SideLengthAtHeelSection);
+
+        public FlagParameter ProfileAdvancedMode { get; init; } = new(Definitions.ProfileAdvancedMode);
+        public NumberParameter SquarenessAtFirstFret { get; init; } = new(Definitions.SquarenessAtFirstFret);
+        public NumberParameter AsymmetryAtFirstFret { get; init; } = new(Definitions.AsymmetryAtFirstFret);
+        public NumberParameter BlendAtFirstFret { get; init; } = new(Definitions.BlendAtFirstFret);
+        public NumberParameter SquarenessAtSelectedFret { get; init; } = new(Definitions.SquarenessAtSelectedFret);
+        public NumberParameter AsymmetryAtSelectedFret { get; init; } = new(Definitions.AsymmetryAtSelectedFret);
+        public NumberParameter BlendAtSelectedFret { get; init; } = new(Definitions.BlendAtSelectedFret);
+        public NumberParameter SquarenessAtHeelSection { get; init; } = new(Definitions.SquarenessAtHeelSection);
+        public NumberParameter AsymmetryAtHeelSection { get; init; } = new(Definitions.AsymmetryAtHeelSection);
+        public NumberParameter BlendAtHeelSection { get; init; } = new(Definitions.BlendAtHeelSection);
+        public NumberParameter SquarenessAtHeelEnd { get; init; } = new(Definitions.SquarenessAtHeelEnd);
+        public NumberParameter AsymmetryAtHeelEnd { get; init; } = new(Definitions.AsymmetryAtHeelEnd);
+        public NumberParameter BlendAtHeelEnd { get; init; } = new(Definitions.BlendAtHeelEnd);
 
         public Fretboard Fretboard { get; init; } = new();
         public Nut Nut { get; init; } = new();
@@ -137,19 +153,6 @@ namespace GuitarForm.Model.Parts
         {
             if (ThicknessFret.Value > Fretboard.FretCount.Value)
                 yield return Fretboard.PastLastFret(ThicknessFret);
-
-            // Each profile's midshoulder fillet sits inside its bottom arc. A profile that uses the first fret's
-            // settings is checked with the first fret.
-            var profiles = new (bool UsesFirstFret, NumberParameter Midshoulder, NumberParameter Bottom)[]
-            {
-                (false, MidshoulderRadiusAtFirstFret, BottomRadiusAtFirstFret),
-                (UsesFirstFretAtSelectedFret.Value, MidshoulderRadiusAtSelectedFret, BottomRadiusAtSelectedFret),
-                (UsesFirstFretAtHeelEnd.Value, MidshoulderRadiusAtHeelEnd, BottomRadiusAtHeelEnd),
-                (UsesFirstFretAtHeelSection.Value, MidshoulderRadiusAtHeelSection, BottomRadiusAtHeelSection),
-            };
-            foreach (var (usesFirstFret, midshoulder, bottom) in profiles)
-                if (!usesFirstFret && midshoulder.Value >= bottom.Value)
-                    yield return ModelMessage.Error($"{midshoulder.Label} must be less than {bottom.Label}.");
 
             if (SideLengthAtHeelEnd.Value >= HeelEndThickness.Value)
                 yield return ModelMessage.Error($"{SideLengthAtHeelEnd.Label} must be less than {HeelEndThickness.Label}.");

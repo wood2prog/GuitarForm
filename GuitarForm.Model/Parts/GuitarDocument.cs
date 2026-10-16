@@ -25,7 +25,7 @@ namespace GuitarForm.Model.Parts
     // versions. Version 1 is DesignDocument's design, which is converted.
     public static class GuitarDocument
     {
-        public const int SchemaVersion = 2;
+        public const int SchemaVersion = 3;
         public const string Units = "mm";
 
         static readonly JsonSerializerOptions Options = new JsonSerializerOptions { WriteIndented = true };

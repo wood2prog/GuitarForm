@@ -20,7 +20,10 @@ namespace GuitarForm
     static class NewFields
     {
         // Step is how much a slider changes the value per step, in the units it's shown in.
-        public sealed record Field(Func<Guitar, Parameter> Get, Func<Guitar, Parameter, Guitar> Set, double Step = 0.1);
+        // Visible, when set, says whether the field is shown for the working copy's values. Placeholder is shown on a
+        // slider while the value is unset (e.g. the default it falls back to).
+        public sealed record Field(Func<Guitar, Parameter> Get, Func<Guitar, Parameter, Guitar> Set, double Step = 0.1,
+            Func<Guitar, bool> Visible = null, string Placeholder = null);
 
         static Field BodyField(Func<Body, Parameter> get) =>
             new Field(g => get(g.Body), (g, p) => g with { Body = (Body)g.Body.With(p) });
@@ -43,6 +46,30 @@ namespace GuitarForm
 
         static Field NutField(Func<Nut, Parameter> get) =>
             new Field(g => get(g.Neck.Nut), (g, p) => g with { Neck = g.Neck with { Nut = (Nut)g.Neck.Nut.With(p) } });
+
+        static bool SimpleProfile(Guitar g) => !g.Neck.ProfileAdvancedMode.Value;
+        static bool AdvancedProfile(Guitar g) => g.Neck.ProfileAdvancedMode.Value;
+
+        static string Show(double value) => value.ToString("0.#", CultureInfo.CurrentCulture);
+
+        static Field SquarenessField(Func<Neck, Parameter> get) => NeckField(get) with
+        {
+            Visible = SimpleProfile,
+            Placeholder = Show(Neck.DefaultSquareness),
+        };
+
+        static Field AsymmetryField(Func<Neck, Parameter> get) => NeckField(get) with
+        {
+            Step = 1,
+            Placeholder = Show(Neck.DefaultAsymmetry),
+        };
+
+        static Field BlendField(Func<Neck, Parameter> get) => NeckField(get) with
+        {
+            Step = 1,
+            Visible = AdvancedProfile,
+            Placeholder = Show(Neck.DefaultBlend),
+        };
 
         // The tabs the new fields are shown on.
         public const string BodyTab = "Body";
@@ -128,6 +155,8 @@ namespace GuitarForm
                 FretboardField(f => f.FaceDotDiameter),
                 FretboardField(f => f.DoubleDotEdgeDistance)),
 
+            new(NeckTab, ModeGroup,
+                NeckField(n => n.ProfileAdvancedMode)),
             new(NeckTab, "Angle",
                 NeckField(n => n.Angle),
                 NeckField(n => n.Overstand)),
@@ -139,17 +168,15 @@ namespace GuitarForm
                 NeckField(n => n.ThicknessAtSelectedFret),
                 NeckField(n => n.ThicknessFret)),
             new(NeckTab, "Profile at first fret",
-                NeckField(n => n.BottomRadiusAtFirstFret),
-                NeckField(n => n.ShoulderAngleAtFirstFret),
-                NeckField(n => n.MidshoulderRadiusAtFirstFret),
-                NeckField(n => n.CenterOffsetAtFirstFret),
+                SquarenessField(n => n.SquarenessAtFirstFret),
+                BlendField(n => n.BlendAtFirstFret),
+                AsymmetryField(n => n.AsymmetryAtFirstFret),
                 NeckField(n => n.IncludesFretboardAtFirstFret)),
             new(NeckTab, "Profile at selected fret",
                 NeckField(n => n.UsesFirstFretAtSelectedFret),
-                NeckField(n => n.BottomRadiusAtSelectedFret),
-                NeckField(n => n.ShoulderAngleAtSelectedFret),
-                NeckField(n => n.MidshoulderRadiusAtSelectedFret),
-                NeckField(n => n.CenterOffsetAtSelectedFret),
+                SquarenessField(n => n.SquarenessAtSelectedFret),
+                BlendField(n => n.BlendAtSelectedFret),
+                AsymmetryField(n => n.AsymmetryAtSelectedFret),
                 NeckField(n => n.IncludesFretboardAtSelectedFret)),
             new(NeckTab, "Heel shaft",
                 NeckField(n => n.HeelShaftRadius),
@@ -159,9 +186,9 @@ namespace GuitarForm
                 NeckField(n => n.HeelEndOffsetFromBack),
                 NeckField(n => n.HeelEndWidth),
                 NeckField(n => n.UsesFirstFretAtHeelEnd),
-                NeckField(n => n.BottomRadiusAtHeelEnd),
-                NeckField(n => n.ShoulderAngleAtHeelEnd),
-                NeckField(n => n.MidshoulderRadiusAtHeelEnd),
+                SquarenessField(n => n.SquarenessAtHeelEnd),
+                BlendField(n => n.BlendAtHeelEnd),
+                AsymmetryField(n => n.AsymmetryAtHeelEnd),
                 NeckField(n => n.SideLengthAtHeelEnd)),
             new(NeckTab, "Heel cap",
                 NeckField(n => n.HeelCap),
@@ -172,13 +199,63 @@ namespace GuitarForm
                 NeckField(n => n.HeelOutlineStraightSides),
                 NeckField(n => n.HeelSectionWidth),
                 NeckField(n => n.UsesFirstFretAtHeelSection),
-                NeckField(n => n.BottomRadiusAtHeelSection),
-                NeckField(n => n.ShoulderAngleAtHeelSection),
-                NeckField(n => n.MidshoulderRadiusAtHeelSection),
+                SquarenessField(n => n.SquarenessAtHeelSection),
+                BlendField(n => n.BlendAtHeelSection),
+                AsymmetryField(n => n.AsymmetryAtHeelSection),
                 NeckField(n => n.SideLengthAtHeelSection)),
         };
 
         public const string MarkersGroup = "Dot markers";
+        public const string ModeGroup = "Profile mode";
+
+        // The neck profile groups that get a "Starting shape" list.
+        public static bool HasStartingShape(string tab, string title) =>
+            tab == NeckTab && StationOf(title) != null;
+
+        static string StationOf(string title) => title switch
+        {
+            "Profile at first fret" => "F",
+            "Profile at selected fret" => "S",
+            "Heel section" => "H",
+            "Heel end" => "E",
+            _ => null,
+        };
+
+        // The guitar with the preset's squareness, asymmetry and blend written to the station the group is for.
+        public static Guitar WithStartingShape(Guitar guitar, string title, NeckProfilePresets.Preset preset)
+        {
+            Neck n = guitar.Neck;
+            NumberParameter Number(NumberParameter p, double v) => p with { Value = v };
+            n = StationOf(title) switch
+            {
+                "F" => n with
+                {
+                    SquarenessAtFirstFret = Number(n.SquarenessAtFirstFret, preset.Squareness),
+                    AsymmetryAtFirstFret = Number(n.AsymmetryAtFirstFret, preset.Asymmetry),
+                    BlendAtFirstFret = Number(n.BlendAtFirstFret, preset.Blend),
+                },
+                "S" => n with
+                {
+                    SquarenessAtSelectedFret = Number(n.SquarenessAtSelectedFret, preset.Squareness),
+                    AsymmetryAtSelectedFret = Number(n.AsymmetryAtSelectedFret, preset.Asymmetry),
+                    BlendAtSelectedFret = Number(n.BlendAtSelectedFret, preset.Blend),
+                },
+                "H" => n with
+                {
+                    SquarenessAtHeelSection = Number(n.SquarenessAtHeelSection, preset.Squareness),
+                    AsymmetryAtHeelSection = Number(n.AsymmetryAtHeelSection, preset.Asymmetry),
+                    BlendAtHeelSection = Number(n.BlendAtHeelSection, preset.Blend),
+                },
+                "E" => n with
+                {
+                    SquarenessAtHeelEnd = Number(n.SquarenessAtHeelEnd, preset.Squareness),
+                    AsymmetryAtHeelEnd = Number(n.AsymmetryAtHeelEnd, preset.Asymmetry),
+                    BlendAtHeelEnd = Number(n.BlendAtHeelEnd, preset.Blend),
+                },
+                _ => n,
+            };
+            return guitar with { Neck = n };
+        }
 
         public static readonly Field[] Fields = Groups.SelectMany(g => g.Fields).ToArray();
 

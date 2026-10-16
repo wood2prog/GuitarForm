@@ -15,6 +15,7 @@ namespace GuitarForm.Geometry
         {
             LineSegment line => new LineCurve(ToPoint(line.From), ToPoint(line.To)),
             ArcSegment arc => new ArcCurve(new Arc(ToPoint(arc.Start), ToPoint(arc.Mid), ToPoint(arc.End))),
+            PolylineSegment polyline => new PolylineCurve(polyline.Points.Select(ToPoint)),
             _ => null,
         };
 

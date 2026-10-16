@@ -168,35 +168,11 @@ At the Neck Thickness Fret, the neck's thickness from the fretboard's playing su
 **Neck Thickness Fret (NKSF)**
 The fret at which the Neck Thickness at Selected Fret is set.
 
-**Profile Bottom Radius at First Fret (PBRF)**
-At the first fret, the radius of the arc that forms the back of the neck.
-
-**Profile Shoulder Angle at First Fret (PSAF)**
-At the first fret, the angle of the straight shoulder line that runs down from the fretboard edge, measured from a flat line straight across the neck's width (perpendicular to its center plane), not from the radiused fretboard surface.
-
-**Profile Midshoulder Radius at First Fret (PMRF)**
-At the first fret, the radius of the arc that blends the shoulder line into the bottom arc, tangent to both.
-
-**Profile Center Offset at First Fret (PCOF)**
-At the first fret, how far the bottom arc is shifted from the neck's centerline: positive toward the treble side, negative toward the bass side.
-
 **Profile Includes Fretboard at First Fret (PIFF)**
 At the first fret, whether the shoulder line starts at the top of the fretboard edge (true) or at its underside (false).
 
 **Profile Uses First Fret at Selected Fret (PUFS)**
-Whether the profile at the Neck Thickness Fret uses all five of the first fret's profile settings instead of its own.
-
-**Profile Bottom Radius at Selected Fret (PBRS)**
-At the Neck Thickness Fret, the radius of the arc that forms the back of the neck.
-
-**Profile Shoulder Angle at Selected Fret (PSAS)**
-At the Neck Thickness Fret, the angle of the straight shoulder line that runs down from the fretboard edge, measured from a flat line straight across the neck's width (perpendicular to its center plane), not from the radiused fretboard surface.
-
-**Profile Midshoulder Radius at Selected Fret (PMRS)**
-At the Neck Thickness Fret, the radius of the arc that blends the shoulder line into the bottom arc, tangent to both.
-
-**Profile Center Offset at Selected Fret (PCOS)**
-At the Neck Thickness Fret, how far the bottom arc is shifted from the neck's centerline: positive toward the treble side, negative toward the bass side.
+Whether the profile at the Neck Thickness Fret uses the first fret's profile settings instead of its own.
 
 **Profile Includes Fretboard at Selected Fret (PIFS)**
 At the Neck Thickness Fret, whether the shoulder line starts at the top of the fretboard edge (true) or at its underside (false).
@@ -223,16 +199,7 @@ Whether a heel cap, a thin piece of wood glued onto the heel end, is included. I
 The heel cap's thickness. The cap's outer face stays at the Heel End Offset from Back, and the heel end moves toward the fretboard by this thickness.
 
 **Profile Uses First Fret at Heel End (PUFE)**
-Whether the heel end profile uses the first fret's bottom radius, shoulder angle and midshoulder radius instead of its own.
-
-**Profile Bottom Radius at Heel End (PBRE)**
-At the heel end, the radius of the arc that forms the front of the heel's profile.
-
-**Profile Shoulder Angle at Heel End (PSAE)**
-At the heel end, the angle of the straight shoulder line that runs from the end of the heel's straight sides, measured from a flat line straight across the heel's width.
-
-**Profile Midshoulder Radius at Heel End (PMRE)**
-At the heel end, the radius of the arc that blends the shoulder line into the bottom arc, tangent to both.
+Whether the heel end profile uses the first fret's profile settings instead of its own.
 
 **Profile Side Length at Heel End (PSLE)**
 At the heel end, the length of the heel's straight sides, running out from the heel/body joint before the profile's curves start.
@@ -250,19 +217,49 @@ Seen from the heel end, whether the heel's sides run straight from the neck's ed
 The heel's width at the heel section. Calculated when Heel Outline Straight Sides is checked.
 
 **Profile Uses First Fret at Heel Section (PUFH)**
-Whether the heel section profile uses the first fret's bottom radius, shoulder angle and midshoulder radius instead of its own.
-
-**Profile Bottom Radius at Heel Section (PBRH)**
-At the heel section, the radius of the arc that forms the front of the heel's profile.
-
-**Profile Shoulder Angle at Heel Section (PSAH)**
-At the heel section, the angle of the straight shoulder line that runs from the end of the heel's straight sides, measured from a flat line straight across the heel's width.
-
-**Profile Midshoulder Radius at Heel Section (PMRH)**
-At the heel section, the radius of the arc that blends the shoulder line into the bottom arc, tangent to both.
+Whether the heel section profile uses the first fret's profile settings instead of its own.
 
 **Profile Side Length at Heel Section (PSLH)**
 At the heel section, the length of the heel's straight sides, running out from the heel/body joint before the profile's curves start.
+
+**Profile Advanced Mode (PADV)**
+Whether the neck profile's squareness and blend are set separately at each station (advanced) rather than by a starting shape.
+
+**Profile Squareness at First Fret (PSQF)**
+At the first fret, how square the profile's back is: 1 is a V, 2 a round C, and higher values a squarer D. Between 1 and 10; 2 when not set.
+
+**Profile Asymmetry at First Fret (PASF)**
+At the first fret, how far the profile's fullest point is shifted from the neck's centerline, as a percentage of half the profile's width: positive toward the treble side, negative toward the bass side. Between -50 and 50; 0 when not set.
+
+**Profile Blend at First Fret (PBLF)**
+At the first fret, the profile's shape as a percentage along the reference shapes: 0 is a V (squareness 1), 50 a round C (squareness 2) and 100 a D (squareness 3.2). Between two of them the outlines are blended point for point. Between 0 and 100; 50 when not set.
+
+**Profile Squareness at Selected Fret (PSQS)**
+At the Neck Thickness Fret, how square the profile's back is: 1 is a V, 2 a round C, and higher values a squarer D. Between 1 and 10; 2 when not set.
+
+**Profile Asymmetry at Selected Fret (PASS)**
+At the Neck Thickness Fret, how far the profile's fullest point is shifted from the neck's centerline, as a percentage of half the profile's width: positive toward the treble side, negative toward the bass side. Between -50 and 50; 0 when not set.
+
+**Profile Blend at Selected Fret (PBLS)**
+At the Neck Thickness Fret, the profile's shape as a percentage along the reference shapes: 0 is a V (squareness 1), 50 a round C (squareness 2) and 100 a D (squareness 3.2). Between two of them the outlines are blended point for point. Between 0 and 100; 50 when not set.
+
+**Profile Squareness at Heel Section (PSQH)**
+At the heel section, how square the profile's back is: 1 is a V, 2 a round C, and higher values a squarer D. Between 1 and 10; 2 when not set.
+
+**Profile Asymmetry at Heel Section (PASH)**
+At the heel section, how far the profile's fullest point is shifted from the neck's centerline, as a percentage of half the profile's width: positive toward the treble side, negative toward the bass side. Between -50 and 50; 0 when not set.
+
+**Profile Blend at Heel Section (PBLH)**
+At the heel section, the profile's shape as a percentage along the reference shapes: 0 is a V (squareness 1), 50 a round C (squareness 2) and 100 a D (squareness 3.2). Between two of them the outlines are blended point for point. Between 0 and 100; 50 when not set.
+
+**Profile Squareness at Heel End (PSQE)**
+At the heel end, how square the profile's back is: 1 is a V, 2 a round C, and higher values a squarer D. Between 1 and 10; 2 when not set.
+
+**Profile Asymmetry at Heel End (PASE)**
+At the heel end, how far the profile's fullest point is shifted from the neck's centerline, as a percentage of half the profile's width: positive toward the treble side, negative toward the bass side. Between -50 and 50; 0 when not set.
+
+**Profile Blend at Heel End (PBLE)**
+At the heel end, the profile's shape as a percentage along the reference shapes: 0 is a V (squareness 1), 50 a round C (squareness 2) and 100 a D (squareness 3.2). Between two of them the outlines are blended point for point. Between 0 and 100; 50 when not set.
 
 ## Body
 

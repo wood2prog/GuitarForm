@@ -56,6 +56,44 @@ namespace GuitarForm.Tests
         }
 
         [Test]
+        public void Neck_LegacyProfileRows_AreIgnoredAndNotSavedAgain()
+        {
+            var guitar = SavedItemsOM();
+            long id = _library.CreateGuitar(guitar);
+            string path = Path.Combine(_folder, "GuitarForm.db");
+            long neckId;
+            using (var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=" + path + ";Pooling=False"))
+            {
+                connection.Open();
+                using (var find = connection.CreateCommand())
+                {
+                    find.CommandText = "SELECT id FROM parts WHERE kind = 'neck' AND parent_id = $id";
+                    find.Parameters.AddWithValue("$id", id);
+                    neckId = (long)find.ExecuteScalar();
+                }
+                foreach (var abbreviation in new[] { "PBRF", "PSAF", "PMRF", "PCOS", "PBRE", "PSAH" })
+                {
+                    using var insert = connection.CreateCommand();
+                    insert.CommandText = "INSERT INTO part_values (part_id, abbreviation, item, value) VALUES ($id, $a, -1, 30)";
+                    insert.Parameters.AddWithValue("$id", neckId);
+                    insert.Parameters.AddWithValue("$a", abbreviation);
+                    insert.ExecuteNonQuery();
+                }
+            }
+
+            var loaded = _library.LoadGuitar(id);
+            TestGuitars.AssertSameValues(loaded, guitar);
+
+            _library.SaveGuitar(id, loaded);
+            using var check = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=" + path + ";Pooling=False");
+            check.Open();
+            using var count = check.CreateCommand();
+            count.CommandText = "SELECT count(*) FROM part_values WHERE abbreviation LIKE 'PBR%' OR abbreviation LIKE 'PSA%' " +
+                "OR abbreviation LIKE 'PMR%' OR abbreviation LIKE 'PCO%'";
+            Assert.That((long)count.ExecuteScalar(), Is.Zero);
+        }
+
+        [Test]
         public void Guitar_ListedByName()
         {
             _library.CreateGuitar(TestGuitars.OM("Parlor"));

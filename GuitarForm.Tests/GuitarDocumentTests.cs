@@ -45,7 +45,7 @@ namespace GuitarForm.Tests
             var json = Parse(GuitarDocument.ToJson(FullOM()));
             var guitar = json["guitar"];
 
-            Assert.That((int)json["schemaVersion"], Is.EqualTo(2));
+            Assert.That((int)json["schemaVersion"], Is.EqualTo(3));
             Assert.That((string)json["units"], Is.EqualTo("mm"));
             Assert.That((string)guitar["values"]["IN"], Is.EqualTo("OM"));
             Assert.That((double)guitar["values"]["SL"], Is.EqualTo(645));
@@ -79,7 +79,7 @@ namespace GuitarForm.Tests
         [TestCase("not json")]
         [TestCase("[1, 2]")]
         [TestCase(@"{ ""units"": ""mm"", ""guitar"": {} }")]
-        [TestCase(@"{ ""schemaVersion"": 3, ""units"": ""mm"", ""guitar"": {} }")]
+        [TestCase(@"{ ""schemaVersion"": 4, ""units"": ""mm"", ""guitar"": {} }")]
         [TestCase(@"{ ""schemaVersion"": 2, ""units"": ""in"", ""guitar"": {} }")]
         [TestCase(@"{ ""schemaVersion"": 2, ""units"": ""mm"" }")]
         [TestCase(@"{ ""schemaVersion"": 2, ""units"": ""mm"", ""guitar"": { ""values"": { ""SL"": [645] } } }")]
@@ -92,10 +92,59 @@ namespace GuitarForm.Tests
         }
 
         [Test]
+        public void Version2DocumentWithOldProfileValues_LoadsAndDropsThem()
+        {
+            var guitar = GuitarDocument.FromJson(@"{ ""schemaVersion"": 2, ""units"": ""mm"", ""guitar"": { ""neck"": { ""values"": {
+                ""PBRF"": 30, ""PSAF"": 70, ""PMRF"": 10, ""PCOF"": 1, ""PBRS"": 35, ""PSAS"": 70, ""PMRS"": 10, ""PCOS"": 1,
+                ""PBRE"": 40, ""PSAE"": 80, ""PMRE"": 15, ""PBRH"": 40, ""PSAH"": 80, ""PMRH"": 15,
+                ""PSLE"": 10, ""NKA"": 1.5 } } } }");
+
+            Assert.That(guitar.Neck.Angle.Value, Is.EqualTo(1.5));
+            Assert.That(guitar.Neck.SideLengthAtHeelEnd.Value, Is.EqualTo(10));
+            Assert.That(guitar.Neck.SquarenessAtFirstFret.Value, Is.Null);
+            Assert.That(guitar.Neck.StoredValues.Select(v => v.Abbreviation),
+                Has.None.Matches<string>(a => a.StartsWith("PBR") || a.StartsWith("PSA") || a.StartsWith("PMR") || a.StartsWith("PCO")));
+            Assert.That(GuitarDocument.ToJson(guitar), Does.Not.Contain("PBRF"));
+        }
+
+        [Test]
+        public void Version3_RoundTripsTheProfileValues()
+        {
+            var guitar = FullOM();
+            guitar = guitar with
+            {
+                Neck = guitar.Neck with
+                {
+                    ProfileAdvancedMode = new(Neck.Definitions.ProfileAdvancedMode, true),
+                    SquarenessAtFirstFret = new(Neck.Definitions.SquarenessAtFirstFret, 2),
+                    AsymmetryAtFirstFret = new(Neck.Definitions.AsymmetryAtFirstFret, -10),
+                    BlendAtSelectedFret = new(Neck.Definitions.BlendAtSelectedFret, 75),
+                    SquarenessAtHeelEnd = new(Neck.Definitions.SquarenessAtHeelEnd, 3.2),
+                },
+            };
+
+            string json = GuitarDocument.ToJson(guitar);
+            var read = GuitarDocument.FromJson(json);
+
+            Assert.That((double)Parse(json)["guitar"]["neck"]["values"]["PSQF"], Is.EqualTo(2));
+            Assert.That((bool)Parse(json)["guitar"]["neck"]["values"]["PADV"], Is.True);
+            TestGuitars.AssertSameValues(read, guitar);
+            Assert.That(read.Neck.AsymmetryAtFirstFret.Value, Is.EqualTo(-10));
+            Assert.That(read.Neck.BlendAtSelectedFret.Value, Is.EqualTo(75));
+        }
+
+        [Test]
+        public void Version4_IsRejected()
+        {
+            Assert.Throws<FormatException>(() =>
+                GuitarDocument.FromJson(@"{ ""schemaVersion"": 4, ""units"": ""mm"", ""guitar"": {} }"));
+        }
+
+        [Test]
         public void NewerVersion_SaysSo()
         {
             var error = Assert.Throws<FormatException>(() =>
-                GuitarDocument.FromJson(@"{ ""schemaVersion"": 3, ""units"": ""mm"", ""guitar"": {} }"));
+                GuitarDocument.FromJson(@"{ ""schemaVersion"": 4, ""units"": ""mm"", ""guitar"": {} }"));
 
             Assert.That(error.Message, Does.Contain("made by a newer GuitarForm"));
         }

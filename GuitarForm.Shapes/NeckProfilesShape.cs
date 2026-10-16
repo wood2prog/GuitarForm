@@ -42,12 +42,13 @@ namespace GuitarForm.Shapes
     // Nut to the Fretboard Thickness at End makes it there. A heel profile's top is the heel/body joint, a straight
     // line as wide as the heel, with the heel's straight sides running down from it by the Profile Side Length.
     //
-    // Below that, each side is a shoulder line running down and in at the Profile Shoulder Angle (from a flat line
-    // across), from the fretboard edge's top or underside (Profile Includes Fretboard) or from the end of the heel's
-    // straight side. The bottom arc's lowest point is the neck thickness below the crown (the heel thickness below the
-    // joint), on the Profile Center Offset (the heel has none). A fillet of the Profile Midshoulder Radius blends each
-    // shoulder line into the bottom arc where the line leaves the arc's circle; with a center offset each side gets its
-    // own fillet of the same radius.
+    // Below that, the profile runs from the shoulder start (the fretboard edge's top or underside, per Profile Includes
+    // Fretboard, or the end of the heel's straight side) down to the bottom, the neck thickness below the crown (the
+    // heel thickness below the joint). Each half is a superellipse quadrant, vertical at the shoulder and level at the
+    // apex: with half-width a, height b and squareness n, x = a cos^(2/n) t and y = b (1 - sin^(2/n) t), so n = 1 is a
+    // V, 2 a round C and larger values squarer. Asymmetry moves the apex off the centerline by a percent of the
+    // half-width, toward the treble side when positive. In advanced mode the squareness is ignored and the blend mixes
+    // the reference shapes n = 1 (0%), n = 2 (50%) and n = 3.2 (100%) point for point.
     //
     // The neck profiles share a centerline, the drawing gap right of the side view (and the fretboard's side profile),
     // each centered on the height of its fret on the playing surface. The heel section and then the heel end follow,
@@ -72,10 +73,8 @@ namespace GuitarForm.Shapes
         public List<GeometryMessage> Messages { get; } = new List<GeometryMessage>();
 
         // A profile's settings, after Profile Uses First Fret is applied.
-        sealed record Settings(NumberParameter BottomRadius, NumberParameter ShoulderAngle,
-            NumberParameter MidshoulderRadius, NumberParameter CenterOffset = null, bool IncludesFretboard = false);
-
-        enum Failure { None, Misses, PastStart, PastBottom, NoFit }
+        sealed record Settings(double Squareness, double Asymmetry, double Blend, bool Advanced,
+            bool IncludesFretboard = false);
 
         readonly Guitar _guitar;
         readonly Neck _neck;
@@ -102,8 +101,8 @@ namespace GuitarForm.Shapes
         {
             var shape = new NeckProfilesShape(guitar, tolerance, unit, culture);
             var neck = guitar.Neck;
-            var first = new Settings(neck.BottomRadiusAtFirstFret, neck.ShoulderAngleAtFirstFret,
-                neck.MidshoulderRadiusAtFirstFret, neck.CenterOffsetAtFirstFret, neck.IncludesFretboardAtFirstFret.Value);
+            var first = shape.SettingsFor(neck.SquarenessAtFirstFret, neck.AsymmetryAtFirstFret, neck.BlendAtFirstFret,
+                neck.IncludesFretboardAtFirstFret.Value);
 
             var firstFret = shape.NeckProfile("the first fret", 1, neck.ThicknessAtFirstFret, first);
             NeckProfileShape selectedFret = null;
@@ -111,21 +110,21 @@ namespace GuitarForm.Shapes
                 selectedFret = shape.NeckProfile("the selected fret", fret, neck.ThicknessAtSelectedFret,
                     neck.UsesFirstFretAtSelectedFret.Value
                         ? first
-                        : new Settings(neck.BottomRadiusAtSelectedFret, neck.ShoulderAngleAtSelectedFret,
-                            neck.MidshoulderRadiusAtSelectedFret, neck.CenterOffsetAtSelectedFret,
-                            neck.IncludesFretboardAtSelectedFret.Value));
+                        : shape.SettingsFor(neck.SquarenessAtSelectedFret, neck.AsymmetryAtSelectedFret,
+                            neck.BlendAtSelectedFret, neck.IncludesFretboardAtSelectedFret.Value));
             else
                 shape.RemarkMissing("the neck profile at the selected fret", neck.ThicknessFret);
 
             var heelSection = shape.HeelProfile("the heel section", neck.HeelSectionThickness,
-                shape.HeelSectionWidthNeeds(), shape.FindHeelSectionWidth, neck.SideLengthAtHeelSection, neck.UsesFirstFretAtHeelSection.Value
+                shape.HeelSectionWidthNeeds(), shape.FindHeelSectionWidth, neck.SideLengthAtHeelSection,
+                neck.UsesFirstFretAtHeelSection.Value
                     ? first
-                    : new Settings(neck.BottomRadiusAtHeelSection, neck.ShoulderAngleAtHeelSection,
-                        neck.MidshoulderRadiusAtHeelSection));
+                    : shape.SettingsFor(neck.SquarenessAtHeelSection, neck.AsymmetryAtHeelSection,
+                        neck.BlendAtHeelSection, false));
             var heelEnd = shape.HeelProfile("the heel end", neck.HeelEndThickness, new[] { neck.HeelEndWidth },
                 () => neck.HeelEndWidth.Value, neck.SideLengthAtHeelEnd, neck.UsesFirstFretAtHeelEnd.Value
                     ? first
-                    : new Settings(neck.BottomRadiusAtHeelEnd, neck.ShoulderAngleAtHeelEnd, neck.MidshoulderRadiusAtHeelEnd));
+                    : shape.SettingsFor(neck.SquarenessAtHeelEnd, neck.AsymmetryAtHeelEnd, neck.BlendAtHeelEnd, false));
 
             // The neck profiles share a centerline, placed so the widest reaches left.
             var neckProfiles = new[] { (firstFret, 1), (selectedFret, neck.ThicknessFret.Value ?? 0) }
@@ -170,6 +169,11 @@ namespace GuitarForm.Shapes
                 : _guitar.Body.Length.Value.Value + _guitar.NeckJoinDistance.Value - fromNut;
         }
 
+        Settings SettingsFor(NumberParameter squareness, NumberParameter asymmetry, NumberParameter blend,
+            bool includesFretboard) =>
+            new Settings(_neck.SquarenessOrDefault(squareness), _neck.AsymmetryOrDefault(asymmetry),
+                _neck.BlendOrDefault(blend), _neck.ProfileAdvancedMode.Value, includesFretboard);
+
         // The neck profile at the given fret, with the crown of the playing surface at the origin. Null when it can't
         // be drawn.
         NeckProfileShape NeckProfile(string place, int fret, NumberParameter thickness, Settings settings)
@@ -177,8 +181,7 @@ namespace GuitarForm.Shapes
             var needed = FretboardShape.TaperParameters(_guitar).Concat(new Parameter[]
             {
                 _fretboard.Radius, _fretboard.ThicknessAtNut, _fretboard.ThicknessAtEnd, _fretboard.FretCount,
-                _fretboard.LastFretOverhang, thickness, settings.BottomRadius, settings.ShoulderAngle,
-                settings.MidshoulderRadius,
+                _fretboard.LastFretOverhang, thickness,
             }).ToArray();
             if (RemarkMissing($"the neck profile at {place}", needed))
                 return null;
@@ -211,17 +214,16 @@ namespace GuitarForm.Shapes
             double edgeTop = -(radius - Math.Sqrt(radius * radius - half * half));
             var trebleTop = new Point2(half, edgeTop);
             var bassTop = new Point2(-half, edgeTop);
-            var trebleUnder = new Point2(half, -boardThickness);
-            var bassUnder = new Point2(-half, -boardThickness);
-            var start = settings.IncludesFretboard ? trebleTop : trebleUnder;
-            var bottom = Bottom(settings, depth, settings.CenterOffset.Value ?? 0);
-
-            var sides = Sides(start, start.MirrorX(), settings, bottom, out var failure);
-            if (sides == null)
+            if (settings.IncludesFretboard && edgeTop <= -depth)
             {
-                ReportFailure(place, failure, settings, "the fretboard edge", "the bottom of the neck");
+                Error($"At {place}, the {thickness.Label} must be more than the drop of the fretboard's surface at its " +
+                      $"edge ({Format(-edgeTop)}), because the profile includes the fretboard.");
                 return null;
             }
+            var trebleUnder = new Point2(half, -boardThickness);
+            var bassUnder = new Point2(-half, -boardThickness);
+
+            var sides = Sides(half, settings.IncludesFretboard ? edgeTop : -boardThickness, -depth, settings);
             var segments = new List<Segment>();
             segments.AddIfDrawn(ArcSegment.Around(surface, bassTop, trebleTop, clockwise: true, _tolerance));
             if (!settings.IncludesFretboard)
@@ -232,7 +234,7 @@ namespace GuitarForm.Shapes
 
             // The underside runs between where it meets the sides.
             var crossings = sides.SelectMany(side => side.CrossingsAtY(-boardThickness)).Select(c => c.Point.X).ToList();
-            var underside = settings.IncludesFretboard
+            var underside = settings.IncludesFretboard && crossings.Count > 0
                 ? new LineSegment(new Point2(crossings.Min(), -boardThickness), new Point2(crossings.Max(), -boardThickness))
                 : new LineSegment(bassUnder, trebleUnder);
             return new NeckProfileShape(place, new Path(segments, isClosed: true), underside);
@@ -243,7 +245,7 @@ namespace GuitarForm.Shapes
         NeckProfileShape HeelProfile(string place, NumberParameter thickness, IEnumerable<Parameter> widthNeeds,
             Func<double?> findWidth, NumberParameter sideLength, Settings settings)
         {
-            var needed = new Parameter[] { thickness, settings.BottomRadius, settings.ShoulderAngle, settings.MidshoulderRadius };
+            var needed = new Parameter[] { thickness };
             if (RemarkMissing($"the heel profile at {place}", needed.Concat(widthNeeds).ToArray()) ||
                 findWidth() is not double width)
                 return null;
@@ -256,17 +258,10 @@ namespace GuitarForm.Shapes
             var trebleJoint = new Point2(half, 0);
             var bassJoint = new Point2(-half, 0);
             var start = new Point2(half, -side);
-            var sides = Sides(start, start.MirrorX(), settings, Bottom(settings, thickness.Value.Value, 0), out var failure);
-            if (sides == null)
-            {
-                ReportFailure(place, failure, settings,
-                    side > 0 ? "the heel's straight sides" : "the heel/body joint", "the front of the heel");
-                return null;
-            }
             var segments = new List<Segment> { new LineSegment(bassJoint, trebleJoint) };
             if (side > 0)
                 segments.Add(new LineSegment(trebleJoint, start));
-            segments.AddRange(sides);
+            segments.AddRange(Sides(half, -side, -thickness.Value.Value, settings));
             if (side > 0)
                 segments.Add(new LineSegment(start.MirrorX(), bassJoint));
             return new NeckProfileShape(place, new Path(segments, isClosed: true), null);
@@ -313,95 +308,94 @@ namespace GuitarForm.Shapes
             return HeelSectionWidth = endWidth + (2 * edge - endWidth) * offset / span;
         }
 
+        // The model reports values out of range; these would only make the maths meaningless.
         static bool Valid(Settings settings) =>
-            settings.BottomRadius.Value is double bottom && bottom > 0 &&
-            settings.MidshoulderRadius.Value is double midshoulder && midshoulder > 0 && midshoulder < bottom &&
-            settings.ShoulderAngle.Value is > 0 and <= 90;
+            settings.Asymmetry is >= Neck.MinimumAsymmetry and <= Neck.MaximumAsymmetry &&
+            (settings.Advanced ? settings.Blend is >= 0 and <= 100 : settings.Squareness > 0);
 
-        // The bottom arc's circle, with its lowest point depth below y = 0, on the offset.
-        static Circle Bottom(Settings settings, double depth, double offset)
+        // The reference squareness values the blend mixes between, at 0%, 50% and 100%.
+        static readonly double[] BlendReferences = { 1, 2, 3.2 };
+
+        // A point of the unit quadrant at angle t (0 at the shoulder, pi/2 at the apex): across from the apex as a
+        // fraction of the half's width, and up from the bottom as a fraction of the height.
+        static (double X, double Y) Quadrant(Settings settings, double t)
         {
-            double radius = settings.BottomRadius.Value.Value;
-            return new Circle(new Point2(offset, radius - depth), radius);
+            double cos = Math.Max(Math.Cos(t), 0), sin = Math.Max(Math.Sin(t), 0);
+            if (!settings.Advanced)
+                return Superellipse(settings.Squareness, cos, sin);
+            int lower = settings.Blend < 50 ? 0 : 1;
+            double weight = (settings.Blend - 50 * lower) / 50;
+            var a = Superellipse(BlendReferences[lower], cos, sin);
+            var b = Superellipse(BlendReferences[lower + 1], cos, sin);
+            return ((1 - weight) * a.X + weight * b.X, (1 - weight) * a.Y + weight * b.Y);
         }
 
-        // Clockwise from the treble shoulder's start to the bass shoulder's start: the treble shoulder line and fillet,
-        // the bottom arc and the bass fillet and shoulder line. Null when they can't be drawn, with the reason.
-        List<Segment> Sides(Point2 trebleStart, Point2 bassStart, Settings settings, Circle bottom, out Failure failure)
-        {
-            var treble = Blend(trebleStart, 1, settings, bottom, out failure);
-            if (treble == null)
-                return null;
-            var bass = Blend(bassStart, -1, settings, bottom, out failure);
-            if (bass == null)
-                return null;
+        static (double X, double Y) Superellipse(double n, double cos, double sin) =>
+            (Math.Pow(cos, 2 / n), 1 - Math.Pow(sin, 2 / n));
 
-            var segments = new List<Segment>();
-            segments.AddIfDrawn(Line(trebleStart, treble.Value.OnLine));
-            segments.AddIfDrawn(ArcSegment.Around(treble.Value.Fillet, treble.Value.OnLine, treble.Value.OnBottom, true, _tolerance));
-            segments.AddIfDrawn(ArcSegment.Around(bottom, treble.Value.OnBottom, bass.Value.OnBottom, true, _tolerance));
-            segments.AddIfDrawn(ArcSegment.Around(bass.Value.Fillet, bass.Value.OnBottom, bass.Value.OnLine, true, _tolerance));
-            segments.AddIfDrawn(Line(bass.Value.OnLine, bassStart));
-            return segments;
+        // The two halves of the profile below the shoulder start, clockwise from the treble shoulder start through the
+        // apex to the bass shoulder start. Half is the half-width, shoulder the height of the shoulder start and bottom
+        // the lowest point.
+        List<Segment> Sides(double half, double shoulder, double bottom, Settings settings)
+        {
+            double apex = half * settings.Asymmetry / 100;
+            double height = shoulder - bottom;
+            var apexPoint = new Point2(apex, bottom);
+            var treble = Sample(settings, half - apex, 1, apex, bottom, height, new Point2(half, shoulder), apexPoint);
+            var bass = Sample(settings, half + apex, -1, apex, bottom, height, new Point2(-half, shoulder), apexPoint);
+            bass.Reverse();
+            return new List<Segment> { new PolylineSegment(treble), new PolylineSegment(bass) };
         }
 
-        // One side's fillet between its shoulder line and the bottom arc (side is 1 for treble, -1 for bass): where
-        // it's tangent to each, or null with the reason it doesn't fit.
-        (Circle Fillet, Point2 OnLine, Point2 OnBottom)? Blend(Point2 start, int side, Settings settings, Circle bottom,
-            out Failure failure)
+        // Points along one half from its shoulder start to the apex (direction is 1 for treble, -1 for bass, and
+        // width the half's width from the apex). The angle is split in eight and each piece subdivided until its chord
+        // is within half the tolerance of the curve, down to a depth that bounds the count.
+        List<Point2> Sample(Settings settings, double width, int direction, double apexX, double bottom, double height,
+            Point2 first, Point2 last)
         {
-            double angle = settings.ShoulderAngle.Value.Value * Math.PI / 180;
-            double radius = settings.MidshoulderRadius.Value.Value;
-            // Down the shoulder line, and square to it into the neck.
-            var down = new Vector2(-side * Math.Cos(angle), -Math.Sin(angle));
-            var inward = side > 0 ? down.Right : down.Left;
+            Point2 At(double t)
+            {
+                var (x, y) = Quadrant(settings, t);
+                return new Point2(apexX + direction * width * x, bottom + height * y);
+            }
 
-            if (Math.Abs((bottom.Center - start).Dot(inward)) >= bottom.Radius)
+            const int Initial = 8, MaxDepth = 6;
+            double allowed = Math.Max(_tolerance, 1e-6) / 2;
+            var points = new List<Point2> { first };
+
+            void Refine(double t0, Point2 p0, double t1, Point2 p1, int depth)
             {
-                failure = Failure.Misses;
-                return null;
+                double mid = (t0 + t1) / 2;
+                var pm = At(mid);
+                if (depth < MaxDepth &&
+                    (DistanceToChord(pm, p0, p1) > allowed ||
+                     DistanceToChord(At((t0 + mid) / 2), p0, p1) > allowed ||
+                     DistanceToChord(At((mid + t1) / 2), p0, p1) > allowed))
+                {
+                    Refine(t0, p0, mid, pm, depth + 1);
+                    Refine(mid, pm, t1, p1, depth + 1);
+                }
+                else
+                    points.Add(p1);
             }
-            // The fillet's center is the radius in from the line and the radius in from the bottom circle. Of the two
-            // places, the lower is where the line leaves the circle.
-            var q = start + inward * radius - bottom.Center;
-            double b = q.Dot(down);
-            double discriminant = b * b - (q.Dot(q) - Math.Pow(bottom.Radius - radius, 2));
-            if (discriminant < 0)
+
+            var previous = first;
+            for (int i = 1; i <= Initial; i++)
             {
-                failure = Failure.NoFit;
-                return null;
+                var next = i == Initial ? last : At(Math.PI / 2 * i / Initial);
+                Refine(Math.PI / 2 * (i - 1) / Initial, previous, Math.PI / 2 * i / Initial, next, 0);
+                previous = next;
             }
-            double along = -b + Math.Sqrt(discriminant);
-            if (along < -_tolerance)
-            {
-                failure = Failure.PastStart;
-                return null;
-            }
-            var onLine = start + down * Math.Max(along, 0);
-            var center = onLine + inward * radius;
-            var onBottom = bottom.Center + (center - bottom.Center).Unit * bottom.Radius;
-            if (side * (onBottom.X - bottom.Center.X) < -_tolerance)
-            {
-                failure = Failure.PastBottom;
-                return null;
-            }
-            failure = Failure.None;
-            return (new Circle(center, radius), onLine, onBottom);
+            return points;
         }
 
-        void ReportFailure(string place, Failure failure, Settings settings, string start, string bottom)
+        static double DistanceToChord(Point2 p, Point2 a, Point2 b)
         {
-            var midshoulder = settings.MidshoulderRadius.Label;
-            Error(failure switch
-            {
-                Failure.Misses => $"At {place}, the shoulder line doesn't meet the arc of the {settings.BottomRadius.Label}.",
-                Failure.PastStart => $"At {place}, the {midshoulder} is too large: it runs past {start}.",
-                Failure.PastBottom => $"At {place}, the {midshoulder} is too large: it runs past {bottom}.",
-                _ => $"At {place}, the {midshoulder} is too large to fit between the shoulder line and the bottom arc.",
-            });
+            var ab = b - a;
+            double lengthSquared = ab.Dot(ab);
+            double along = lengthSquared == 0 ? 0 : Math.Clamp((p - a).Dot(ab) / lengthSquared, 0, 1);
+            return p.DistanceTo(a + ab * along);
         }
-
-        LineSegment Line(Point2 from, Point2 to) => from.DistanceTo(to) > _tolerance ? new LineSegment(from, to) : null;
 
         // Adds a remark naming the parameters that aren't set. True when any isn't.
         bool RemarkMissing(string part, params Parameter[] parameters)

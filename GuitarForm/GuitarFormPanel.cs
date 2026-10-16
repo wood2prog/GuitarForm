@@ -45,10 +45,15 @@ namespace GuitarForm
         readonly IFieldBox[] _newFieldBoxes = NewFields.Fields.Select(field =>
         {
             var parameter = field.Get(new Guitar());
-            return parameter.OptionTexts.Count > 0
+            IFieldBox box = parameter.OptionTexts.Count > 0
                 ? new FieldDropDown(parameter.OptionTexts)
                 : FieldLayout.Box(IsDecimal(parameter.Definition.Kind), step: field.Step);
+            if (field.Placeholder != null)
+                box.PlaceholderText = field.Placeholder;
+            return box;
         }).ToArray();
+        // Each new field's row, so fields that depend on other values can be hidden (see NewFields.Field.Visible).
+        readonly TableRow[] _newFieldRows = new TableRow[NewFields.Fields.Length];
         readonly Label[] _newFieldUnits = NewFields.Fields.Select(_ => FieldLayout.UnitLabel()).ToArray();
         readonly string[] _newFieldErrors = new string[NewFields.Fields.Length];
         readonly TextBox _markers = new TextBox { Width = UiMetrics.ChoiceBoxWidth, ToolTip = "Each marker's fret, with :2 for two dots, e.g. 3 5 7 9 12:2" };
@@ -301,14 +306,77 @@ namespace GuitarForm
                     if (group.Tab == tab && group.Title == title)
                         {
                         var definition = field.Get(_newFields).Definition;
-                        yield return FieldLayout.Row(field.Get(_newFields).Label, null, (Control)_newFieldBoxes[index], _newFieldUnits[index],
+                        yield return _newFieldRows[index] = FieldLayout.Row(field.Get(_newFields).Label, null, (Control)_newFieldBoxes[index], _newFieldUnits[index],
                             () => NewFieldLimits(definition));
                     }
                     index++;
                 }
             }
+            if (NewFields.HasStartingShape(tab, title))
+                yield return StartingShapeRow(title);
             if (tab == NewFields.FretboardTab && title == NewFields.MarkersGroup)
                 yield return FieldLayout.Row("Marker frets", _markers.ToolTip, _markers, FieldLayout.UnitLabel());
+        }
+
+        // A list of named profile shapes. Picking one writes its squareness, asymmetry and blend to the working copy's
+        // station and the list goes back to blank; the choice itself isn't stored.
+        TableRow StartingShapeRow(string title)
+        {
+            var list = new DropDown
+            {
+                Width = UiMetrics.ChoiceBoxWidth,
+                ToolTip = "Fills this section's squareness, asymmetry and blend from a named shape. You can still change them after.",
+            };
+            foreach (var preset in NeckProfilePresets.All)
+                list.Items.Add(preset.Name);
+            list.SelectedIndex = -1;
+            list.SelectedIndexChanged += (_, _) =>
+            {
+                int picked = list.SelectedIndex;
+                if (picked < 0 || _showing)
+                    return;
+                list.SelectedIndex = -1;
+                if (_designId == null)
+                    return;
+                _newFields = NewFields.WithStartingShape(_newFields, title, NeckProfilePresets.All[picked]);
+                for (int i = 0; i < NewFields.Fields.Length; i++)
+                    if (NewFieldTabs[i] == NewFields.NeckTab)
+                        _newFieldErrors[i] = null;
+                MarkDirty();
+                ShowNewFields();
+                Redraw();
+            };
+            return FieldLayout.Row("Starting shape", null, list, FieldLayout.UnitLabel());
+        }
+
+        // Shows or hides each new field's row from the working copy's values (e.g. squareness or blend, by profile mode).
+        void UpdateNewFieldVisibility()
+        {
+            for (int i = 0; i < NewFields.Fields.Length; i++)
+            {
+                var visible = NewFields.Fields[i].Visible;
+                if (visible == null || _newFieldRows[i] == null)
+                    continue;
+                bool show = visible(_newFields);
+                foreach (var cell in _newFieldRows[i].Cells)
+                    if (cell.Control != null)
+                        cell.Control.Visible = show;
+            }
+        }
+
+        // Fills the new fields' boxes from the working copy.
+        void ShowNewFields()
+        {
+            bool showing = _showing;
+            _showing = true;
+            for (int i = 0; i < NewFields.Fields.Length; i++)
+            {
+                var parameter = NewFields.Fields[i].Get(_newFields);
+                _newFieldBoxes[i].Text = parameter.Format(_units.LengthUnit, CultureInfo.CurrentCulture);
+                _newFieldUnits[i].Text = parameter.Symbol(_units.LengthUnit);
+            }
+            _showing = showing;
+            UpdateNewFieldVisibility();
         }
 
         // "Minimum: …  Maximum: …" for a new field, in the units it's shown in; null when it has neither.
@@ -348,6 +416,7 @@ namespace GuitarForm
             {
                 _newFieldErrors[index] = null;
                 _newFields = field.Set(_newFields, parsed);
+                UpdateNewFieldVisibility();
                 MarkDirty();
             }
             else
@@ -779,12 +848,7 @@ namespace GuitarForm
             _body.Show(_design?.Body, _units);
             _hasSoundhole.Checked = _design?.Soundhole != null;
             _soundhole.Show(_design?.Soundhole, _units);
-            for (int i = 0; i < NewFields.Fields.Length; i++)
-            {
-                var parameter = NewFields.Fields[i].Get(_newFields);
-                _newFieldBoxes[i].Text = parameter.Format(_units.LengthUnit, CultureInfo.CurrentCulture);
-                _newFieldUnits[i].Text = parameter.Symbol(_units.LengthUnit);
-            }
+            ShowNewFields();
             _markers.Text = NewFields.FormatMarkers(_newFields);
             _showing = false;
 
@@ -860,7 +924,8 @@ namespace GuitarForm
 
         // The errors from new fields on the tab whose text couldn't be read.
         IEnumerable<GeometryMessage> InputErrors(string tab) =>
-            _newFieldErrors.Where((_, i) => NewFieldTabs[i] == tab)
+            _newFieldErrors.Where((_, i) => NewFieldTabs[i] == tab &&
+                    (NewFields.Fields[i].Visible?.Invoke(_newFields) ?? true))
                 .Append(tab == NewFields.FretboardTab ? _markersError : null)
                 .Where(e => e != null)
                 .Select(e => new GeometryMessage(MessageLevel.Error, e));
