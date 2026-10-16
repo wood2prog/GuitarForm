@@ -374,6 +374,15 @@ namespace GuitarForm
                 var parameter = NewFields.Fields[i].Get(_newFields);
                 _newFieldBoxes[i].Text = parameter.Format(_units.LengthUnit, CultureInfo.CurrentCulture);
                 _newFieldUnits[i].Text = parameter.Symbol(_units.LengthUnit);
+                // Drag, step and arrow keys stop at the limits, in the units shown. An exclusive limit can't be
+                // clamped to (the value itself is not allowed), so it is left to the typed-value check.
+                if (_newFieldBoxes[i] is NumberSlider slider)
+                {
+                    var definition = parameter.Definition;
+                    double Shown(double v) => definition.Kind == ParameterKind.Length ? _units.FromMillimetres(v) : v;
+                    slider.Minimum = definition.Minimum is double min && !definition.MinimumExclusive ? Shown(min) : null;
+                    slider.Maximum = definition.Maximum is double max && !definition.MaximumExclusive ? Shown(max) : null;
+                }
             }
             _showing = showing;
             UpdateNewFieldVisibility();
