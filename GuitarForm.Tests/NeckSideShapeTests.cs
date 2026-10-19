@@ -216,41 +216,50 @@ namespace GuitarForm.Tests
             return Math.Abs(twice) / 2;
         }
 
-        static void AssertSplit(NeckSideShape neck, int heelSegments)
+        static void AssertSplit(NeckSideShape neck)
         {
             Assert.That(neck.Heel.IsClosed, Is.True);
             Assert.That(neck.Shaft.IsClosed, Is.True);
-            Assert.That(neck.Heel.Segments, Has.Count.EqualTo(heelSegments));
-            Assert.That(neck.Shaft.Segments, Has.Count.EqualTo(4));
+            Assert.That(neck.Heel.Segments, Has.Count.EqualTo(5));
+            Assert.That(neck.Shaft.Segments, Has.Count.EqualTo(5));
 
-            // The cut runs from where the heel shaft fillet ends on the back, square to the back, up to the top.
-            var back = neck.Outline.Segments[^2];
-            var cutInHeel = (LineSegment)neck.Heel.Segments[^1];
-            var cutInShaft = (LineSegment)neck.Shaft.Segments[1];
-            AssertPoint(cutInHeel.From, back.Start.X, back.Start.Y);
-            Assert.That((cutInHeel.To - cutInHeel.From).Unit.Dot((back.End - back.Start).Unit), Is.EqualTo(0).Within(1e-9));
+            // The seam is the back of the neck carried straight on to the joint line, y = 600.
+            var outline = neck.Outline.Segments;
+            var back = outline[^2];
+            var seamInHeel = (LineSegment)neck.Heel.Segments[^1];
+            var seamInShaft = (LineSegment)neck.Shaft.Segments[2];
+            AssertPoint(seamInHeel.From, back.Start.X, back.Start.Y);
+            Assert.That(DistanceToLine(seamInHeel.To, back), Is.EqualTo(0).Within(1e-6));
+            Assert.That((seamInHeel.To - seamInHeel.From).Unit.Dot((back.End - back.Start).Unit), Is.EqualTo(-1).Within(1e-9));
+            Assert.That(seamInHeel.To.Y, Is.EqualTo(600).Within(1e-6));
+            // It lands between the heel end (x = 33) and the top of the joint.
+            Assert.That(seamInHeel.To.X, Is.GreaterThan(33));
+            Assert.That(seamInHeel.To.X, Is.LessThan(outline[0].End.X));
             // Both pieces have it, the same line either way round.
-            AssertPoint(cutInShaft.From, cutInHeel.To.X, cutInHeel.To.Y);
-            AssertPoint(cutInShaft.To, cutInHeel.From.X, cutInHeel.From.Y);
-            // It lands on the top, between the joint and the nut end.
-            var top = neck.Outline.Segments[0];
-            Assert.That(DistanceToLine(cutInHeel.To, top), Is.EqualTo(0).Within(1e-6));
-            Assert.That((cutInHeel.To - top.Start).Dot((top.End - top.Start).Unit), Is.GreaterThan(0));
-            Assert.That((top.End - cutInHeel.To).Dot((top.End - top.Start).Unit), Is.GreaterThan(0));
+            AssertPoint(seamInShaft.From, seamInHeel.To.X, seamInHeel.To.Y);
+            AssertPoint(seamInShaft.To, seamInHeel.From.X, seamInHeel.From.Y);
+            // Both end flush on the joint line: the shaft's from the top to the seam, the heel's from the seam to the heel end.
+            var shaftEnd = (LineSegment)neck.Shaft.Segments[1];
+            var heelStart = (LineSegment)neck.Heel.Segments[0];
+            AssertPoint(shaftEnd.From, outline[0].End.X, 600);
+            AssertPoint(shaftEnd.To, seamInHeel.To.X, 600);
+            AssertPoint(heelStart.From, seamInHeel.To.X, 600);
+            AssertPoint(heelStart.To, 33, 600);
+            // The shaft keeps the top and the nut end.
+            AssertPoint(neck.Shaft.Segments[0].Start, outline[0].Start.X, outline[0].Start.Y);
+            AssertPoint(neck.Shaft.Segments[4].End, outline[0].Start.X, outline[0].Start.Y);
+            AssertPoint(neck.Heel.Segments[1].End, 33, 640);
             // Heel and shaft together make the whole neck.
             Assert.That(Area(neck.Heel) + Area(neck.Shaft), Is.EqualTo(Area(neck.Outline)).Within(1e-6));
             Assert.That(neck.Messages, Is.Empty);
         }
 
         [Test]
-        public void HeelAndShaft_SplitAtTheEndOfTheFilletSquareToTheBack()
+        public void HeelAndShaft_SplitAlongTheBackCarriedOnToTheJointLine()
         {
             var (neck, _) = Solve(TestGuitar());
 
-            // Top, joint, heel end, front, fillet and cut, after the heel end front.
-            AssertSplit(neck, 6);
-            AssertPoint(neck.Heel.Segments[1].Start, neck.Outline.Segments[0].End.X, neck.Outline.Segments[0].End.Y);
-            AssertPoint(neck.Shaft.Segments[0].Start, neck.Outline.Segments[0].Start.X, neck.Outline.Segments[0].Start.Y);
+            AssertSplit(neck);
         }
 
         [Test]
@@ -259,7 +268,7 @@ namespace GuitarForm.Tests
             var (neck, _) = Solve(TestGuitar(n => n with { HeelShaftOffset = new(Neck.Definitions.HeelShaftOffset, 10) }));
 
             Assert.That(neck.Heel.Segments.OfType<ArcSegment>().Count(), Is.EqualTo(2));
-            AssertSplit(neck, 6);
+            AssertSplit(neck);
         }
 
         [Test]

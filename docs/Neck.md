@@ -97,7 +97,7 @@ The neck profiles share a centerline, the drawing gap right of the side view, ea
 
 ### Side view
 
-The shaft and the heel are two closed outlines, on separate layers (`Guitar::Neck::Side view` and `Guitar::Neck::Heel`). The neck is split along a line that starts where the heel shaft fillet ends on the back of the neck and runs square to the back, up to the fretboard's underside. That line is drawn in both outlines. If it doesn't land on the underside between the heel/body joint and the nut end, an Error says the heel's dividing line can't land on the fretboard's underside, and neither piece is drawn.
+The shaft and the heel are two closed outlines, on separate layers (`Guitar::Neck::Side view` and `Guitar::Neck::Heel`). The shaft is the strip of neck running unbroken from the nut to the body, on the nut side of the seam. The seam is the back of the neck carried straight on, past where the heel shaft fillet ends, until it reaches the joint line (the body's neck end). The shaft's end edge is the joint line from the top of the joint to the seam. The heel lies behind the seam: the joint line from the seam to the heel end, the heel end, the front of the heel, the fillet and the seam. Both end flush on the joint line, and the seam is drawn in both outlines, so their areas add up to the whole neck. If the carried-on back doesn't land on the joint line between the heel end and the top of the joint (or runs parallel to it, or away from it), an Error says the back of the neck, carried on to the joint line, doesn't land between the heel end and the top of the joint, and neither piece is drawn.
 
 ## Quick Test
 

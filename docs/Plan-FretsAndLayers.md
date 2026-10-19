@@ -27,7 +27,7 @@ Status: decisions approved by the product owner. The task plan is from the Senio
    - The "heel" is the heel of the neck that attaches to the body. The headblock is the block inside the body that the heel attaches to.
    - One Construction sublayer per group.
    - Design requirement: all component names, layer paths and colors live in ONE table, so adding, renaming or recoloring a component is a one-place change.
-   - Note: the neck-side shape now separates the heel from the shaft (`NeckSideShape.Heel` and `Shaft`), split at the end of the heel shaft fillet, square to the back, with the cut line in both.
+   - Note: the neck-side shape now separates the heel from the shaft (`NeckSideShape.Heel` and `Shaft`), the shaft being the strip from the nut to the body and the heel behind the seam (the back of the neck carried on from the end of the fillet to the joint line), with the seam in both.
 8. **Preview** uses the component colors too, so it matches Build. The CLAUDE.md convention about the outline previewing in the feedback color is to be updated when the layers are built. The owner approved that CLAUDE.md change; CLAUDE.md is not edited in this task.
 9. **Build** removes the old empty `GuitarForm::Outline` and `GuitarForm::Construction` layers, only when they are empty. It never deletes objects.
 10. **An existing layer's color is left alone.** A color is set only when Build creates the layer.

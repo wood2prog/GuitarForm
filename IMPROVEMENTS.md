@@ -159,4 +159,4 @@ These need the product owner's direction before any code is written.
 - [ ] `ComponentStyles` completeness (every `DrawingComponent` has a style) needs a test. Plug-in internals aren't visible to the tests: use `InternalsVisibleTo`, or move the table's component list into a testable place.
 - [ ] Unsaved Frets and Strings library edits have no crash recovery.
 - [ ] `DesignDrawing.Construction` and `DesignDrawing.Outline` recompute on every access: cache them in callers that loop.
-- [ ] NeckSideShape heel split: nothing checks that the dividing line avoids the heel's front in extreme geometry (front reaching past onBack), and the out-of-range cut Error has no test (not reachable through the public API).
+- [ ] NeckSideShape heel split: the Error for a seam that doesn't land on the joint line between the heel end and the top of the joint has no test (hard to reach through the public API: other Errors fire first); also nothing checks that the back line stays beyond heelEndX all the way up to the heel end's front (extreme neck angle could make the heel self-intersect without an Error).

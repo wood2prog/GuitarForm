@@ -77,7 +77,7 @@ Unsaved library edits, prompts and builds:
 - Old empty `GuitarForm` layers (and the parent) are removed in the same build. A layer with an object, the current layer, or one used by a block stays.
 - **Show strings** redraws the preview, persists across a Rhino restart, and doesn't reset the backup timer.
 - A fretboard slot deeper than the board's thickness shows the cut-through Warning and draws no slot lines.
-- Heel layer now has objects: Build puts the shaft on `Guitar::Neck::Side view` and the heel on `Guitar::Neck::Heel`. They share the cut line, and the Heel layer's colour shows in the preview.
+- Heel layer now has objects: Build puts the shaft on `Guitar::Neck::Side view` and the heel on `Guitar::Neck::Heel`. They share the seam (the back of the neck carried on to the joint line), both ending flush on the joint line, and the Heel layer's colour shows in the preview.
 
 ## Decisions made
 
