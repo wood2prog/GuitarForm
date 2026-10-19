@@ -13,7 +13,7 @@ Project-organization work, in the order we plan to do it. Tick items off as they
   - Add/Remove String drops held invalid input in other boxes, and Remove has no confirmation.
   - Collapsed string groups can re-expand under the wrong title after Add/Remove, because state is keyed by title.
   - Import matches a fretwire or string set by id and name, then by name only (not by manufacturer and product code).
-  - Unsaved Frets and Strings edits have no crash recovery.
+  - Decided: Strings and Frets edits get crash recovery; being planned.
 
 ## Decided: plug-in and design database
 
@@ -31,7 +31,7 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 
 ## 1. Next
 
-- [ ] **(question)** Name every setting in the user's notes and define it in `docs/Glossary.md` (name, abbreviation, short definition), one at a time with the user. `docs/Glossary.md` is now long (about 575 lines; only Fretboard Radius at Nut/End and Neck Joint Type are still marked planned), and `variables and settings.txt` is no longer in the working folder. Ask the user whether the glossary pass is finished, and tick this once they confirm. Implementation details that come up along the way:
+- [x] **(question)** Name every setting in the user's notes and define it in `docs/Glossary.md` (name, abbreviation, short definition), one at a time with the user. `docs/Glossary.md` is now long (about 575 lines; only Fretboard Radius at Nut/End and Neck Joint Type are still marked planned), and `variables and settings.txt` is no longer in the working folder. Done: the product owner confirmed the glossary pass is finished. Implementation details that come up along the way:
   - Scale Length (SL): the field offers a list of common scale lengths to pick from, and also takes any value.
   - Compound fretboard radius (FBRN, FBRE) is planned for later; until then the fretboard uses the single Fretboard Radius (FBR).
   - String action (TSA, BSA): beside each value, also show the action measured from the fretboard surface, calculated from the chosen fretwire's height.
@@ -48,7 +48,7 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 - [ ] Work the user's notes (`variables and settings.txt`, untracked, don't commit; no longer in the working folder, so ask the user) into the plan: the sections, their fields, which have their own tables of choices (string sets, fretwire, string action, dot marker layouts), and the order to build them in. String sets are already settled.
 - [x] Move the panel, preview and Build onto the new model and `GuitarForm.Shapes`, with `GuitarForm.Geometry` reduced to turning shapes into Rhino curves; then retire `PlateGeometry`, `SideViewGeometry` and `SoundholeGeometry`. Done in a981ab7 (preview and Build), 14ea0ec (legacy classes deleted), ccd5081 and a2588ae (panel and storage on the new model). `DesignDrawing` stays as the adapter (`DesignDrawing.FromShapes`); `docs/Body.md` and `docs/Soundhole.md` describe the new fields.
 - [ ] **(decision)** The bridge's plan settings (its width along the centerline, where the saddle sits in it), so the bridge patch can be drawn.
-- [ ] **(question)** The Florentine cutaway's radius didn't work (reported by the user while trying the panel). 7d155aa fixed the wall, which now follows the fretboard's treble edge. Ask the user whether anything else about the Florentine arc's radius is still wrong; tick this only when they say it is fine.
+- [x] **(question)** The Florentine cutaway's radius didn't work (reported by the user while trying the panel). 7d155aa fixed the wall, which now follows the fretboard's treble edge. Done in 7d155aa: the product owner says nothing else about the arc's radius is wrong.
 - [ ] UI polish: alignment and positioning in the panel. The user will describe or screenshot what looks off.
 - [ ] **(decision)** Placing parts with planes. The plate stays fixed at the origin, since it's the starting point. A part that attaches to another (e.g. the neck at the heel) would be built in simple local coordinates, with the origin at its attachment point, then moved onto a plane that the layout works out from the part it attaches to (e.g. a heel plane at (0, L) on the body). The neck then follows the body when L changes, and the plane can carry a neck angle (tilt out of XY). Separate views (like the side view) are placed by the layout. Not decided yet; settle it when designing the section that needs it (probably the neck).
 
@@ -200,7 +200,7 @@ These need the product owner's direction before any code is written.
 ## Review follow-ups (layers, library tabs)
 
 - [x] `ComponentStyles` completeness (every `DrawingComponent` has a style) and the print color path (a Print override reaches `Layer.PlotColor`) are tested: `ComponentStyles` moved to `GuitarForm.Geometry` (`ComponentStylesTests`).
-- [ ] Unsaved Frets and Strings library edits have no crash recovery (the source comments in `StringsTab` and `FretsTab` say so on purpose; ask whether that is still wanted).
+- [ ] Unsaved Frets and Strings library edits have no crash recovery. Decided: Strings and Frets edits get crash recovery; being planned.
 - [x] `DesignDrawing.Construction` and `DesignDrawing.Outline` recompute on every access. Done: each is computed once, on first use.
 - [ ] NeckSideShape heel split: the Error for a seam that doesn't land on the joint line between the heel end and the top of the joint has no test (hard to reach through the public API: other Errors fire first); also nothing checks that the back line stays beyond heelEndX all the way up to the heel end's front (extreme neck angle could make the heel self-intersect without an Error).
 
