@@ -5,7 +5,7 @@ Running record of where the project stands. Update it at the end of each session
 ## State
 
 - Branch: `main`. This session's work is committed.
-- Build: 0 warnings. Tests: 596 passing (405 before wave A).
+- Build: 0 warnings. Tests: 625 passing (405 before wave A).
 - An independent review of this batch was done and its findings were fixed (T10). 
 - A code review of the whole codebase was done; the quick fixes from it are in.
 - Bracing, Fretboard and Frets docs are written.
@@ -113,6 +113,46 @@ Unsaved library edits, prompts and builds:
 
 1. Pre-migration cleanup is complete (wave D done, American spelling included). Next: tests for the untested shapes and for plug-in code.
 2. Migrate `NewFields` into the library. This needs the owner's sign-off and a senior-engineer plan first.
+
+### NewFields → library migration (plan approved by owner)
+
+The senior-engineer plan is approved. It runs in four stages:
+
+1. Model and Data foundations.
+2. `DesignSession`, recovery keys and the build key, not wired yet.
+3. Conversion migration v4, the panel switch, the field table, and presets as named copies.
+4. Retire the old model.
+
+**Stage 1 is done:**
+
+- Schema v3: `parts.uid` and `parts.legacy_design_id` columns; the guitar name is stored once in `parts.name`; list-item marker rows `#<ListName>`.
+- Tolerant `part_values` loading.
+- `CopyGuitar` and `UnusedGuitarName`.
+- `PartWriter`.
+- `LegacyNewFields`, `DotMarkerText` and `DisplayName`.
+- `GuitarDocument.Read`.
+- Tests: 625 passing.
+
+**Owner decisions:**
+
+- Convert existing designs on upgrade.
+- Body presets become named bodies. Instrument and soundhole presets stay in the old tables and are listed in the upgrade notes.
+- Keep the old tables for now; drop them in a later migration.
+- Leave the `NewFields` folder in place.
+- Shared folder: convert, with a note.
+- Export becomes GuitarDocument v3. v1 stays readable.
+- The `uid` and `legacy_design_id` columns are approved. The Build tag and recovery key are `guitar-<uid>`.
+- Labels become glossary labels, with the old descriptions as tooltips. The UI keeps saying "Design".
+- Library item names stay "Manufacturer Product".
+- A bad stored value opens with a warning.
+- `InternalsVisibleTo` for Data is approved.
+
+**Still needed:**
+
+- A copy of the owner's real library and `NewFields` folder, for a dry run before stage 3 ships.
+- A decision on whether `MoveLibrary` moves `*.before-v*.bak` and notes files.
+
+**Rhino check after stage 1:** open the current library. It should upgrade to v3 and leave `GuitarForm.before-v2.bak` beside it (or the matching `before-v{N}` name). Designs, presets, new fields, the Strings and Frets tabs, Build and recovery should all work as before.
 
 ## Open questions for the owner
 

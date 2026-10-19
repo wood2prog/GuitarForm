@@ -117,5 +117,94 @@ namespace GuitarForm.Tests
             Assert.Throws<FormatException>(() => new Guitar().WithStoredValues(new[] { new PartValue("SL", null, double.NaN) }));
             Assert.Throws<FormatException>(() => new Guitar().WithStoredValues(new[] { new PartValue("SL", null, double.PositiveInfinity) }));
         }
-    }
+            static DotMarker Marker(int? fret) => fret == null
+            ? new DotMarker()
+            : new DotMarker { Fret = new(DotMarker.Definitions.Fret, fret.Value) };
+
+        static Neck NeckWithMarkers(params int?[] frets) =>
+            new Neck { Fretboard = new Fretboard { Markers = frets.Select(Marker).ToArray() } };
+
+        [TestCase(null, 3, 5)]
+        [TestCase(3, null, 5)]
+        [TestCase(3, 5, null)]
+        [TestCase(null, null, null)]
+        public void BlankMarkers_SurviveStoredValues(int? a, int? b, int? c)
+        {
+            var neck = NeckWithMarkers(a, b, c);
+
+            var read = (Neck)new Neck().WithStoredValues(neck.StoredValues);
+
+            Assert.That(read.Fretboard.Markers.Select(m => m.Fret.Value).ToArray(),
+                Is.EqualTo(new double?[] { a, b, c }));
+        }
+
+        [Test]
+        public void BlankMarker_WritesAMarkerValue()
+        {
+            var values = NeckWithMarkers(3, null).StoredValues.Where(v => v.Abbreviation == PartValue.ListItemKey("Markers"));
+
+            Assert.That(values, Is.EqualTo(new[] { new PartValue("#Markers", 0, 1), new PartValue("#Markers", 1, 1) }));
+        }
+
+        [Test]
+        public void BlankStrings_SurviveStoredValues()
+        {
+            var set = TestGuitars.StringSet.WithStrings(new[]
+            {
+                new GuitarString(), new GuitarString { Description = new(GuitarString.Definitions.Description, "B") },
+                new GuitarString(),
+            });
+
+            var read = (StringSet)new StringSet().WithStoredValues(set.StoredValues);
+
+            Assert.That(read.Strings, Has.Count.EqualTo(3));
+            Assert.That(read.Strings[1].Description.Value, Is.EqualTo("B"));
+        }
+
+        [Test]
+        public void BadValue_IsSkippedWithAMessage()
+        {
+            var problems = new System.Collections.Generic.List<string>();
+
+            var guitar = (Guitar)new Guitar().WithStoredValues(new[]
+            {
+                new PartValue("SL", null, "645"), new PartValue("NJF", null, 12),
+            }, problems);
+
+            Assert.That(guitar.ScaleLength.HasValue, Is.False);
+            Assert.That(guitar.NeckJoinFret.Value, Is.EqualTo(12));
+            Assert.That(problems, Has.Count.EqualTo(1));
+            Assert.That(problems[0], Does.Contain("SL"));
+        }
+
+        [Test]
+        public void BadValue_InAListItem_IsSkippedWithAMessage()
+        {
+            var problems = new System.Collections.Generic.List<string>();
+
+            var neck = (Neck)new Neck().WithStoredValues(new[]
+            {
+                new PartValue("MKF", 0, "x"), new PartValue("MKF", 1, 5),
+            }, problems);
+
+            Assert.That(neck.Fretboard.Markers, Has.Count.EqualTo(2));
+            Assert.That(neck.Fretboard.Markers[0].Fret.HasValue, Is.False);
+            Assert.That(neck.Fretboard.Markers[1].Fret.Value, Is.EqualTo(5));
+            Assert.That(problems, Has.Count.EqualTo(1));
+        }
+
+        [Test]
+        public void FindParameter_ReachesPartsSavedWithIt()
+        {
+            var guitar = TestGuitars.OM();
+
+            Assert.That(guitar.FindParameter("SL"), Is.SameAs(guitar.ScaleLength));
+            Assert.That(guitar.Neck.FindParameter("FC"), Is.Not.Null);
+            Assert.That(guitar.Neck.FindParameter("NTR"), Is.Not.Null);
+            Assert.That(guitar.Body.FindParameter("TPT"), Is.SameAs(guitar.Body.TopPlate.Thickness));
+            Assert.That(guitar.Body.FindParameter("BKAT"), Is.SameAs(guitar.Body.BackPlate.ArchingType));
+            Assert.That(guitar.FindParameter("XXX"), Is.Null);
+            Assert.That(guitar.Neck.FindParameter("SL"), Is.Null);
+        }
+}
 }

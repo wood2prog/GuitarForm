@@ -255,5 +255,37 @@ namespace GuitarForm.Tests
 
             Assert.That(read, Is.EqualTo(written));
         }
-    }
+            [TestCase(null, 3, 5)]
+        [TestCase(3, null, 5)]
+        [TestCase(3, 5, null)]
+        public void BlankMarkers_SurviveJson(int? a, int? b, int? c)
+        {
+            var neck = new Neck
+            {
+                Fretboard = new Fretboard
+                {
+                    Markers = new[] { a, b, c }.Select(f => f == null
+                        ? new DotMarker()
+                        : new DotMarker { Fret = new(DotMarker.Definitions.Fret, f.Value) }).ToArray(),
+                },
+            };
+            var guitar = TestGuitars.OM() with { Neck = neck };
+
+            var read = GuitarDocument.FromJson(GuitarDocument.ToJson(guitar));
+
+            Assert.That(read.Neck.Fretboard.Markers.Select(m => m.Fret.Value).ToArray(),
+                Is.EqualTo(new double?[] { a, b, c }));
+        }
+
+        [Test]
+        public void BlankStrings_SurviveJson()
+        {
+            var set = TestGuitars.StringSet.WithStrings(new[] { new GuitarString(), new GuitarString() });
+            var guitar = FullOM() with { Neck = FullOM().Neck with { StringSet = set } };
+
+            var read = GuitarDocument.FromJson(GuitarDocument.ToJson(guitar));
+
+            Assert.That(read.Neck.StringSet.Strings, Has.Count.EqualTo(2));
+        }
+}
 }

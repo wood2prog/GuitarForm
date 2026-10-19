@@ -306,7 +306,7 @@ namespace GuitarForm.Data
         static bool IsNameConflict(SqliteException e) =>
             e.Message.Contains("name", StringComparison.OrdinalIgnoreCase);
 
-        static string Now() => DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
+        internal static string Now() => DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
 
         static DateTime ParseTime(string text) =>
             DateTime.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);

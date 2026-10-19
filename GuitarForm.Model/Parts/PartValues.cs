@@ -10,7 +10,15 @@ namespace GuitarForm.Model.Parts
     // One saved value of a part: its glossary abbreviation, its place in a list of parts (null when it isn't in one,
     // e.g. a dot marker's fret is in the fretboard's list of markers), and the value (see Parameter.StoredValue).
     // Abbreviations are unique across the model, so they identify a value anywhere in a part.
-    public readonly record struct PartValue(string Abbreviation, int? Item, object Value);
+    //
+    // A part in a list also has a marker value, so a part with no values of its own (a blank dot marker or string)
+    // isn't lost: its abbreviation is ListItemKey of the list's property name, its item is the part's place, and its
+    // value is 1. Readers that don't know the marker ignore it.
+    public readonly record struct PartValue(string Abbreviation, int? Item, object Value)
+    {
+        // The abbreviation of the marker value for a part in the list with this property name, e.g. "#Markers".
+        public static string ListItemKey(string listName) => "#" + listName;
+    }
 
     // Saving and loading a part's values by abbreviation.
     //
@@ -30,14 +38,34 @@ namespace GuitarForm.Model.Parts
 
         // A copy with the saved values set. A value whose abbreviation isn't in the part (e.g. a setting since
         // removed) is ignored. Lists of parts are rebuilt from the values that have an item number.
-        public Part WithStoredValues(IEnumerable<PartValue> values)
+        // Throws FormatException for a value its setting can't take.
+        public Part WithStoredValues(IEnumerable<PartValue> values) => WithStoredValues(values, null);
+
+        // As above, but a value its setting can't take is skipped, with a message added to problems.
+        public Part WithStoredValues(IEnumerable<PartValue> values, ICollection<string> problems)
         {
             var all = values.ToList();
             Part result = this;
             foreach (var value in all.Where(v => v.Item == null))
-                result = result.WithStoredValue(value.Abbreviation, value.Value) ?? result;
-            return result.WithListItems(all.Where(v => v.Item != null).ToList());
+            {
+                try
+                {
+                    result = result.WithStoredValue(value.Abbreviation, value.Value) ?? result;
+                }
+                catch (FormatException e) when (problems != null)
+                {
+                    problems.Add($"{value.Abbreviation} was skipped: {e.Message}");
+                }
+            }
+            return result.WithListItems(all.Where(v => v.Item != null).ToList(), problems);
         }
+
+        // The parameter with this abbreviation, in this part or a part saved with it (not in a list, nor in a part
+        // saved on its own). Null when there's no such parameter.
+        public Parameter FindParameter(string abbreviation) =>
+            Parameters.FirstOrDefault(p => p.Definition.Abbreviation == abbreviation) ??
+            Subparts.Where(p => !p.IsSavedSeparately).Select(p => p.FindParameter(abbreviation))
+                .FirstOrDefault(p => p != null);
 
         // The parts reached through the parts saved with this one that are saved on their own, e.g. a guitar's neck
         // and body, or a body's bracing.
@@ -66,6 +94,7 @@ namespace GuitarForm.Model.Parts
                 {
                     if (item != null)
                         throw new NotSupportedException("A part in a list can't hold a list of its own.");
+                    yield return new PartValue(PartValue.ListItemKey(list.Name), index, 1);
                     foreach (var value in StoredValuesOf(listItem, index))
                         yield return value;
                     index++;
@@ -102,7 +131,7 @@ namespace GuitarForm.Model.Parts
 
         // A copy with each list of parts, here or in a part saved with this one, rebuilt from the values whose
         // abbreviations belong to the list's parts. A list with no values is left as it is.
-        Part WithListItems(IReadOnlyList<PartValue> values)
+        Part WithListItems(IReadOnlyList<PartValue> values, ICollection<string> problems)
         {
             if (values.Count == 0)
                 return this;
@@ -111,13 +140,15 @@ namespace GuitarForm.Model.Parts
             {
                 Type itemType = property.PropertyType.GetGenericArguments()[0];
                 var abbreviations = AbbreviationsOf(itemType);
-                var mine = values.Where(v => abbreviations.Contains(v.Abbreviation)).ToList();
+                string key = PartValue.ListItemKey(property.Name);
+                var mine = values.Where(v => abbreviations.Contains(v.Abbreviation) || v.Abbreviation == key).ToList();
                 if (mine.Count == 0)
                     continue;
                 var items = Array.CreateInstance(itemType, mine.Max(v => v.Item.Value) + 1);
                 for (int i = 0; i < items.Length; i++)
                     items.SetValue(((Part)Activator.CreateInstance(itemType))
-                        .WithStoredValues(mine.Where(v => v.Item == i).Select(v => v with { Item = null })), i);
+                        .WithStoredValues(mine.Where(v => v.Item == i && v.Abbreviation != key)
+                            .Select(v => v with { Item = null }), problems), i);
                 if (ReferenceEquals(result, this))
                     result = this with { };
                 property.SetValue(result, items);
@@ -127,7 +158,7 @@ namespace GuitarForm.Model.Parts
                 var subpart = (Part)property.GetValue(result);
                 if (subpart == null || subpart.IsSavedSeparately)
                     continue;
-                var changed = subpart.WithListItems(values);
+                var changed = subpart.WithListItems(values, problems);
                 if (ReferenceEquals(changed, subpart))
                     continue;
                 if (ReferenceEquals(result, this))

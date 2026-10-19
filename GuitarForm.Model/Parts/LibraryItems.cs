@@ -52,6 +52,9 @@ namespace GuitarForm.Model.Parts
         public NumberParameter SlotDepth { get; init; } = new(Definitions.SlotDepth);
         public NumberParameter Price { get; init; } = new(Definitions.Price);
 
+        // The name the plug-in lists it by: manufacturer and product code.
+        public string DisplayName => $"{Manufacturer.Value} {ProductCode.Value}".Trim();
+
         protected override IEnumerable<ModelMessage> CheckValues(LengthUnit unit, IFormatProvider culture)
         {
             if (BarbThickness.Value <= TangThickness.Value)
@@ -79,6 +82,9 @@ namespace GuitarForm.Model.Parts
         public TextParameter Manufacturer { get; init; } = new(Definitions.Manufacturer);
         public TextParameter Name { get; init; } = new(Definitions.Name);
         public CountParameter StringCount { get; init; } = new(Definitions.StringCount);
+
+        // The name the plug-in lists it by: manufacturer and name.
+        public string DisplayName => $"{Manufacturer.Value} {Name.Value}".Trim();
 
         // The strings, from the first (treble) to the last (bass).
         public IReadOnlyList<GuitarString> Strings { get; init; } = Array.Empty<GuitarString>();

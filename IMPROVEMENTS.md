@@ -124,7 +124,7 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 - [ ] `ShapeCurves` `JoinTolerance` fallback is effectively unreachable (Rhino snaps gaps up to 50 mm).
 - [ ] The public API can't tell whether the duplicate-name tests reach the SQLite unique-violation path.
 - [ ] `DisplayUnits` (internal to the plug-in) has no culture tests; the Rhino-free part needs moving to a testable assembly.
-- [ ] `Schema` is internal, so `LibraryUpgradeTests` repeats the `ApplicationId` and `LatestVersion` constants: bump them by hand on the next migration, or add `InternalsVisibleTo` to `GuitarForm.Data`.
+- [x] `Schema` is internal, so `LibraryUpgradeTests` repeats the `ApplicationId` and `LatestVersion` constants: bump them by hand on the next migration, or add `InternalsVisibleTo` to `GuitarForm.Data`.
 - [ ] **(decision)** `NumberParameter`/`CountParameter.TryParse` use the current culture, so `1.5` is rejected under de-DE. Accept both?
 - [ ] `Format`/`TryParse` with a null culture depend on the machine culture.
 
@@ -149,6 +149,12 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 - [ ] Store the guitar name once (trimmed vs untrimmed IN), and make library item names collision-safe.
 - [ ] `SaveGuitar` and parse tolerate one bad `part_values` row.
 - [ ] The `NewFields` folder is shared by all library files in the same directory, and design ids are per library, so orphan cleanup was removed. Resolved by moving `NewFields` into the library.
+
+### Follow-ups from migration stage 1
+
+- [ ] `CopyGuitar` of a blank-named guitar gives "copy".
+- [ ] `ReadPart` doesn't report a null `parts.name`.
+- [ ] `MigrationContext`/`Notes` scaffolding is unused until the v4 conversion.
 
 ## 3. Planned features
 

@@ -523,5 +523,141 @@ namespace GuitarForm.Tests
             Assert.Throws<InvalidOperationException>(() =>
                 _library.DeleteLibraryItem(guitar.Neck.Fretwire.Id.Value, guitar.Neck.StringSet.Id.Value));
         }
+
+        // --- Uid, name, copies and tolerant loading ---
+
+        Microsoft.Data.Sqlite.SqliteConnection OpenSeparately()
+        {
+            var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={_library.Path};Pooling=False");
+            connection.Open();
+            return connection;
+        }
+
+        long ScalarSql(string sql)
+        {
+            using var connection = OpenSeparately();
+            using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            return Convert.ToInt64(command.ExecuteScalar());
+        }
+
+        static Guitar Named(Guitar guitar, string name) => guitar with { Name = new(Guitar.Definitions.Name, name) };
+
+        void ExecuteSql(string sql)
+        {
+            using var connection = OpenSeparately();
+            using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            command.ExecuteNonQuery();
+        }
+
+        [Test]
+        public void Uid_SetOnCreate_KeptOnSave_NewOnCopy()
+        {
+            var om = SavedItemsOM();
+            long id = _library.CreateGuitar(om);
+            string uid = _library.ListGuitars().Single().Uid;
+            Assert.That(uid, Does.Match("^[0-9a-f]{32}$"));
+            ExecuteSql($"UPDATE parts SET legacy_design_id = 7 WHERE id = {id}");
+
+            _library.SaveGuitar(id, Named(om, "Renamed"));
+            var saved = _library.ListGuitars().Single();
+            Assert.That(saved.Uid, Is.EqualTo(uid));
+            Assert.That(saved.LegacyDesignId, Is.EqualTo(7));
+
+            long copy = _library.CopyGuitar(id);
+            var copied = _library.ListGuitars().Single(g => g.Id == copy);
+            Assert.That(copied.Uid, Does.Match("^[0-9a-f]{32}$").And.Not.EqualTo(uid));
+            Assert.That(copied.LegacyDesignId, Is.Null);
+        }
+
+        [Test]
+        public void GuitarName_IsTrimmedAndStoredOnce()
+        {
+            var om = SavedItemsOM();
+            long id = _library.CreateGuitar(Named(om, "  Padded  "));
+
+            Assert.That(_library.ListGuitars().Single().Name, Is.EqualTo("Padded"));
+            Assert.That(_library.LoadGuitar(id).Name.Value, Is.EqualTo("Padded"));
+            Assert.That(ScalarSql($"SELECT count(*) FROM part_values WHERE part_id = {id} AND abbreviation = 'IN'"), Is.Zero);
+
+            _library.SaveGuitar(id, Named(om, " Other "));
+            Assert.That(ScalarSql($"SELECT count(*) FROM part_values WHERE part_id = {id} AND abbreviation = 'IN'"), Is.Zero);
+            Assert.That(_library.LoadGuitar(id).Name.Value, Is.EqualTo("Other"));
+        }
+
+        [Test]
+        public void LoadGuitar_StaleInRow_IsIgnoredInFavourOfTheName()
+        {
+            long id = _library.CreateGuitar(SavedItemsOM("Real"));
+            ExecuteSql($"INSERT INTO part_values (part_id, abbreviation, item, value) VALUES ({id}, 'IN', -1, 'Stale')");
+
+            Assert.That(_library.LoadGuitar(id).Name.Value, Is.EqualTo("Real"));
+        }
+
+        [Test]
+        public void LoadGuitar_BadValueRow_LoadsWithAProblemWhenProblemsGiven()
+        {
+            long id = _library.CreateGuitar(SavedItemsOM());
+            ExecuteSql($"UPDATE part_values SET value = 'not a number' WHERE abbreviation = 'NTW' AND part_id IN " +
+                       $"(SELECT id FROM parts WHERE parent_id = {id})");
+
+            var problems = new List<string>();
+            var guitar = _library.LoadGuitar(id, problems);
+
+            Assert.That(problems, Has.Count.EqualTo(1));
+            Assert.That(problems[0], Does.Contain("NTW"));
+            Assert.That(guitar.Name.Value, Is.EqualTo("OM"));
+            Assert.That(() => _library.LoadGuitar(id), Throws.TypeOf<FormatException>());
+        }
+
+        [Test]
+        public void CopyGuitar_NamesTheCopyUnused()
+        {
+            long id = _library.CreateGuitar(SavedItemsOM("X"));
+
+            long first = _library.CopyGuitar(id);
+            long second = _library.CopyGuitar(id);
+
+            Assert.That(_library.LoadGuitar(first).Name.Value, Is.EqualTo("X copy"));
+            Assert.That(_library.LoadGuitar(second).Name.Value, Is.EqualTo("X copy 2"));
+            TestGuitars.AssertSameValues(_library.LoadGuitar(first) with { Name = _library.LoadGuitar(id).Name },
+                _library.LoadGuitar(id));
+        }
+
+        [Test]
+        public void UnusedGuitarName_AddsANumberWhileTaken()
+        {
+            var om = SavedItemsOM();
+            _library.CreateGuitar(Named(om, "A"));
+            _library.CreateGuitar(Named(om, "a 2"));
+
+            Assert.That(_library.UnusedGuitarName("B"), Is.EqualTo("B"));
+            Assert.That(_library.UnusedGuitarName(" A "), Is.EqualTo("A 3"));
+        }
+
+        [Test]
+        public void Neck_BlankMarkers_RoundTripThroughTheLibrary()
+        {
+            static DotMarker Marker(int? fret) => fret == null
+                ? new DotMarker()
+                : new DotMarker { Fret = new(DotMarker.Definitions.Fret, fret.Value) };
+            var guitar = SavedItemsOM();
+            guitar = guitar with
+            {
+                Neck = guitar.Neck with
+                {
+                    Fretboard = guitar.Neck.Fretboard with
+                    {
+                        Markers = new[] { Marker(3), Marker(null), Marker(7), Marker(null) },
+                    },
+                },
+            };
+            long id = _library.CreateGuitar(guitar);
+
+            var markers = _library.LoadGuitar(id).Neck.Fretboard.Markers;
+
+            Assert.That(markers.Select(m => m.Fret.Value).ToArray(), Is.EqualTo(new double?[] { 3, null, 7, null }));
+        }
     }
 }

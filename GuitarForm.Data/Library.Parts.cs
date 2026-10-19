@@ -8,7 +8,9 @@ using Microsoft.Data.Sqlite;
 namespace GuitarForm.Data
 {
     // A saved guitar in the list of guitars.
-    public sealed record GuitarInfo(long Id, string Name, DateTime Modified);
+    // Uid is the guitar's permanent identity (kept when it's saved or renamed); LegacyDesignId is the id of the design it
+    // was converted from, if any.
+    public sealed record GuitarInfo(long Id, string Name, DateTime Modified, string Uid, long? LegacyDesignId);
 
     // A neck, body or bracing that can be loaded into a guitar: a copy saved under a name, or the one belonging to a
     // saved guitar (GuitarName), or the bracing of a named body (BodyName).
@@ -29,11 +31,12 @@ namespace GuitarForm.Data
         public IReadOnlyList<GuitarInfo> ListGuitars()
         {
             using var query = Command(
-                "SELECT id, name, modified FROM parts WHERE kind = 'guitar' ORDER BY name COLLATE NOCASE");
+                "SELECT id, name, modified, uid, legacy_design_id FROM parts WHERE kind = 'guitar' ORDER BY name COLLATE NOCASE");
             using var reader = query.ExecuteReader();
             var guitars = new List<GuitarInfo>();
             while (reader.Read())
-                guitars.Add(new GuitarInfo(reader.GetInt64(0), reader.GetString(1), ParseTime(reader.GetString(2))));
+                guitars.Add(new GuitarInfo(reader.GetInt64(0), reader.GetString(1), ParseTime(reader.GetString(2)),
+                    NullableString(reader, 3), reader.IsDBNull(4) ? null : reader.GetInt64(4)));
             return guitars;
         }
 
@@ -48,8 +51,28 @@ namespace GuitarForm.Data
             return InTransaction(() => InsertPart(guitar, null, name));
         }
 
+        // Throws KeyNotFoundException if there's no guitar with the id. When problems is given, a stored value that
+        // can't be read is skipped and described there instead of throwing.
+        public Guitar LoadGuitar(long id, ICollection<string> problems = null) => (Guitar)ReadPart(id, "guitar", problems);
+
+        // Saves a copy of a saved guitar under a new name ("X copy", "X copy 2", ...) and a new uid, and returns its id.
         // Throws KeyNotFoundException if there's no guitar with the id.
-        public Guitar LoadGuitar(long id) => (Guitar)ReadPart(id, "guitar");
+        public long CopyGuitar(long id)
+        {
+            var guitar = LoadGuitar(id);
+            string name = UnusedGuitarName($"{guitar.Name.Value?.Trim()} copy");
+            return InTransaction(() => InsertPart(guitar, null, name));
+        }
+
+        // The name if no guitar has it (ignoring case), otherwise the name with " 2", " 3" and so on added.
+        public string UnusedGuitarName(string name)
+        {
+            name = name?.Trim() ?? "";
+            string candidate = name;
+            for (int n = 2; GuitarExists(candidate); n++)
+                candidate = $"{name} {n}";
+            return candidate;
+        }
 
         // Overwrites a saved guitar, including its name, neck, body and bracing.
         public void SaveGuitar(long id, Guitar guitar)
@@ -98,10 +121,10 @@ namespace GuitarForm.Data
 
         // Loads a neck, body (with its bracing) or bracing, to replace a guitar's own. Throws KeyNotFoundException if
         // there's no such part with the id.
-        public T LoadAssembly<T>(long id) where T : Part
+        public T LoadAssembly<T>(long id, ICollection<string> problems = null) where T : Part
         {
             CheckAssemblyType(typeof(T));
-            return (T)ReadPart(id, KindOf(typeof(T)));
+            return (T)ReadPart(id, KindOf(typeof(T)), problems);
         }
 
         // Saves a copy of a neck, body (with its bracing) or bracing under a name, replacing any copy of the same kind
@@ -175,10 +198,10 @@ namespace GuitarForm.Data
         }
 
         // Throws KeyNotFoundException if there's no such item with the id. The item's Id is set.
-        public T LoadLibraryItem<T>(long id) where T : Part
+        public T LoadLibraryItem<T>(long id, ICollection<string> problems = null) where T : Part
         {
             CheckLibraryItemType(typeof(T));
-            return (T)ReadPart(id, KindOf(typeof(T)));
+            return (T)ReadPart(id, KindOf(typeof(T)), problems);
         }
 
         // Saves a fretwire or string set: a new one when its Id isn't set, otherwise over the saved one. Returns its
@@ -266,78 +289,22 @@ namespace GuitarForm.Data
                 throw new InvalidOperationException(manufacturerOptional
                     ? $"A {KindName(item.GetType())} needs a {product.Label} to be saved in the library."
                     : $"A {KindName(item.GetType())} needs a {manufacturer.Label} and {product.Label} to be saved in the library.");
-            return string.IsNullOrWhiteSpace(manufacturer.Value)
-                ? product.Value.Trim()
-                : $"{manufacturer.Value.Trim()} {product.Value.Trim()}";
+            return item switch { Fretwire f => f.DisplayName, StringSet s => s.DisplayName, _ => null };
         }
 
         // --- Saving and reading parts ---
 
-        // Inserts a part, its values and the parts saved with it on their own, and returns its id.
-        long InsertPart(Part part, long? parentId, string name)
-        {
-            long? fretwireId = null, stringSetId = null;
-            if (part is Neck neck)
-            {
-                fretwireId = LibraryItemId(neck.Fretwire, neck.Fretwire?.Id, "fretwire");
-                stringSetId = LibraryItemId(neck.StringSet, neck.StringSet?.Id, "string_set");
-            }
+        PartWriter Writer => new PartWriter(_connection, _transaction);
 
-            using var insert = Command(@"
-                INSERT INTO parts (kind, parent_id, name, modified, fretwire_id, string_set_id)
-                VALUES ($kind, $parent, $name, $now, $fretwire, $stringSet) RETURNING id");
-            insert.Parameters.AddWithValue("$kind", KindOf(part.GetType()));
-            insert.Parameters.AddWithValue("$parent", (object)parentId ?? DBNull.Value);
-            insert.Parameters.AddWithValue("$name", (object)name ?? DBNull.Value);
-            insert.Parameters.AddWithValue("$now", Now());
-            insert.Parameters.AddWithValue("$fretwire", (object)fretwireId ?? DBNull.Value);
-            insert.Parameters.AddWithValue("$stringSet", (object)stringSetId ?? DBNull.Value);
-            long id = (long)insert.ExecuteScalar();
+        long InsertPart(Part part, long? parentId, string name) => Writer.Insert(part, parentId, name);
 
-            InsertValues(id, part);
-            InsertSeparatelySavedParts(id, part);
-            return id;
-        }
+        void InsertValues(long id, Part part) => Writer.InsertValues(id, part);
 
-        // The neck, body and bracing reached from the part. Fretwire and string sets are referred to, not saved here.
-        void InsertSeparatelySavedParts(long id, Part part)
-        {
-            foreach (var child in part.SeparatelySavedParts.Where(p => p is not (Fretwire or StringSet)))
-                InsertPart(child, id, null);
-        }
-
-        // The library id of a fretwire or string set a neck refers to. Null when none is chosen.
-        long? LibraryItemId(Part item, long? id, string kind)
-        {
-            if (item == null)
-                return null;
-            if (id is not long itemId || KindOfRow(itemId) != kind)
-                throw new InvalidOperationException(
-                    $"The neck's {KindName(item.GetType())} isn't in the library. Save it to the library first.");
-            return itemId;
-        }
-
-        void InsertValues(long id, Part part)
-        {
-            using var insert = Command(
-                "INSERT INTO part_values (part_id, abbreviation, item, value) VALUES ($id, $abbreviation, $item, $value)");
-            var abbreviation = insert.Parameters.Add("$abbreviation", SqliteType.Text);
-            var item = insert.Parameters.Add("$item", SqliteType.Integer);
-            // The value's type (REAL, INTEGER or TEXT) comes from each value.
-            var value = insert.Parameters.Add(new SqliteParameter { ParameterName = "$value" });
-            insert.Parameters.AddWithValue("$id", id);
-            foreach (var partValue in part.StoredValues)
-            {
-                abbreviation.Value = partValue.Abbreviation;
-                item.Value = partValue.Item ?? -1;
-                value.Value = partValue.Value;
-                insert.ExecuteNonQuery();
-            }
-        }
+        void InsertSeparatelySavedParts(long id, Part part) => Writer.InsertSeparatelySavedParts(id, part);
 
         // Reads a part of the given kind, its values, the parts saved on their own beneath it, and the library items
         // a neck refers to.
-        Part ReadPart(long id, string kind)
+        Part ReadPart(long id, string kind, ICollection<string> problems = null)
         {
             using var query = Command("SELECT kind, fretwire_id, string_set_id FROM parts WHERE id = $id");
             query.Parameters.AddWithValue("$id", id);
@@ -350,13 +317,19 @@ namespace GuitarForm.Data
                 stringSetId = reader.IsDBNull(2) ? null : reader.GetInt64(2);
             }
 
-            Part part = NewPart(kind).WithStoredValues(ReadValues(id));
+            var values = ReadValues(id);
+            // A guitar's name is in parts.name only; an older library may also hold it as an IN value, which is ignored.
+            if (kind == "guitar")
+                values.RemoveAll(v => v.Abbreviation == "IN" && v.Item == null);
+            Part part = NewPart(kind).WithStoredValues(values, problems);
+            if (part is Guitar named)
+                part = named with { Name = new(Guitar.Definitions.Name, NameOfRow(id)) };
             part = part switch
             {
                 Neck neck => neck with
                 {
-                    Fretwire = fretwireId is long f ? (Fretwire)ReadPart(f, "fretwire") : null,
-                    StringSet = stringSetId is long s ? (StringSet)ReadPart(s, "string_set") : null,
+                    Fretwire = fretwireId is long f ? (Fretwire)ReadPart(f, "fretwire", problems) : null,
+                    StringSet = stringSetId is long s ? (StringSet)ReadPart(s, "string_set", problems) : null,
                 },
                 Fretwire fretwire => fretwire with { Id = id },
                 StringSet stringSet => stringSet with { Id = id },
@@ -370,8 +343,15 @@ namespace GuitarForm.Data
                 while (reader.Read())
                     childRows.Add((reader.GetInt64(0), reader.GetString(1)));
             foreach (var (childId, childKind) in childRows)
-                part = Attach(part, ReadPart(childId, childKind));
+                part = Attach(part, ReadPart(childId, childKind, problems));
             return part;
+        }
+
+        string NameOfRow(long id)
+        {
+            using var query = Command("SELECT name FROM parts WHERE id = $id");
+            query.Parameters.AddWithValue("$id", id);
+            return query.ExecuteScalar() as string;
         }
 
         List<PartValue> ReadValues(long id)
@@ -408,17 +388,10 @@ namespace GuitarForm.Data
             _ => throw new InvalidDataException($"Unknown kind of part \"{kind}\"."),
         };
 
-        static string KindOf(Type type) =>
-            type == typeof(Guitar) ? "guitar" :
-            type == typeof(Neck) ? "neck" :
-            type == typeof(Body) ? "body" :
-            type == typeof(Bracing) ? "bracing" :
-            type == typeof(Fretwire) ? "fretwire" :
-            type == typeof(StringSet) ? "string_set" :
-            throw new ArgumentException($"{type.Name} isn't saved on its own.");
+        static string KindOf(Type type) => PartWriter.KindOf(type);
 
         // A kind of part as it reads in a message, e.g. "string set".
-        static string KindName(Type type) => KindOf(type).Replace('_', ' ');
+        static string KindName(Type type) => PartWriter.KindName(type);
 
         // The kind of the row with the id, or null when there's none.
         string KindOfRow(long id)

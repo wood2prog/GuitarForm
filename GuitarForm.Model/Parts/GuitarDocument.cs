@@ -40,7 +40,19 @@ namespace GuitarForm.Model.Parts
 
         // Throws FormatException if the text isn't a guitar or design document this version can read, or a value
         // isn't one its setting can take.
-        public static Guitar FromJson(string json)
+        public static Guitar FromJson(string json) => Read(json).Guitar;
+
+        // A library item (string set or fretwire) a document refers to: its library id and name, either may be missing.
+        public sealed record ItemReference(long? Id, string Name);
+
+        // A document read: the guitar, the string set and fretwire it refers to (null when none), and problems with
+        // values that were skipped.
+        public sealed record ReadResult(Guitar Guitar, ItemReference StringSet, ItemReference Fretwire,
+            IReadOnlyList<string> Problems);
+
+        // As FromJson, plus the references. A version 1 document's "newFields" object (see LegacyNewFields) is applied
+        // to the converted guitar, and gives the references; a version 3 guitar's neck gives its own.
+        public static ReadResult Read(string json)
         {
             JsonObject document;
             try
@@ -65,11 +77,35 @@ namespace GuitarForm.Model.Parts
                 throw new FormatException($"Guitar document units must be \"{Units}\", not \"{units}\".");
 
             if (version == 1)
-                return FromDesign(document["design"] as JsonObject
-                    ?? throw new FormatException("The design document has no design."));
-            return (Guitar)ReadPart(new Guitar(), document["guitar"] as JsonObject
+                return FromDesignDocument(document);
+            var guitar = (Guitar)ReadPart(new Guitar(), document["guitar"] as JsonObject
                 ?? throw new FormatException("The guitar document has no guitar."));
+            return new ReadResult(guitar,
+                guitar.Neck.StringSet is { } set ? new ItemReference(set.Id, set.DisplayName) : null,
+                guitar.Neck.Fretwire is { } wire ? new ItemReference(wire.Id, wire.DisplayName) : null,
+                Array.Empty<string>());
         }
+
+        static ReadResult FromDesignDocument(JsonObject document)
+        {
+            var guitar = FromDesign(document["design"] as JsonObject
+                ?? throw new FormatException("The design document has no design."));
+            if (document["newFields"] is not JsonObject newFields)
+                return new ReadResult(guitar, null, null, Array.Empty<string>());
+
+            var texts = new Dictionary<string, string>();
+            foreach (var (key, node) in newFields)
+                if (node is JsonValue value)
+                    texts[key] = value.TryGetValue(out string text) ? text : value.ToJsonString();
+            var applied = LegacyNewFields.Apply(guitar, texts);
+            return new ReadResult(applied.Guitar,
+                Reference(applied.StringSetId, applied.StringSetName),
+                Reference(applied.FretwireId, applied.FretwireName),
+                applied.Problems);
+        }
+
+        static ItemReference Reference(long? id, string name) =>
+            id == null && string.IsNullOrEmpty(name) ? null : new ItemReference(id, name);
 
         // --- Writing ---
 
@@ -124,6 +160,8 @@ namespace GuitarForm.Model.Parts
                 {
                     if (array[i] is not JsonObject item)
                         throw new FormatException($"Item {i + 1} of \"{name}\" isn't an object.");
+                    // The marker keeps a blank item ({}) in the list.
+                    values.Add(new PartValue(PartValue.ListItemKey(name), i, 1));
                     values.AddRange(item.Select(pair => new PartValue(pair.Key, i, FromNode(pair.Key, pair.Value))));
                 }
             }
@@ -203,7 +241,8 @@ namespace GuitarForm.Model.Parts
             ("soundhole", "tailOffset", "SHOT"),
         };
 
-        // Converts a version 1 design: its name, instrument, body and soundhole.
+        // Converts a version 1 design: its name, instrument, body and soundhole (the document's "newFields" is applied
+        // by FromDesignDocument).
         static Guitar FromDesign(JsonObject design)
         {
             if (design["instrument"] is not JsonObject)

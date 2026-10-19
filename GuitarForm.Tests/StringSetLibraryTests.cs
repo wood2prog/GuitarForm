@@ -263,5 +263,19 @@ namespace GuitarForm.Tests
 
             Assert.That(_library.ListLibraryItems<StringSet>(), Is.Empty);
         }
+
+        [Test]
+        public void BlankStrings_RoundTripThroughTheLibrary()
+        {
+            var set = SetOf("D'Addario", "Blank", new GuitarString(), PlainString("B", 0.0135, 0.000491), new GuitarString());
+
+            long id = _library.SaveLibraryItem(set);
+            var read = _library.LoadLibraryItem<StringSet>(id);
+
+            Assert.That(read.Strings, Has.Count.EqualTo(3));
+            Assert.That(read.Strings[1].Description.Value, Is.EqualTo("B"));
+            Assert.That(read.Strings[0].Description.Value, Is.Null);
+            Assert.That(_library.ListLibraryItems<StringSet>().Single().Name, Is.EqualTo(set.DisplayName));
+        }
     }
 }

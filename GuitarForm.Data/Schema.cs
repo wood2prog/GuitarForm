@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
 using Microsoft.Data.Sqlite;
 
@@ -14,10 +16,13 @@ namespace GuitarForm.Data
         // Stored in the file header to mark the file as a GuitarForm library ("GtFm").
         public const long ApplicationId = 0x4774466D;
 
-        static readonly string[] Migrations =
+        // One step of the upgrade: the SQL, then optionally C# that runs after it in the same transaction.
+        sealed record Migration(string Sql, Action<SqliteConnection, SqliteTransaction, MigrationContext> Code = null);
+
+        static readonly Migration[] Migrations =
         {
             // 0 -> 1: designs, instruments, bodies and soundholes.
-            @"
+            new Migration(@"
             CREATE TABLE designs (
                 id INTEGER PRIMARY KEY,
                 name TEXT NOT NULL UNIQUE COLLATE NOCASE CHECK (name <> ''),
@@ -65,7 +70,7 @@ namespace GuitarForm.Data
                 tail_offset REAL NOT NULL,
                 CHECK ((design_id IS NULL) <> (preset_name IS NULL))
             );
-            ",
+            "),
 
             // 1 -> 2: guitars and their parts, for the model in GuitarForm.Model.Parts.
             //
@@ -73,7 +78,7 @@ namespace GuitarForm.Data
             // guitar (or a body, for bracing) or is a named copy with no parent; or a fretwire or string set, which is
             // a library item that necks refer to. part_values holds each part's values by glossary abbreviation, with
             // item the place in a list (-1 when the value isn't in one).
-            @"
+            new Migration(@"
             CREATE TABLE parts (
                 id INTEGER PRIMARY KEY,
                 kind TEXT NOT NULL CHECK (kind IN ('guitar', 'neck', 'body', 'bracing', 'fretwire', 'string_set')),
@@ -99,26 +104,50 @@ namespace GuitarForm.Data
                 value NOT NULL,
                 PRIMARY KEY (part_id, abbreviation, item)
             ) WITHOUT ROWID;
-            ",
+            "),
+
+            // 2 -> 3: a guitar gets a permanent uid (it survives renaming, and ties exports to the library) and the id
+            // of the design it was converted from. The guitar's name now lives only in parts.name, not as an IN value.
+            new Migration(@"
+            ALTER TABLE parts ADD COLUMN uid TEXT;
+            CREATE UNIQUE INDEX parts_uids ON parts (uid) WHERE uid IS NOT NULL;
+            UPDATE parts SET uid = lower(hex(randomblob(16))) WHERE kind = 'guitar';
+            ALTER TABLE parts ADD COLUMN legacy_design_id INTEGER;
+            DELETE FROM part_values WHERE abbreviation = 'IN' AND item = -1
+                AND part_id IN (SELECT id FROM parts WHERE kind = 'guitar');
+            "),
         };
+
+        // What a migration's C# step can use: the library's file, and a list of notes it can leave for the user.
+        sealed class MigrationContext
+        {
+            public MigrationContext(string path, List<string> notes) { Path = path; Notes = notes; }
+            public string Path { get; }
+            public List<string> Notes { get; }
+        }
 
         public static int LatestVersion => Migrations.Length;
 
         // Marks a new, empty database as a GuitarForm library and brings the schema up to date. Throws
         // InvalidDataException if the file is another kind of database, or a library made by a newer GuitarForm.
-        public static void Prepare(SqliteConnection connection, string path)
+        public static void Prepare(SqliteConnection connection, string path, List<string> notes = null)
         {
             if ((long)Scalar(connection, "PRAGMA application_id") == 0 &&
                 (long)Scalar(connection, "SELECT count(*) FROM sqlite_master") == 0)
                 Scalar(connection, $"PRAGMA application_id = {ApplicationId}");
 
             int version = Check(connection, path);
+            var context = new MigrationContext(path, notes ?? new List<string>());
             for (; version < LatestVersion; version++)
             {
                 using var transaction = connection.BeginTransaction();
                 using var command = connection.CreateCommand();
                 command.Transaction = transaction;
-                command.CommandText = Migrations[version] + $"PRAGMA user_version = {version + 1};";
+                var migration = Migrations[version];
+                command.CommandText = migration.Sql;
+                command.ExecuteNonQuery();
+                migration.Code?.Invoke(connection, transaction, context);
+                command.CommandText = $"PRAGMA user_version = {version + 1};";
                 command.ExecuteNonQuery();
                 transaction.Commit();
             }

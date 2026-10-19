@@ -10,9 +10,8 @@ namespace GuitarForm.Tests
     // Opens libraries made by older versions of the code and checks that they are upgraded without losing data.
     public class LibraryUpgradeTests
     {
-        // Schema is internal to GuitarForm.Data, so its values are repeated here.
-        const long ApplicationId = 0x4774466D;
-        const int LatestVersion = 2;
+        const long ApplicationId = Schema.ApplicationId;
+        const int LatestVersion = 3; // pinned: bump by hand with each migration
 
         // The version 1 schema (migration 0 in Schema.cs), frozen here as it was released.
         const string V1Schema = @"
@@ -153,6 +152,41 @@ namespace GuitarForm.Tests
             Assert.That(Scalar("PRAGMA user_version"), Is.EqualTo(LatestVersion));
             Assert.That(Scalar("SELECT count(*) FROM sqlite_master WHERE name IN ('parts', 'part_values')"),
                 Is.EqualTo(2));
+        }
+
+        [Test]
+        public void Version2Library_GetsGuitarUids_AndKeepsItsData()
+        {
+            long a, b;
+            using (var library = Library.Open(_path))
+            {
+                a = library.CreateGuitar(TestGuitars.OM("Alpha"));
+                b = library.CreateGuitar(TestGuitars.OM("Beta"));
+            }
+            // Take it back to version 2: no uid or legacy_design_id columns, name kept as an IN value as before.
+            Execute("DROP INDEX parts_uids; ALTER TABLE parts DROP COLUMN uid; ALTER TABLE parts DROP COLUMN legacy_design_id;" +
+                "INSERT OR IGNORE INTO part_values (part_id, abbreviation, item, value) " +
+                $"SELECT id, 'IN', -1, name FROM parts WHERE kind = 'guitar'; PRAGMA user_version = 2;");
+
+            using (var library = Library.Open(_path))
+            {
+                Assert.That(library.ListGuitars().Count, Is.EqualTo(2));
+                TestGuitars.AssertSameValues(library.LoadGuitar(a), TestGuitars.OM("Alpha"));
+                Assert.That(library.LoadGuitar(b).Name.Value, Is.EqualTo("Beta"));
+            }
+
+            Assert.That(Scalar("PRAGMA user_version"), Is.EqualTo(LatestVersion));
+            Assert.That(Scalar("SELECT count(*) FROM parts WHERE kind = 'guitar' AND uid IS NOT NULL AND uid <> ''"), Is.EqualTo(2));
+            Assert.That(Scalar("SELECT count(DISTINCT uid) FROM parts"), Is.EqualTo(2));
+            Assert.That(Scalar("SELECT count(*) FROM parts WHERE kind <> 'guitar' AND uid IS NOT NULL"), Is.EqualTo(0));
+            Assert.That(Scalar("SELECT count(*) FROM parts WHERE legacy_design_id IS NOT NULL"), Is.EqualTo(0));
+            Assert.That(Scalar("SELECT count(*) FROM part_values v JOIN parts p ON p.id = v.part_id " +
+                "WHERE p.kind = 'guitar' AND v.abbreviation = 'IN'"), Is.EqualTo(0));
+
+            string backup = BackupPath("GuitarForm.before-v2.bak");
+            Assert.That(File.Exists(backup));
+            Assert.That(ScalarAt(backup, "PRAGMA user_version"), Is.EqualTo(2));
+            Assert.That(ScalarAt(backup, "SELECT count(*) FROM parts WHERE kind = 'guitar'"), Is.EqualTo(2));
         }
 
         [Test]
