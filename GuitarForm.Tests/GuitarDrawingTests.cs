@@ -178,6 +178,27 @@ namespace GuitarForm.Tests
         }
 
         [Test]
+        public void Soundhole_UntickedKeepsItsValuesAndDrawsNone()
+        {
+            // The panel's check box changes only Soundhole (SH); ticking it again brings the same soundhole back.
+            var ticked = QuickTestBody() with
+            {
+                TopPlate = new TopPlate
+                {
+                    Soundhole = new(TopPlate.Definitions.Soundhole, true),
+                    SoundholeDiameter = new(TopPlate.Definitions.SoundholeDiameter, 100),
+                    SoundholeOffsetFromTailEnd = new(TopPlate.Definitions.SoundholeOffsetFromTailEnd, 420),
+                },
+            };
+            var unticked = ticked with { TopPlate = ticked.TopPlate with { Soundhole = ticked.TopPlate.Soundhole with { Value = false } } };
+
+            Assert.That(unticked.TopPlate.SoundholeDiameter.Value, Is.EqualTo(100));
+            Assert.That(unticked.TopPlate.SoundholeOffsetFromTailEnd.Value, Is.EqualTo(420));
+            Assert.That(Draw(unticked).Soundhole, Is.Null);
+            Assert.That(Draw(ticked).Soundhole, Is.EqualTo(new Circle(new Point2(0, 420), 50)));
+        }
+
+        [Test]
         public void Construction_KeptApartFromTheOutline()
         {
             var drawing = Draw(QuickTestBody());

@@ -162,7 +162,7 @@ Stage 3 must:
 
 - Schema v4 runs `LegacyDesignMigration`. `Library.UpgradeNotes`, `Library.TakeUpgradeNotes()` (once, for the panel) and a `<name>.before-v{N}.notes.txt` beside the safety copy keep the notes.
 - The panel holds a `DesignSession` and no longer keeps its own design, new fields, dirty flag, recovery plumbing or note strings. The design list comes from `ListGuitars()`; Build passes `BuildKey` and `LegacyBuildKeys`; Export writes a guitar document (version 3); the old long-id `RecoveryStore.DeleteStale` call is gone (`DeleteStaleRecovery` replaces it).
-- Temporary bridge, deleted in P4: `GuitarForm.Model/GuitarFieldMap.cs` (a Guitar as the old Instrument, Body and Soundhole records and back, tested in `GuitarFieldMapTests`) and `GuitarForm/LegacyFieldAdapter.cs` (the panel's `Design`, `Fields` and `Apply`). The new-field editors edit the session's Guitar directly; the `NewFields` file I/O was removed.
+- Temporary bridge (P4 deleted `LegacyFieldAdapter`; `GuitarFieldMap` stays for the presets until P5): `GuitarForm.Model/GuitarFieldMap.cs` (a Guitar as the old Instrument, Body and Soundhole records and back, tested in `GuitarFieldMapTests`) and `GuitarForm/LegacyFieldAdapter.cs` (the panel's `Design`, `Fields` and `Apply`). The new-field editors edit the session's Guitar directly; the `NewFields` file I/O was removed.
 - The Instrument, Body and Soundhole presets still use the old preset tables (P5 replaces them).
 
 **P3 done (unused until P4):** field table `GuitarFields` in GuitarForm.Model/Parts and `FieldBinding` in the plug-in; tests 717. Open P4 questions:
@@ -173,7 +173,26 @@ Stage 3 must:
 4. Minimums come from the definitions' limits.
 5. Required fields show a "required" placeholder.
 
-P4 must keep `NewFields.WithStartingShape`/`WithMarkers` rows or move them.
+**P4 done (the panel runs on the field table):**
+
+- Every tab (Instrument, Body, Soundhole, Bracing, Fretboard, Neck) builds its groups from `GuitarFields` through `FieldBindings`; each binding's Changed event applies the text to the session's Guitar, marks it dirty and redraws. Deleted: `Sections.cs`, `NewFields.cs`, `LegacyFieldAdapter.cs`, `SectionEditor<T>`, `NumberField<T>`, `FieldGroup<T>` (`SectionEditor.cs` is now `FieldLayout.cs`: rows, groups, messages bar, `IFieldBox`). `StartingShape.cs` holds the starting-shape logic; the marker box uses `DotMarkerText`.
+- Messages per tab come from the model's `Validate` (Instrument = the guitar's own checks, Body = body minus top plate, Soundhole = top plate minus bracing, Bracing, Fretboard, Neck = neck minus fretboard) plus the shapes' messages and the tab's input errors. The drawing takes the Guitar directly from the session.
+- Soundhole: the check box above the groups changes only SH; SHD/SHOC/SHOT keep their values and are grayed while unticked; shapes draw no soundhole when SH is No (test `Soundhole_UntickedKeepsItsValuesAndDrawsNone`).
+- Behaviour changes: a blank required field (SL, NJF, BDL) clears the value; Save, Save as, Export and Build refuse while one is blank or some text can't be read. A blank Soundhole Diameter/Offset with SH ticked is a model error (Messages bar; Build asks) but no longer blocks Save. Labels are glossary labels with the old descriptions as tooltips. Minimums are the definitions' limits (error text is the model's). Tab messages now include the model's text for the Instrument, Body and Soundhole values.
+- Left for P5: `GuitarFieldMap` (+ `GuitarFieldMapTests`) and the Instrument/Body/Soundhole `PresetRow<T>` rows (`CurrentDesign`/`ApplyDesign` in `GuitarFormPanel.Layout.cs`), which still use the old records and preset tables.
+
+**Rhino check after P4** (cannot be unit-tested):
+
+- Every tab shows the same groups, fields and order as before (Body shows the old fields plus Cutaway and Blocks; Neck shows its groups); labels are glossary labels; hovering shows the old description, unit and limits.
+- Soundhole: the check box is above the groups. Untick it: the preview drops the circle, the fields gray out but keep their values; tick it again: the same soundhole returns. Open a design with no soundhole: the fields are gray.
+- Fretboard Courses: Course spacing fields are enabled only when Strings per Course is 2.
+- Neck profile mode: Squareness shows in simple mode and Blend in advanced mode; the placeholders show the defaults; a Starting shape pick fills the station's three values and the list goes blank.
+- Dot markers: type `3 5 7 9 12:2`; a bad entry shows a message and Save/Export/Build refuse.
+- Switch the document units (mm to inches): values, unit labels, slider steps and limits follow.
+- Slider steps: drag, arrow, Shift and Ctrl steps stop at limits; angle and blend steps are 1.
+- Clear Scale Length, Neck Join Fret or Body Length: the box shows "required", the Messages bar names it, Save/Export/Build refuse. Type junk in any box: the same.
+- Recovery: edit, hide the panel, reopen the design and accept the offer; Revert and switching designs refill every tab.
+- Instrument, Body and Soundhole presets still load, save and delete.
 
 **Rhino check after P2** (stage 3):
 

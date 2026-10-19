@@ -215,7 +215,8 @@ namespace GuitarForm
                 return;
 
             // Applied to the library on Save.
-            Apply(d => d with { Name = values[0] });
+            if (ApplyToGuitar(g => g with { Name = g.Name with { Value = values[0] } }))
+                Redraw();
         }
 
         void DeleteDesign()

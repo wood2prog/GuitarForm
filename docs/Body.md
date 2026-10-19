@@ -8,21 +8,21 @@ The tables and formulas below use these short names:
 
 | Field | Name | Description |
 |---|---|---|
-| Body length | L | *Required.* Overall length of the guitar body. Must be greater than 0. |
-| Upper bout width | UbW | Width of the upper bout. Must be greater than 0. |
-| Upper bout offset | UbO | Offset of the upper bout line down Y from the upper bout primary radius center. A warning appears if the line falls outside 0–L. |
-| Upper bout primary radius | UbR | Primary radius of the upper bout. Must be greater than 0. A warning appears if it's more than half of UbW. |
-| Upper bout secondary offset | UbSO | Moves the upper bout secondary radius center toward the body center and grows its radius by the same amount. 0 = same as the primary radius. Can't be negative. |
-| Waist radius | WR | Radius of the waist curve. Must be greater than 0. |
-| Waist width | WW | Width of the body at the waist. Must be greater than 0. |
-| Waist offset | WO | Distance of the waist center line up Y from the tail end (the origin). A warning appears if it's outside 0–L. |
-| Lower bout width | LbW | Width of the lower bout. Must be greater than 0. |
-| Lower bout offset | LbO | Offset of the lower bout center line up Y from the lower bout primary radius center. A warning appears if the line falls outside 0–L. Can't be negative. |
-| Lower bout primary radius | LbR | Primary radius of the lower bout. Must be greater than 0. A warning appears if it's more than half of LbW. |
-| Lower bout secondary offset | LbSO | Same as UbSO, for the lower bout. |
-| Heel width | HW | Width of the flat at the top of the body where the heel of the neck attaches. Must be greater than 0, and no more than the distance between the upper bout circle centers. |
-| Tail depth | TD | Depth of the body at the tail end, for the side view. Must be greater than 0. |
-| Neck depth | ND | Depth of the body at the neck end, for the side view. Must be greater than 0. |
+| Body Length (BDL) | L | *Required.* Overall length of the guitar body. Must be greater than 0. |
+| Upper Bout Width (UBW) | UbW | Width of the upper bout. Must be greater than 0. |
+| Upper Bout Offset from Neck End (UBO) | UbO | Offset of the upper bout line down Y from the upper bout primary radius center. A warning appears if the line falls outside 0–L. |
+| Upper Bout Primary Radius (UBPR) | UbR | Primary radius of the upper bout. Must be greater than 0. A warning appears if it's more than half of UbW. |
+| Upper Bout Secondary Offset (UBSO) | UbSO | Moves the upper bout secondary radius center toward the body center and grows its radius by the same amount. 0 = same as the primary radius. Can't be negative. |
+| Waist Radius (WSR) | WR | Radius of the waist curve. Must be greater than 0. |
+| Waist Width (WSW) | WW | Width of the body at the waist. Must be greater than 0. |
+| Waist Offset from Tail End (WSO) | WO | Distance of the waist center line up Y from the tail end (the origin). A warning appears if it's outside 0–L. |
+| Lower Bout Width (LBW) | LbW | Width of the lower bout. Must be greater than 0. |
+| Lower Bout Offset from Tail End (LBO) | LbO | Offset of the lower bout center line up Y from the lower bout primary radius center. A warning appears if the line falls outside 0–L. Can't be negative. |
+| Lower Bout Primary Radius (LBPR) | LbR | Primary radius of the lower bout. Must be greater than 0. A warning appears if it's more than half of LbW. |
+| Lower Bout Secondary Offset (LBSO) | LbSO | Same as UbSO, for the lower bout. |
+| Heel Flat Width (HFW) | HW | Width of the flat at the top of the body where the heel of the neck attaches. Must be greater than 0, and no more than the distance between the upper bout circle centers. |
+| Body Depth at Tail End (BDDT) | TD | Depth of the body at the tail end, for the side view. Must be greater than 0. |
+| Body Depth at Neck End (BDDN) | ND | Depth of the body at the neck end, for the side view. Must be greater than 0. |
 
 Everything except the body length is optional: a part of the drawing appears once the fields it needs are set. If an error stops the plate, nothing of it is drawn.
 

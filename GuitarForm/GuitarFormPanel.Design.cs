@@ -144,9 +144,6 @@ namespace GuitarForm
         void AfterOpened()
         {
             _discardChosen = false;
-            _lastSoundhole = null;
-            Array.Clear(_newFieldErrors);
-            _markersError = null;
             ShowDesignList(_session.IsOpen ? _session.GuitarId : null);
             ShowDesign();
         }
@@ -176,21 +173,12 @@ namespace GuitarForm
         void ShowDesign()
         {
             _units = DisplayUnits.Current;
-            Array.Clear(_newFieldErrors);
-            _markersError = null;
-            var design = Design;
             _showing = true;
-            _instrument.Show(design?.Instrument, _units);
-            _body.Show(design?.Body, _units);
-            _hasSoundhole.Checked = design?.Soundhole != null;
-            _soundhole.Show(design?.Soundhole, _units);
-            ShowNewFields();
-            _markers.Text = NewFields.FormatMarkers(Fields);
+            ShowFields();
             _showing = false;
 
             foreach (var control in _needDesign)
                 control.Enabled = _session.IsOpen;
-            _soundhole.Enabled = design?.Soundhole != null;
             _exportItem.Enabled = _session.IsOpen;
             UpdateDirtyUi();
             UpdateStringsState();

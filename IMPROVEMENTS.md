@@ -162,6 +162,13 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 - [ ] Import now also resolves string set/fretwire by name when the id doesn't match (document in the Settings and Strings docs).
 - [ ] A recovery file for another library reads as Corrupt and is deleted. This can't happen in practice, since the file name carries a library hash.
 
+### Follow-ups from migration stage 3
+
+- [ ] The panel handlers (`OnHasSoundholeChanged`, `OnFieldChanged`, `OnMarkersChanged`, the starting shape) have no tests, since the panel can't be tested outside Rhino.
+- [ ] A blank soundhole diameter or offset with the soundhole ticked is a model error that doesn't block Save (Build asks).
+- [ ] A value below its minimum is now stored and reported by `Validate` (the part draws blank, Save isn't blocked) instead of being refused at the box.
+- [ ] `GuitarFormPanel.Draw` splits messages per tab with a set-based `Except`, which collapses two identical guitar-level messages into one.
+
 ## 3. Planned features
 
 - [ ] **Custom soundhole** (planned). The legacy `CustomSoundholeGeometry` has no `Shapes` replacement, and the plug-in doesn't use it. It needs a `Shapes` version when the product owner specifies the shape; keep the legacy class until then. Still to decide: how the shape is provided (picked from the Rhino document, or imported) and stored (e.g. the curve serialized into the database).

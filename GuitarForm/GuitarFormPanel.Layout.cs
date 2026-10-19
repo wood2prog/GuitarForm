@@ -121,17 +121,6 @@ namespace GuitarForm
             return errors == 0 ? title : $"{title} ({errors})";
         }
 
-        // A tab's groups: the old section's groups, each with any new fields of the same title added after its own,
-        // then the tab's other new-field groups.
-        IEnumerable<Control> Groups(string tab, IReadOnlyList<string> oldTitles = null, Func<string, IEnumerable<TableRow>> oldRows = null, string section = null)
-        {
-            section ??= tab;
-            oldTitles ??= Array.Empty<string>();
-            var titles = oldTitles.Concat(NewFields.Groups.Where(g => g.Tab == tab).Select(g => g.Title)).Distinct();
-            return titles.Select(title => FieldLayout.Group(section, title,
-                (oldRows?.Invoke(title) ?? Enumerable.Empty<TableRow>()).Concat(NewFieldRows(tab, title)))).ToList();
-        }
-
         static Control Buttons(params Control[] buttons)
         {
             var row = new StackLayout { Orientation = Orientation.Horizontal, Spacing = UiMetrics.Gap };
@@ -152,6 +141,16 @@ namespace GuitarForm
             var button = new Button { Text = text };
             button.Click += (_, _) => Run(action);
             return button;
+        }
+
+        // TEMPORARY, until P5 replaces the Instrument, Body and Soundhole presets with named copies: the presets still
+        // hold the old section records, so the open guitar is seen as the old design (GuitarFieldMap) for them.
+        GuitarDesign CurrentDesign() => _session.IsOpen ? GuitarFieldMap.ToDesign(_session.Working) : null;
+
+        void ApplyDesign(Func<GuitarDesign, GuitarDesign> change)
+        {
+            if (ApplyToGuitar(g => GuitarFieldMap.WithDesign(g, change(GuitarFieldMap.ToDesign(g)))))
+                Redraw();
         }
 
         // A list of the section's presets, with Load (copies the preset's values into the design), Save as… and Delete.

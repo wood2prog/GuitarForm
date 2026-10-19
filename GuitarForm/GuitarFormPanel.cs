@@ -29,45 +29,25 @@ namespace GuitarForm
     public partial class GuitarFormPanel : Panel, IPanel
     {
         readonly DropDown _designs = new DropDown();
-        readonly SectionEditor<Instrument> _instrument = new SectionEditor<Instrument>(Sections.Instrument);
-        readonly SectionEditor<Body> _body = new SectionEditor<Body>(Sections.Body);
-        readonly SectionEditor<Soundhole> _soundhole = new SectionEditor<Soundhole>(Sections.Soundhole);
         readonly CheckBox _hasSoundhole = new CheckBox { Text = "This design has a soundhole" };
         readonly CheckBox _showStrings = new CheckBox { Text = "Show &strings", ToolTip = "Draw the strings in the preview and in Build. A setting for all designs." };
         readonly CheckBox _showPreview = new CheckBox { Text = "&Preview", Checked = true };
         readonly SettingsPage _settings = new SettingsPage();
         readonly DesignPreview _preview = new DesignPreview();
 
-        // Values the old sections don't have, drawn with GuitarForm.Shapes (see NewFields): on the Body tab, and on the
-        // Bracing, Fretboard and Neck tabs, each with its own messages.
-        static readonly string[] NewFieldTabs = NewFields.Groups.SelectMany(g => g.Fields.Select(_ => g.Tab)).ToArray();
-        // Choices and yes/no values are drop-downs, decimal numbers (lengths, angles, numbers) sliders, and counts
-        // plain boxes.
-        readonly IFieldBox[] _newFieldBoxes = NewFields.Fields.Select(field =>
-        {
-            var parameter = field.Get(new Guitar());
-            IFieldBox box = parameter.OptionTexts.Count > 0
-                ? new FieldDropDown(parameter.OptionTexts)
-                : FieldLayout.Box(IsDecimal(parameter.Definition.Kind), step: field.Step);
-            if (field.Placeholder != null)
-                box.PlaceholderText = field.Placeholder;
-            return box;
-        }).ToArray();
-        // Each new field's row, so fields that depend on other values can be hidden (see NewFields.Field.Visible).
-        readonly TableRow[] _newFieldRows = new TableRow[NewFields.Fields.Length];
-        readonly Label[] _newFieldUnits = NewFields.Fields.Select(_ => FieldLayout.UnitLabel()).ToArray();
-        readonly string[] _newFieldErrors = new string[NewFields.Fields.Length];
+        // One binding (box, unit, row) for each field of GuitarFields, and the dot markers' text box.
+        readonly FieldBindings _bindings = new FieldBindings(GuitarFields.Groups);
         readonly TextBox _markers = new TextBox { Width = UiMetrics.ChoiceBoxWidth, ToolTip = "Each marker's fret, with :2 for two dots, e.g. 3 5 7 9 12:2" };
         string _markersError;
-        readonly Dictionary<string, TabMessages> _tabMessages = new[] { NewFields.BracingTab, NewFields.FretboardTab, NewFields.NeckTab }
-            .ToDictionary(tab => tab, _ => new TabMessages());
+        // Each field tab's messages: its input errors, the model's checks and the shapes' messages.
+        readonly Dictionary<string, TabMessages> _tabMessages = GuitarFields.Tabs.ToDictionary(tab => tab, _ => new TabMessages());
 
         // The tabs; the selected tab's messages are shown in the MessagesBar below them.
         readonly TabControl _tabs = new TabControl();
         readonly Dictionary<TabPage, TabMessages> _pageMessages = new Dictionary<TabPage, TabMessages>();
         readonly MessagesBar _messagesBar = new MessagesBar();
         FretsTab _frets;
-        Dictionary<string, List<GeometryMessage>> _newTabMessages = new Dictionary<string, List<GeometryMessage>>();
+        Dictionary<string, List<GeometryMessage>> _tabMessageLists = new Dictionary<string, List<GeometryMessage>>();
 
         // Controls that only work with a design open, and the preset lists to refresh when the library changes.
         readonly List<Control> _needDesign = new List<Control>();
@@ -92,9 +72,6 @@ namespace GuitarForm
         bool _showing;
         bool _panelVisible = true;
 
-        // The soundhole a design had before its box was unticked, so ticking it again brings the values back.
-        Soundhole _lastSoundhole;
-
         static GuitarFormPlugin Plugin => GuitarFormPlugin.Instance;
 
         public GuitarFormPanel()
@@ -102,9 +79,8 @@ namespace GuitarForm
             Current = this;
             _session = new DesignSession(CurrentLibraryPath);
             _recoveryTimer.Elapsed += (_, _) => FlushRecovery();
-            _instrument.Changed += instrument => Apply(d => d with { Instrument = instrument });
-            _body.Changed += body => Apply(d => d with { Body = body });
-            _soundhole.Changed += soundhole => Apply(d => d with { Soundhole = soundhole });
+            foreach (var binding in _bindings.All)
+                binding.Changed += OnFieldChanged;
             _hasSoundhole.CheckedChanged += (_, _) => OnHasSoundholeChanged();
             _designs.SelectedIndexChanged += (_, _) => OnDesignSelected();
             _showPreview.CheckedChanged += (_, _) => Redraw();
@@ -145,32 +121,31 @@ namespace GuitarForm
                     refresh();
             };
 
-            for (int i = 0; i < NewFields.Fields.Length; i++)
-            {
-                int index = i;
-                _newFieldBoxes[i].TextChanged += (_, _) => OnNewFieldChanged(index);
-            }
             _markers.TextChanged += (_, _) => OnMarkersChanged();
 
             var tabs = _tabs;
-            tabs.Pages.Add(SectionPage("Instrument",
-                new Control[] { PresetRow<Instrument>(() => Design?.Instrument, preset => Apply(d => d with { Instrument = preset })) },
-                Groups(null, _instrument.GroupTitles, _instrument.Rows, "Instrument"),
-                _instrument.Messages));
-            tabs.Pages.Add(SectionPage("Body",
-                new Control[] { PresetRow<Body>(() => Design?.Body, preset => Apply(d => d with { Body = preset })) },
-                Groups(NewFields.BodyTab, _body.GroupTitles, _body.Rows, "Body"),
-                _body.Messages));
-            tabs.Pages.Add(SectionPage("Soundhole",
-                new Control[]
+            foreach (string tab in GuitarFields.Tabs)
+            {
+                Control[] top = tab switch
                 {
-                    _hasSoundhole,
-                    PresetRow<Soundhole>(() => Design?.Soundhole, preset => Apply(d => d with { Soundhole = preset })),
-                },
-                Groups(null, _soundhole.GroupTitles, _soundhole.Rows, "Soundhole"),
-                _soundhole.Messages));
-            foreach (string tab in _tabMessages.Keys)
-                tabs.Pages.Add(SectionPage(tab, tab == NewFields.FretboardTab ? new Control[] { _showStrings } : Array.Empty<Control>(), Groups(tab), _tabMessages[tab]));
+                    GuitarFields.InstrumentTab => new Control[] { PresetRow<Instrument>(
+                        () => CurrentDesign()?.Instrument,
+                        preset => ApplyDesign(d => d with { Instrument = preset })) },
+                    GuitarFields.BodyTab => new Control[] { PresetRow<Body>(
+                        () => CurrentDesign()?.Body,
+                        preset => ApplyDesign(d => d with { Body = preset })) },
+                    GuitarFields.SoundholeTab => new Control[]
+                    {
+                        _hasSoundhole,
+                        PresetRow<Soundhole>(
+                            () => CurrentDesign()?.Soundhole,
+                            preset => ApplyDesign(d => d with { Soundhole = preset })),
+                    },
+                    GuitarFields.FretboardTab => new Control[] { _showStrings },
+                    _ => Array.Empty<Control>(),
+                };
+                tabs.Pages.Add(SectionPage(tab, top, Groups(tab), _tabMessages[tab]));
+            }
             // The string set library works with no design open.
             _strings = new StringsTab(() => CurrentLibraryPath);
             _strings.UseRequested += OnUseStringSet;

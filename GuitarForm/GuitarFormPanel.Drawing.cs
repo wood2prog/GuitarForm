@@ -12,7 +12,6 @@ using GuitarForm.Model;
 using GuitarForm.Model.Parameters;
 using GuitarForm.Model.Parts;
 using Rhino;
-using Body = GuitarForm.Model.Body;
 using GuitarDrawing = GuitarForm.Shapes.GuitarDrawing;
 using IPanel = Rhino.UI.IPanel;
 using ShowPanelReason = Rhino.UI.ShowPanelReason;
@@ -34,31 +33,29 @@ namespace GuitarForm
 
             // A part's messages include its subparts', so each tab's are what's left after its subparts' are taken out.
             static GeometryMessage FromModel(ModelMessage m) => new GeometryMessage(m.Level, m.Text);
-            var topPlate = guitar.Body.TopPlate.Validate(unit, culture).Select(FromModel).ToList();
-            var bracing = guitar.Body.TopPlate.Bracing.Validate(unit, culture).Select(FromModel).ToList();
-            var fretboard = guitar.Neck.Fretboard.Validate(unit, culture).Select(FromModel).ToList();
-            var soundhole = topPlate.Except(bracing).ToList();
-            var body = InputErrors(NewFields.BodyTab)
-                .Concat(guitar.Body.Validate(unit, culture).Select(FromModel).Except(topPlate))
-                .Concat(shapes.BodyMessages).ToList();
-            _newTabMessages = new Dictionary<string, List<GeometryMessage>>
+            var all = guitar.Validate(unit, culture).ToList();
+            var bodyAll = guitar.Body.Validate(unit, culture).ToList();
+            var neckAll = guitar.Neck.Validate(unit, culture).ToList();
+            var topPlate = guitar.Body.TopPlate.Validate(unit, culture).ToList();
+            var bracing = guitar.Body.TopPlate.Bracing.Validate(unit, culture).ToList();
+            var fretboard = guitar.Neck.Fretboard.Validate(unit, culture).ToList();
+            var instrument = all.Except(bodyAll).Except(neckAll).Select(FromModel);
+            var soundhole = topPlate.Except(bracing).Select(FromModel);
+            var body = bodyAll.Except(topPlate).Select(FromModel).Concat(shapes.BodyMessages);
+            var drawing = DesignDrawing.FromShapes(shapes, instrument, body, soundhole);
+            _tabMessageLists = new Dictionary<string, List<GeometryMessage>>
             {
-                [NewFields.BracingTab] = InputErrors(NewFields.BracingTab).Concat(bracing).Concat(shapes.BracingMessages).ToList(),
-                [NewFields.FretboardTab] = InputErrors(NewFields.FretboardTab).Concat(fretboard).Concat(shapes.FretboardMessages).ToList(),
-                [NewFields.NeckTab] = InputErrors(NewFields.NeckTab)
-                    .Concat(guitar.Neck.Validate(unit, culture).Select(FromModel).Except(fretboard))
+                [GuitarFields.InstrumentTab] = InputErrors(GuitarFields.InstrumentTab).Concat(drawing.InstrumentMessages).ToList(),
+                [GuitarFields.BodyTab] = InputErrors(GuitarFields.BodyTab).Concat(drawing.BodyMessages).ToList(),
+                [GuitarFields.SoundholeTab] = InputErrors(GuitarFields.SoundholeTab).Concat(drawing.SoundholeMessages).ToList(),
+                [GuitarFields.BracingTab] = InputErrors(GuitarFields.BracingTab).Concat(bracing.Select(FromModel)).Concat(shapes.BracingMessages).ToList(),
+                [GuitarFields.FretboardTab] = InputErrors(GuitarFields.FretboardTab).Concat(fretboard.Select(FromModel)).Concat(shapes.FretboardMessages).ToList(),
+                [GuitarFields.NeckTab] = InputErrors(GuitarFields.NeckTab)
+                    .Concat(neckAll.Except(fretboard).Select(FromModel))
                     .Concat(shapes.NeckMessages).ToList(),
             };
-            return DesignDrawing.FromShapes(shapes, Design.Instrument.Validate(), body, soundhole);
+            return drawing;
         }
-
-        // The errors from new fields on the tab whose text couldn't be read.
-        IEnumerable<GeometryMessage> InputErrors(string tab) =>
-            _newFieldErrors.Where((_, i) => NewFieldTabs[i] == tab &&
-                    (NewFields.Fields[i].Visible?.Invoke(Fields) ?? true))
-                .Append(tab == NewFields.FretboardTab ? _markersError : null)
-                .Where(e => e != null)
-                .Select(e => new GeometryMessage(MessageLevel.Error, e));
 
         // Shows each section's messages and updates the preview.
         void Redraw()
@@ -66,9 +63,6 @@ namespace GuitarForm
             var doc = RhinoDoc.ActiveDoc;
             if (!_session.IsOpen)
             {
-                _instrument.ShowMessages(null);
-                _body.ShowMessages(null);
-                _soundhole.ShowMessages(null);
                 foreach (var messages in _tabMessages.Values)
                     messages.Show(null);
                 _preview.Hide(doc);
@@ -76,11 +70,8 @@ namespace GuitarForm
             }
 
             var drawing = Draw();
-            _instrument.ShowMessages(drawing.InstrumentMessages);
-            _body.ShowMessages(drawing.BodyMessages);
-            _soundhole.ShowMessages(drawing.SoundholeMessages);
             foreach (var (tab, messages) in _tabMessages)
-                messages.Show(_newTabMessages[tab]);
+                messages.Show(_tabMessageLists[tab]);
             if (_showPreview.Checked == true && _panelVisible && doc != null)
                 _preview.Show(drawing, doc, _showStrings.Checked == true);
             else
@@ -93,8 +84,7 @@ namespace GuitarForm
             RequireNoInputErrors("built");
             var drawing = Draw();
             // A part with errors is drawn blank in the preview, so building would leave it out.
-            int errors = drawing.InstrumentMessages.Concat(drawing.BodyMessages).Concat(drawing.SoundholeMessages)
-                .Concat(_newTabMessages.Values.SelectMany(m => m))
+            int errors = _tabMessageLists.Values.SelectMany(m => m)
                 .Where(m => m.Level == MessageLevel.Error).Distinct().Count();
             if (errors > 0 && MessageBox.Show(this,
                     $"The design has {errors} {(errors == 1 ? "error" : "errors")} (see Messages), so the parts with errors will be missing from the build.\n\nBuild anyway?",

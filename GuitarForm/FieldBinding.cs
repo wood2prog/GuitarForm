@@ -9,8 +9,8 @@ using GuitarForm.Model.Parts;
 namespace GuitarForm
 {
     // One field of GuitarFields and the editor control it owns: a FieldDropDown for a choice or yes/no value, a
-    // NumberSlider for a decimal number (length, angle, number) and a plain box for a count. Not wired to the panel
-    // yet; it replaces SectionEditor's boxes and the panel's new-field arrays.
+    // NumberSlider for a decimal number (length, angle, number) and a plain box for a count. The panel builds every
+    // tab's rows from these.
     //
     // Lengths are shown and typed in the document's units and stored in mm. Show fills the box from a Guitar. When the
     // user changes the box, Changed is raised; the owner then calls TryApply with the current Guitar to read the text
