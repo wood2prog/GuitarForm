@@ -4,6 +4,8 @@ The neck: its angle and overstand, the thickness at the first and selected frets
 
 The profiles are drawn beside the side view, fretboard (or heel/body joint) side up with the treble side to the right. Lengths are shown and typed in the Rhino document's units and stored in millimeters; see [Units](../README.md#units).
 
+The **Saved neck copies** row at the top of the tab keeps a whole neck (its fields here, the fretboard, nut and headshape, and the fretwire and string set it uses) in the library by name. **Save as…** saves the open design's neck (not empty, and not a name already used for a neck). **Load** replaces the open design's neck with the saved one, as an unsaved edit. **Delete** removes a saved copy after asking.
+
 ## Profiles
 
 A neck profile is a cross-section through the neck, drawn fretboard (or heel/body joint) side up with the treble side to the right. Four are drawn, called stations:

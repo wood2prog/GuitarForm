@@ -162,7 +162,7 @@ Stage 3 must:
 
 - Schema v4 runs `LegacyDesignMigration`. `Library.UpgradeNotes`, `Library.TakeUpgradeNotes()` (once, for the panel) and a `<name>.before-v{N}.notes.txt` beside the safety copy keep the notes.
 - The panel holds a `DesignSession` and no longer keeps its own design, new fields, dirty flag, recovery plumbing or note strings. The design list comes from `ListGuitars()`; Build passes `BuildKey` and `LegacyBuildKeys`; Export writes a guitar document (version 3); the old long-id `RecoveryStore.DeleteStale` call is gone (`DeleteStaleRecovery` replaces it).
-- Temporary bridge (P4 deleted `LegacyFieldAdapter`; `GuitarFieldMap` stays for the presets until P5): `GuitarForm.Model/GuitarFieldMap.cs` (a Guitar as the old Instrument, Body and Soundhole records and back, tested in `GuitarFieldMapTests`) and `GuitarForm/LegacyFieldAdapter.cs` (the panel's `Design`, `Fields` and `Apply`). The new-field editors edit the session's Guitar directly; the `NewFields` file I/O was removed.
+- Temporary bridge (P4 deleted `LegacyFieldAdapter`; P5 deleted `GuitarFieldMap`): `GuitarForm.Model/GuitarFieldMap.cs` (a Guitar as the old Instrument, Body and Soundhole records and back, tested in `GuitarFieldMapTests`) and `GuitarForm/LegacyFieldAdapter.cs` (the panel's `Design`, `Fields` and `Apply`). The new-field editors edit the session's Guitar directly; the `NewFields` file I/O was removed.
 - The Instrument, Body and Soundhole presets still use the old preset tables (P5 replaces them).
 
 **P3 done (unused until P4):** field table `GuitarFields` in GuitarForm.Model/Parts and `FieldBinding` in the plug-in; tests 717. Open P4 questions:
@@ -180,6 +180,15 @@ Stage 3 must:
 - Soundhole: the check box above the groups changes only SH; SHD/SHOC/SHOT keep their values and are grayed while unticked; shapes draw no soundhole when SH is No (test `Soundhole_UntickedKeepsItsValuesAndDrawsNone`).
 - Behaviour changes: a blank required field (SL, NJF, BDL) clears the value; Save, Save as, Export and Build refuse while one is blank or some text can't be read. A blank Soundhole Diameter/Offset with SH ticked is a model error (Messages bar; Build asks) but no longer blocks Save. Labels are glossary labels with the old descriptions as tooltips. Minimums are the definitions' limits (error text is the model's). Tab messages now include the model's text for the Instrument, Body and Soundhole values.
 - Left for P5: `GuitarFieldMap` (+ `GuitarFieldMapTests`) and the Instrument/Body/Soundhole `PresetRow<T>` rows (`CurrentDesign`/`ApplyDesign` in `GuitarFormPanel.Layout.cs`), which still use the old records and preset tables.
+
+**P5 done (presets are saved copies):** the Body, Neck and Bracing tabs each have a "Saved <part> copies" row (`SavedCopiesRow<T>` in `GuitarFormPanel.Layout.cs`): drop-down, Load, Save as…, Delete. `DesignSession` has `ListNamed<T>`, `CheckNamedName<T>`, `LoadNamed<T>` (Apply, so dirty; a Neck load clears the fretwire and string set notes; returns unreadable-value problems, shown as a warning), `SaveNamed<T>` (rejects empty or taken names, ignoring case) and `DeleteNamed`. A saved body carries its top plate, soundhole and bracing; Bracing replaces only `Body.TopPlate.Bracing`. The Instrument and Soundhole preset rows are gone. Deleted: `PresetRow<T>`, `CurrentDesign`, `ApplyDesign`, `GuitarFieldMap`, `GuitarFieldMapTests`. The old preset tables and the `Library` preset API remain for R1. Tests: 726 (9 removed, 7 added).
+
+**Rhino check after P5:**
+
+- Body tab: Save as… a copy of the body; load it into another design (Unsaved changes shows, fields and preview follow); Delete it (asks). Same for the Neck and Bracing tabs. A taken or empty name is refused in the dialog.
+- The Instrument and Soundhole tabs no longer have a preset row.
+- The converted body presets "standard body" and "test" are in the Body tab's drop-down and load.
+- A neck copy with a fretwire or string set brings them along (the Frets and Strings tabs show them).
 
 **Rhino check after P4** (cannot be unit-tested):
 

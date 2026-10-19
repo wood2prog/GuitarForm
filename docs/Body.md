@@ -26,6 +26,10 @@ The tables and formulas below use these short names:
 
 Everything except the body length is optional: a part of the drawing appears once the fields it needs are set. If an error stops the plate, nothing of it is drawn.
 
+## Saved body copies
+
+The row at the top of the tab lists the library's saved bodies. **Save as…** asks for a name (not empty, and not one already used for a body) and saves the open design's body: its fields here, its top plate and soundhole, and the bracing on it. **Load** copies a saved body into the open design in place of its own, as an unsaved edit; the design's name, neck and the other values are kept. **Delete** removes a saved copy after asking. The bodies converted from old Body presets are in this list. A value in a saved copy that can't be read loads blank, with a warning.
+
 ## Plate
 
 ### Construction lines

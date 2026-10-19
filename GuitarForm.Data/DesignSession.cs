@@ -310,6 +310,74 @@ namespace GuitarForm.Data
             Dirty = true;
         }
 
+        // --- Named copies of the neck, body and bracing ---
+        // T is Neck, Body (with its top plate and the bracing on it) or Bracing. These work with no guitar open, except
+        // loading and saving, which use the working copy.
+
+        // The library's named copies of the part (not those belonging to saved guitars), by name.
+        public IReadOnlyList<AssemblyInfo> ListNamed<T>() where T : Part
+        {
+            using var library = Library.Open(_libraryPath);
+            return library.ListAssemblies<T>().Where(a => a.Name != null).ToList();
+        }
+
+        // Why the name can't be used for a new named copy (empty, or taken ignoring case), else null.
+        public string CheckNamedName<T>(string name) where T : Part
+        {
+            name = name?.Trim();
+            if (string.IsNullOrEmpty(name))
+                return "Enter a name.";
+            return ListNamed<T>().Any(a => string.Equals(a.Name, name, StringComparison.OrdinalIgnoreCase))
+                ? $"There's already a saved copy called \"{name}\"." : null;
+        }
+
+        // Copies the named part's values into the working guitar, replacing its own, as an unsaved edit. Returns the
+        // stored values that couldn't be read (they load blank). Throws KeyNotFoundException if the copy is gone.
+        public IReadOnlyList<string> LoadNamed<T>(long id) where T : Part
+        {
+            Require();
+            var problems = new List<string>();
+            T part;
+            using (var library = Library.Open(_libraryPath))
+                part = library.LoadAssembly<T>(id, problems);
+            Apply(g => part switch
+            {
+                Neck neck => g with { Neck = neck },
+                Body body => g with { Body = body },
+                Bracing bracing => g with { Body = g.Body with { TopPlate = g.Body.TopPlate with { Bracing = bracing } } },
+                _ => throw new ArgumentException($"{typeof(T).Name} isn't a neck, body or bracing."),
+            });
+            if (part is Neck)
+            {
+                // The loaded neck brings its own fretwire and string set (as the library has them).
+                FretwireNote = null;
+                StringSetNote = null;
+            }
+            return problems;
+        }
+
+        // Saves the working guitar's part as a named copy and returns its id. Throws InvalidOperationException if the
+        // name is empty or taken.
+        public long SaveNamed<T>(string name) where T : Part
+        {
+            Require();
+            if (CheckNamedName<T>(name) is string error)
+                throw new InvalidOperationException(error);
+            Part part = typeof(T) == typeof(Neck) ? Working.Neck
+                : typeof(T) == typeof(Body) ? Working.Body
+                : typeof(T) == typeof(Bracing) ? Working.Body.TopPlate.Bracing
+                : throw new ArgumentException($"{typeof(T).Name} isn't a neck, body or bracing.");
+            using var library = Library.Open(_libraryPath);
+            return library.SaveAssembly(name, part);
+        }
+
+        // Deletes a named copy. Throws InvalidOperationException for one that belongs to a guitar.
+        public void DeleteNamed(long id)
+        {
+            using var library = Library.Open(_libraryPath);
+            library.DeleteAssembly(id);
+        }
+
         // Writes the working copy over the saved guitar. Throws InvalidOperationException if its name is empty or taken.
         public void Save()
         {

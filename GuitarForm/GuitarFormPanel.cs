@@ -51,7 +51,7 @@ namespace GuitarForm
 
         // Controls that only work with a design open, and the preset lists to refresh when the library changes.
         readonly List<Control> _needDesign = new List<Control>();
-        readonly List<Action> _refreshPresets = new List<Action>();
+        readonly List<Action> _refreshSavedCopies = new List<Action>();
 
         // The Strings tab: the library of string sets, with its own working copy.
         StringsTab _strings;
@@ -117,7 +117,7 @@ namespace GuitarForm
                 {
                     RhinoApp.WriteLine($"GuitarForm: couldn't list the fretwires: {e.Message}");
                 }
-                foreach (var refresh in _refreshPresets)
+                foreach (var refresh in _refreshSavedCopies)
                     refresh();
             };
 
@@ -128,19 +128,10 @@ namespace GuitarForm
             {
                 Control[] top = tab switch
                 {
-                    GuitarFields.InstrumentTab => new Control[] { PresetRow<Instrument>(
-                        () => CurrentDesign()?.Instrument,
-                        preset => ApplyDesign(d => d with { Instrument = preset })) },
-                    GuitarFields.BodyTab => new Control[] { PresetRow<Body>(
-                        () => CurrentDesign()?.Body,
-                        preset => ApplyDesign(d => d with { Body = preset })) },
-                    GuitarFields.SoundholeTab => new Control[]
-                    {
-                        _hasSoundhole,
-                        PresetRow<Soundhole>(
-                            () => CurrentDesign()?.Soundhole,
-                            preset => ApplyDesign(d => d with { Soundhole = preset })),
-                    },
+                    GuitarFields.BodyTab => new Control[] { SavedCopiesRow<Model.Parts.Body>("body") },
+                    GuitarFields.NeckTab => new Control[] { SavedCopiesRow<Neck>("neck") },
+                    GuitarFields.BracingTab => new Control[] { SavedCopiesRow<Bracing>("bracing") },
+                    GuitarFields.SoundholeTab => new Control[] { _hasSoundhole },
                     GuitarFields.FretboardTab => new Control[] { _showStrings },
                     _ => Array.Empty<Control>(),
                 };

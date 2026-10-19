@@ -6,6 +6,8 @@ The bracing is drawn on its own copy of the plate outline and soundhole, seen fr
 
 The bracing is a part of the top plate that is saved on its own in the library, so a bracing pattern can be reused in another guitar. Nothing here is saved until the design is saved.
 
+The **Saved bracing copies** row at the top of the tab keeps a bracing pattern in the library by name. **Save as…** saves the open design's bracing (not empty, and not a name already used for bracing). **Load** replaces only the bracing on the open design's top plate, as an unsaved edit. **Delete** removes a saved copy after asking. (A saved body on the [Body tab](Body.md) also carries its bracing.)
+
 ## Fields
 
 Every brace is a straight strip. Its width is across it, and its height (from the top plate to the top of the brace) is stored but doesn't change the plan view. "Neck end" is the end of the body where the heel sits (y = Body Length).

@@ -247,5 +247,99 @@ namespace GuitarForm.Tests
             using var library = Library.Open(_path);
             Assert.That(library.ListGuitars().Select(g => g.Name), Is.EqualTo(new[] { "B" }));
         }
+
+        // --- Named copies of the neck, body and bracing ---
+
+        [Test]
+        public void ListNamed_ListsOnlyNamedCopies()
+        {
+            Create("A");
+            Assert.That(_session.ListNamed<Body>(), Is.Empty);
+            _session.Open(Create("B"));
+            _session.SaveNamed<Body>("Jumbo");
+            Assert.That(_session.ListNamed<Body>().Select(b => b.Name), Is.EqualTo(new[] { "Jumbo" }));
+            Assert.That(_session.ListNamed<Neck>(), Is.Empty);
+        }
+
+        [Test]
+        public void CheckNamedName_RejectsEmptyAndTakenIgnoringCase()
+        {
+            _session.Open(Create("A"));
+            _session.SaveNamed<Neck>("Slim C");
+            Assert.That(_session.CheckNamedName<Neck>("  "), Is.Not.Null);
+            Assert.That(_session.CheckNamedName<Neck>(null), Is.Not.Null);
+            Assert.That(_session.CheckNamedName<Neck>(" slim c "), Is.Not.Null);
+            Assert.That(_session.CheckNamedName<Neck>("Fat C"), Is.Null);
+            Assert.That(_session.CheckNamedName<Body>("Slim C"), Is.Null);
+            Assert.Throws<InvalidOperationException>(() => _session.SaveNamed<Neck>("SLIM C"));
+            Assert.Throws<InvalidOperationException>(() => _session.SaveNamed<Neck>(""));
+        }
+
+        [Test]
+        public void SaveNamed_ThenLoadIntoAnotherGuitar_CopiesTheValuesAsAnEdit()
+        {
+            _session.Open(Create("A"));
+            _session.Apply(g => g with { Body = g.Body with { Length = new NumberParameter(Body.Definitions.Length, 480) } });
+            long id = _session.SaveNamed<Body>("Long");
+
+            _session.Open(Create("B"), discardPrevious: true);
+            Assert.That(_session.Working.Body.Length.Value, Is.Not.EqualTo(480));
+            var problems = _session.LoadNamed<Body>(id);
+            Assert.That(problems, Is.Empty);
+            Assert.That(_session.Working.Body.Length.Value, Is.EqualTo(480));
+            Assert.That(_session.Dirty, Is.True);
+            Assert.That(_session.Working.Name.Value, Is.EqualTo("B"));
+        }
+
+        [Test]
+        public void LoadNamed_Bracing_ReplacesOnlyTheTopPlatesBracing()
+        {
+            _session.Open(Create("A"));
+            var bracing = new Bracing { ToneBarCount = new(Bracing.Definitions.ToneBarCount, 3) };
+            _session.Apply(g => g with { Body = g.Body with { TopPlate = g.Body.TopPlate with { Bracing = bracing } } });
+            long id = _session.SaveNamed<Bracing>("Three bars");
+
+            _session.Open(Create("B"), discardPrevious: true);
+            var body = _session.Working.Body;
+            _session.LoadNamed<Bracing>(id);
+            Assert.That(_session.Working.Body.TopPlate.Bracing.ToneBarCount.Value, Is.EqualTo(3));
+            Assert.That(_session.Working.Body with { TopPlate = body.TopPlate with { Bracing = body.TopPlate.Bracing } },
+                Is.EqualTo(body));
+            Assert.That(_session.Working.Body.Length.Value, Is.EqualTo(body.Length.Value));
+        }
+
+        [Test]
+        public void LoadNamed_Neck_ReplacesTheNeckAndClearsItsNotes()
+        {
+            _session.Open(Create("A"));
+            _session.Apply(g => g with { Neck = g.Neck with { Fretboard = g.Neck.Fretboard with { NutWidth = new(Fretboard.Definitions.NutWidth, 44) } } });
+            long id = _session.SaveNamed<Neck>("Wide");
+            _session.Open(Create("B"), discardPrevious: true);
+            _session.FretwireNote = "gone";
+            _session.LoadNamed<Neck>(id);
+            Assert.That(_session.Working.Neck.Fretboard.NutWidth.Value, Is.EqualTo(44));
+            Assert.That(_session.FretwireNote, Is.Null);
+        }
+
+        [Test]
+        public void LoadNamed_MissingCopy_ThrowsAndChangesNothing()
+        {
+            _session.Open(Create("A"));
+            Assert.Throws<KeyNotFoundException>(() => _session.LoadNamed<Body>(99999));
+            Assert.That(_session.Dirty, Is.False);
+        }
+
+        [Test]
+        public void DeleteNamed_RemovesTheCopy_ButNotAGuitarsOwnPart()
+        {
+            _session.Open(Create("A"));
+            long id = _session.SaveNamed<Body>("Jumbo");
+            _session.DeleteNamed(id);
+            Assert.That(_session.ListNamed<Body>(), Is.Empty);
+            long own;
+            using (var library = Library.Open(_path))
+                own = library.ListAssemblies<Body>().Single().Id;
+            Assert.Throws<InvalidOperationException>(() => _session.DeleteNamed(own));
+        }
     }
 }

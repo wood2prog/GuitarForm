@@ -143,74 +143,80 @@ namespace GuitarForm
             return button;
         }
 
-        // TEMPORARY, until P5 replaces the Instrument, Body and Soundhole presets with named copies: the presets still
-        // hold the old section records, so the open guitar is seen as the old design (GuitarFieldMap) for them.
-        GuitarDesign CurrentDesign() => _session.IsOpen ? GuitarFieldMap.ToDesign(_session.Working) : null;
-
-        void ApplyDesign(Func<GuitarDesign, GuitarDesign> change)
+        // The row at the top of the Body, Neck and Bracing tabs: the library's saved copies of that part (a drop-down),
+        // with Load (copies the saved values into the open design, as an unsaved edit), Save as… (saves the open
+        // design's part under a new name) and Delete. T is Neck, Body or Bracing; what is the name shown to the user.
+        Control SavedCopiesRow<T>(string what) where T : Part
         {
-            if (ApplyToGuitar(g => GuitarFieldMap.WithDesign(g, change(GuitarFieldMap.ToDesign(g)))))
-                Redraw();
-        }
-
-        // A list of the section's presets, with Load (copies the preset's values into the design), Save as… and Delete.
-        Control PresetRow<T>(Func<T> current, Action<T> load) where T : class
-        {
-            var presets = new DropDown();
+            var copies = new DropDown();
             void Refresh()
             {
-                presets.Items.Clear();
+                string key = copies.SelectedKey;
+                copies.Items.Clear();
                 try
                 {
-                    foreach (string name in WithLibrary(library => library.ListPresets<T>()))
-                        presets.Items.Add(name);
+                    foreach (var copy in _session.ListNamed<T>())
+                        copies.Items.Add(new ListItem { Text = copy.Name, Key = copy.Id.ToString(CultureInfo.InvariantCulture) });
+                    copies.SelectedKey = key;
                 }
                 catch (Exception e)
                 {
-                    RhinoApp.WriteLine($"GuitarForm: couldn't list the presets: {e.Message}");
+                    RhinoApp.WriteLine($"GuitarForm: couldn't list the saved {what} copies: {e.Message}");
                 }
             }
-            _refreshPresets.Add(Refresh);
+            _refreshSavedCopies.Add(Refresh);
             Refresh();
+
+            long SelectedId(string action) =>
+                long.TryParse(copies.SelectedKey, NumberStyles.None, CultureInfo.InvariantCulture, out long id)
+                    ? id : throw new InvalidOperationException($"Choose a saved {what} copy to {action}.");
 
             var loadButton = ActionButton("Load", () =>
             {
-                if (presets.SelectedKey is not string name)
-                    throw new InvalidOperationException("Choose a preset to load.");
-                load(WithLibrary(library => library.LoadPreset<T>(name)));
+                long id = SelectedId("load");
+                var problems = _session.LoadNamed<T>(id);
+                MarkDirty();
                 ShowDesign();
+                if (problems.Count > 0)
+                {
+                    foreach (string problem in problems)
+                        RhinoApp.WriteLine($"GuitarForm: {problem}");
+                    string list = string.Join("\n", problems.Take(12).Select(p => "- " + p)) +
+                        (problems.Count > 12 ? $"\n... and {problems.Count - 12} more." : "");
+                    MessageBox.Show(this,
+                        "Some values stored with this saved copy couldn't be read, so they are left blank:\n\n" + list,
+                        "GuitarForm", MessageBoxButtons.OK, MessageBoxType.Warning);
+                }
             });
             var saveButton = ActionButton("Save as…", () =>
             {
-                var section = current() ?? throw new InvalidOperationException("There's nothing to save as a preset.");
-                var values = FieldsDialog.Ask(this, "Save as preset", new[] { ("Preset name", presets.SelectedKey ?? "") },
-                    v => v[0].Length == 0 ? "Enter a name." : null);
+                RequireNoInputErrors("saved");
+                var values = FieldsDialog.Ask(this, $"Save {what} copy", new[] { ("Name", "") },
+                    v => _session.CheckNamedName<T>(v[0]));
                 if (values == null)
                     return;
-                string name = values[0];
-                if (WithLibrary(library => library.PresetExists<T>(name)) &&
-                    MessageBox.Show(this, $"Replace the preset \"{name}\"?", "GuitarForm", MessageBoxButtons.OKCancel, MessageBoxType.Question) != DialogResult.Ok)
-                    return;
-                WithLibrary(library => library.SavePreset(name, section));
+                long id = _session.SaveNamed<T>(values[0]);
                 Refresh();
-                presets.SelectedKey = name;
+                copies.SelectedKey = id.ToString(CultureInfo.InvariantCulture);
             });
             var deleteButton = ActionButton("Delete", () =>
             {
-                if (presets.SelectedKey is not string name)
-                    throw new InvalidOperationException("Choose a preset to delete.");
-                if (MessageBox.Show(this, $"Delete the preset \"{name}\"?", "GuitarForm", MessageBoxButtons.OKCancel, MessageBoxType.Question) != DialogResult.Ok)
+                long id = SelectedId("delete");
+                if (MessageBox.Show(this, $"Delete the saved {what} copy \"{copies.SelectedValue}\"?", "GuitarForm",
+                        MessageBoxButtons.OKCancel, MessageBoxType.Question) != DialogResult.Ok)
                     return;
-                WithLibrary(library => library.DeletePreset<T>(name));
+                _session.DeleteNamed(id);
                 Refresh();
             });
+            NeedsDesign(loadButton);
+            NeedsDesign(saveButton);
 
             return new TableLayout
             {
                 Spacing = new Size(6, 4),
                 Rows =
                 {
-                    new TableRow(new Label { Text = "Preset", VerticalAlignment = VerticalAlignment.Center }, new TableCell(presets, true)),
+                    new TableRow(new Label { Text = $"Saved {what} copies", VerticalAlignment = VerticalAlignment.Center }, new TableCell(copies, true)),
                     new TableRow(null, Buttons(loadButton, saveButton, deleteButton)),
                 },
             };
