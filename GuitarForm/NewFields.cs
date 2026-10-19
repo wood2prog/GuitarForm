@@ -14,10 +14,9 @@ using OldBody = GuitarForm.Model.Body;
 
 namespace GuitarForm
 {
-    // A stopgap until the panel moves to the new model: the open design is turned into a new-model Guitar so it can be
-    // drawn with GuitarForm.Shapes, and the values the old sections don't have (cutaway, body skew, blocks, fretboard,
-    // neck, dot markers, bracing) are kept per design in a JSON file in the library's folder, by glossary abbreviation,
-    // in mm. They're shown on the Body tab and on the Bracing, Fretboard and Neck tabs.
+    // A stopgap until the panel moves to the new model: the fields for the values the old sections don't have (cutaway,
+    // body skew, blocks, fretboard, neck, dot markers, bracing), shown on the Body tab and on the Bracing, Fretboard and
+    // Neck tabs. They edit the open Guitar (the session's working copy) directly.
     static class NewFields
     {
         // Step is how much a slider changes the value per step (in mm for a length, converted to the units shown).
@@ -286,8 +285,6 @@ namespace GuitarForm
 
         public static readonly Field[] Fields = Groups.SelectMany(g => g.Fields).ToArray();
 
-        const string MarkersKey = "Markers";
-
         // The dot markers as text: each marker's fret, with ":2" for two dots, e.g. "3 5 7 9 12:2".
         public static string FormatMarkers(Guitar guitar) => string.Join(" ", guitar.Neck.Fretboard.Markers.Select(m =>
             m.DotCount.Value == 2 ? $"{m.Fret.Value}:2" : $"{m.Fret.Value}"));
@@ -312,184 +309,5 @@ namespace GuitarForm
             }
             return guitar with { Neck = guitar.Neck with { Fretboard = guitar.Neck.Fretboard with { Markers = markers } } };
         }
-
-        // The design's values as a Guitar, without the new fields.
-        public static Guitar FromDesign(GuitarDesign design)
-        {
-            OldBody b = design.Body;
-            var s = design.Soundhole;
-            return new Guitar
-            {
-                ScaleLength = new(Guitar.Definitions.ScaleLength, design.Instrument.ScaleLength),
-                NeckJoinFret = new(Guitar.Definitions.NeckJoinFret, design.Instrument.NeckJoinFret),
-                Body = new Body
-                {
-                    Length = new(Body.Definitions.Length, b.BodyLength),
-                    DepthAtTailEnd = new(Body.Definitions.DepthAtTailEnd, b.TailDepth),
-                    DepthAtNeckEnd = new(Body.Definitions.DepthAtNeckEnd, b.NeckDepth),
-                    UpperBoutWidth = new(Body.Definitions.UpperBoutWidth, b.UbWidth),
-                    UpperBoutPrimaryRadius = new(Body.Definitions.UpperBoutPrimaryRadius, b.UbRadius),
-                    UpperBoutOffsetFromNeckEnd = new(Body.Definitions.UpperBoutOffsetFromNeckEnd, b.UbOffset),
-                    UpperBoutSecondaryOffset = new(Body.Definitions.UpperBoutSecondaryOffset, b.UbSecondaryOffset),
-                    HeelFlatWidth = new(Body.Definitions.HeelFlatWidth, b.HeelWidth),
-                    WaistWidth = new(Body.Definitions.WaistWidth, b.WaistWidth),
-                    WaistRadius = new(Body.Definitions.WaistRadius, b.WaistRadius),
-                    WaistOffsetFromTailEnd = new(Body.Definitions.WaistOffsetFromTailEnd, b.WaistOffset),
-                    LowerBoutWidth = new(Body.Definitions.LowerBoutWidth, b.LbWidth),
-                    LowerBoutPrimaryRadius = new(Body.Definitions.LowerBoutPrimaryRadius, b.LbRadius),
-                    LowerBoutSecondaryOffset = new(Body.Definitions.LowerBoutSecondaryOffset, b.LbSecondaryOffset),
-                    LowerBoutOffsetFromTailEnd = new(Body.Definitions.LowerBoutOffsetFromTailEnd, b.LbOffset),
-                    TopPlate = new TopPlate
-                    {
-                        Soundhole = new(TopPlate.Definitions.Soundhole, s != null),
-                        SoundholeDiameter = new(TopPlate.Definitions.SoundholeDiameter, s?.Diameter),
-                        SoundholeOffsetFromTailEnd = new(TopPlate.Definitions.SoundholeOffsetFromTailEnd, s?.TailOffset),
-                        SoundholeOffsetFromCenterline = new(TopPlate.Definitions.SoundholeOffsetFromCenterline, s?.HorizontalOffset),
-                    },
-                },
-            };
-        }
-
-        // The new fields' values copied from one guitar into another.
-        public static Guitar CopyFields(Guitar from, Guitar to)
-        {
-            var copied = WithMarkers(Fields.Aggregate(to, (guitar, field) => field.Set(guitar, field.Get(from))), FormatMarkers(from));
-            return copied with { Neck = copied.Neck with { StringSet = from.Neck.StringSet, Fretwire = from.Neck.Fretwire } };
-        }
-
-        static string FilePath(long designId) =>
-            System.IO.Path.Combine(System.IO.Path.GetDirectoryName(GuitarFormPlugin.Instance.GuitarFormSettings.LibraryPath)!,
-                "NewFields", designId.ToString(CultureInfo.InvariantCulture) + ".json");
-
-        // The design's saved new fields, on an otherwise empty guitar.
-        public static Guitar Load(long designId)
-        {
-            string path = FilePath(designId);
-            return File.Exists(path)
-                ? FromTexts(JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(path)) ?? new())
-                : new Guitar();
-        }
-
-        // Removes a deleted design's saved new fields.
-        public static void Delete(long designId)
-        {
-            string path = FilePath(designId);
-            if (File.Exists(path))
-                File.Delete(path);
-        }
-
-        public static void Save(long designId, Guitar guitar)
-        {
-            string path = FilePath(designId);
-            Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
-            // Written to a temporary file and moved over the old one, so an interrupted save can't leave half a file.
-            string temp = path + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(ToTexts(guitar), new JsonSerializerOptions { WriteIndented = true }));
-            File.Move(temp, path, true);
-        }
-
-        // A design document (see DesignDocument) can carry the new fields in a "newFields" object beside the design,
-        // which older readers ignore. Null when it has none.
-        public static Guitar ReadFromDocument(string json)
-        {
-            var newFields = JsonNode.Parse(json)?["newFields"];
-            return newFields == null ? null : FromTexts(newFields.Deserialize<Dictionary<string, string>>());
-        }
-
-        public static string AddToDocument(string json, Guitar guitar)
-        {
-            var document = JsonNode.Parse(json)!.AsObject();
-            var texts = ToTexts(guitar);
-            if (guitar.Neck.StringSet is { } set && SetName(set).Length > 0)
-                texts[StringSetNameKey] = SetName(set);
-            if (guitar.Neck.Fretwire is { } wire && FretwireName(wire).Length > 0)
-                texts[FretwireNameKey] = FretwireName(wire);
-            document["newFields"] = JsonSerializer.SerializeToNode(texts);
-            return document.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
-        }
-
-        // Values by glossary abbreviation, lengths in mm, plus the dot markers.
-        static Guitar FromTexts(Dictionary<string, string> texts)
-        {
-            var guitar = new Guitar();
-            foreach (var field in Fields)
-            {
-                var parameter = field.Get(guitar);
-                if (texts.TryGetValue(parameter.Definition.Abbreviation, out string text) &&
-                    parameter.TryParse(text, LengthUnit.Millimeters, CultureInfo.InvariantCulture, out var parsed, out _))
-                    guitar = field.Set(guitar, parsed);
-            }
-            if (texts.TryGetValue(MarkersKey, out string markers))
-                guitar = WithMarkers(guitar, markers) ?? guitar;
-            // Only the id is known here: the neck gets a stand-in with that id until ResolveStringSet fills it in.
-            if (texts.TryGetValue(StringSetIdKey, out string id) &&
-                long.TryParse(id, NumberStyles.Integer, CultureInfo.InvariantCulture, out long setId))
-                guitar = guitar with { Neck = guitar.Neck with { StringSet = new StringSet { Id = setId } } };
-            if (texts.TryGetValue(FretwireIdKey, out string wireIdText) &&
-                long.TryParse(wireIdText, NumberStyles.Integer, CultureInfo.InvariantCulture, out long wireId))
-                guitar = guitar with { Neck = guitar.Neck with { Fretwire = new Fretwire { Id = wireId } } };
-            return guitar;
-        }
-
-        static Dictionary<string, string> ToTexts(Guitar guitar)
-        {
-            var texts = Fields.Select(field => field.Get(guitar)).Where(p => p.HasValue).ToDictionary(
-                p => p.Definition.Abbreviation, p => p.Format(LengthUnit.Millimeters, CultureInfo.InvariantCulture));
-            texts[MarkersKey] = FormatMarkers(guitar);
-            if (guitar.Neck.StringSet?.Id is long id)
-                texts[StringSetIdKey] = id.ToString(CultureInfo.InvariantCulture);
-            if (guitar.Neck.Fretwire?.Id is long wireId)
-                texts[FretwireIdKey] = wireId.ToString(CultureInfo.InvariantCulture);
-            return texts;
-        }
-
-        const string StringSetIdKey = "StringSetId";
-        const string StringSetNameKey = "StringSetName";
-        const string FretwireIdKey = "FretwireId";
-        const string FretwireNameKey = "FretwireName";
-
-        // The neck's string set and fretwire from the library by the ids they carry (see Load and ReadFromDocument, which
-        // leave only the ids). One that no longer exists leaves the neck with none, and its flag is true. If an expected
-        // name is given (an import), one whose name differs is a different item, so it's treated as missing too.
-        public static Guitar ResolveLibraryItems(Guitar guitar, Library library, out bool stringSetMissing, out bool fretwireMissing,
-            string expectedStringSetName = null, string expectedFretwireName = null)
-        {
-            var stringSet = ResolveLibraryItem<StringSet>(guitar.Neck.StringSet?.Id, library, expectedStringSetName, SetName, out stringSetMissing);
-            var fretwire = ResolveLibraryItem<Fretwire>(guitar.Neck.Fretwire?.Id, library, expectedFretwireName, FretwireName, out fretwireMissing);
-            return guitar with { Neck = guitar.Neck with { StringSet = stringSet, Fretwire = fretwire } };
-        }
-
-        static T ResolveLibraryItem<T>(long? id, Library library, string expectedName, Func<T, string> name, out bool missing)
-            where T : Part
-        {
-            missing = false;
-            if (id is not long itemId)
-                return null;
-            T item = null;
-            try
-            {
-                item = library.LoadLibraryItem<T>(itemId);
-            }
-            catch (Exception e) when (e is InvalidOperationException || e is KeyNotFoundException)
-            {
-            }
-            if (item != null && expectedName != null &&
-                !string.Equals(name(item), expectedName, StringComparison.OrdinalIgnoreCase))
-                item = null;
-            missing = item == null;
-            return item;
-        }
-
-        public static string SetName(StringSet set) => $"{set.Manufacturer.Value} {set.Name.Value}".Trim();
-
-        public static string FretwireName(Fretwire wire) => $"{wire.Manufacturer.Value} {wire.ProductCode.Value}".Trim();
-
-        // The fretwire name a design document carries, or null.
-        public static string DocumentFretwireName(string json) =>
-            JsonNode.Parse(json)?["newFields"]?[FretwireNameKey]?.GetValue<string>();
-
-        // The string set name a design document carries, or null.
-        public static string DocumentStringSetName(string json) =>
-            JsonNode.Parse(json)?["newFields"]?[StringSetNameKey]?.GetValue<string>();
     }
 }

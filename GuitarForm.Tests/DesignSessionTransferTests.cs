@@ -88,7 +88,7 @@ namespace GuitarForm.Tests
             Assert.That(_session.SavedName, Is.EqualTo("Old"));
             Assert.That(_session.Working.ScaleLength.Value, Is.EqualTo(650));
             Assert.That(_session.Working.Neck.StringSet, Is.Null);
-            Assert.That(_session.StringSetNote, Does.Contain("isn't in the library"));
+            Assert.That(_session.StringSetNote, Does.Contain("no longer in the library"));
             Assert.That(_session.FretwireNote, Is.Null);
         }
 
@@ -398,7 +398,7 @@ namespace GuitarForm.Tests
             _session.ReloadLibraryItems();
             Assert.That(_session.Working.Neck.Fretwire.BeadHeight.Value, Is.EqualTo(1.5));
             Assert.That(_session.Working.Neck.StringSet, Is.Null);
-            Assert.That(_session.StringSetNote, Does.Contain("isn't in the library"));
+            Assert.That(_session.StringSetNote, Does.Contain("no longer in the library"));
             Assert.That(_session.FretwireNote, Is.Null);
         }
 

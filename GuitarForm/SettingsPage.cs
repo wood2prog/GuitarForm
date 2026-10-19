@@ -124,7 +124,7 @@ namespace GuitarForm
             try
             {
                 using var opened = Library.Open(settings.LibraryPath);
-                int count = opened.ListDesigns().Count;
+                int count = opened.ListGuitars().Count;
                 library = $"Library: {count} design{(count == 1 ? "" : "s")}.";
             }
             catch (Exception e)

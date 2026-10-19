@@ -81,7 +81,7 @@ The **Unit weight shown in** drop-down at the top of the tab chooses **lb/in** (
 
 ## Used by a guitar
 
-The design's chosen set is kept by its id in the design's `NewFields` file, beside the library, and the design's JSON export also writes the set's name, as manufacturer and name, under `StringSetName` in its `newFields`. When a design is opened, its set is looked up by that id. If the set has been deleted, the design shows **none**, with a note that the set is no longer in the library.
+The design's chosen set is kept by its id with the design in the library, and the design's JSON export also writes it in full. When a design is opened, its set is looked up by that id. If the set has been deleted, the design shows **none**, with a note that the set is no longer in the library.
 
 ## Limitations
 

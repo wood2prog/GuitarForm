@@ -143,6 +143,33 @@ namespace GuitarForm.Data
             }
         }
 
+        // Writes the upgrade's notes beside the safety copy, as "<its name without .bak>.notes.txt" (never over an
+        // existing file). Best effort: the upgrade has already happened, so a failure here is ignored. Returns the
+        // path, or null if nothing was written.
+        internal static string WriteNotes(string safetyCopyPath, IEnumerable<string> notes)
+        {
+            try
+            {
+                string stem = safetyCopyPath.EndsWith(".bak", StringComparison.OrdinalIgnoreCase)
+                    ? safetyCopyPath.Substring(0, safetyCopyPath.Length - 4) : safetyCopyPath;
+                string path = stem + ".notes.txt";
+                for (int n = 1; File.Exists(path) || Directory.Exists(path); n++)
+                    path = stem + "." + n.ToString(CultureInfo.InvariantCulture) + ".notes.txt";
+                var lines = new List<string>
+                {
+                    "GuitarForm upgraded this library. These are the things it had to tell you:",
+                    "",
+                };
+                lines.AddRange(notes.Select(n => "- " + n));
+                File.WriteAllLines(path, lines);
+                return path;
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                return null;
+            }
+        }
+
         // Copies a database page by page, replacing the destination's contents.
         static void Copy(string sourcePath, string destinationPath)
         {

@@ -244,8 +244,8 @@ namespace GuitarForm.Data
 
         void SetNotes(bool setMissing, bool wireMissing)
         {
-            StringSetNote = setMissing ? "The string set this guitar used isn't in the library; choose another on the Strings tab." : null;
-            FretwireNote = wireMissing ? "The fretwire this guitar used isn't in the library; choose another on the Frets tab." : null;
+            StringSetNote = setMissing ? "the string set this guitar used is no longer in the library" : null;
+            FretwireNote = wireMissing ? "the fretwire this guitar used is no longer in the library" : null;
         }
 
         (StringSet Set, Fretwire Wire, bool SetMissing, bool WireMissing) ResolveByIds(long? setId, long? wireId)

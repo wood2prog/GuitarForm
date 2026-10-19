@@ -19,10 +19,30 @@ namespace GuitarForm.Data
         readonly SqliteConnection _connection;
         SqliteTransaction _transaction;
 
-        Library(string path, SqliteConnection connection)
+        static readonly object PendingLock = new();
+        static readonly List<string> Pending = new();
+
+        Library(string path, SqliteConnection connection, IReadOnlyList<string> upgradeNotes)
         {
             Path = path;
             _connection = connection;
+            UpgradeNotes = upgradeNotes;
+        }
+
+        // What the upgrade that this Open ran had to say (designs that were renamed, values that couldn't be read,
+        // presets that weren't converted). Empty when no upgrade ran.
+        public IReadOnlyList<string> UpgradeNotes { get; }
+
+        // The notes of upgrades since the last call, once: for the panel to show when it first opens the library.
+        // (The same notes are in the text file beside the safety copy.)
+        public static IReadOnlyList<string> TakeUpgradeNotes()
+        {
+            lock (PendingLock)
+            {
+                var notes = Pending.ToArray();
+                Pending.Clear();
+                return notes;
+            }
         }
 
         public string SqliteVersion => _connection.ServerVersion;
@@ -38,10 +58,18 @@ namespace GuitarForm.Data
             {
                 // A real upgrade is about to run: keep a copy of the file as it is, and don't migrate without one.
                 int from = existed ? Schema.UpgradeFrom(connection) : 0;
-                if (from > 0)
-                    Backups.SafetyCopy(path, from);
-                Schema.Prepare(connection, path);
-                return new Library(path, connection);
+                string safetyCopy = from > 0 ? Backups.SafetyCopy(path, from) : null;
+                var notes = new List<string>();
+                Schema.Prepare(connection, path, notes);
+                if (safetyCopy == null)
+                    notes.Clear(); // A new library has nothing to report.
+                else if (notes.Count > 0)
+                {
+                    Backups.WriteNotes(safetyCopy, notes);
+                    lock (PendingLock)
+                        Pending.AddRange(notes);
+                }
+                return new Library(path, connection, notes.AsReadOnly());
             }
             catch
             {

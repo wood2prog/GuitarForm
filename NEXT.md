@@ -158,6 +158,24 @@ Stage 3 must:
 - A bad stored value opens with a warning.
 - `InternalsVisibleTo` for Data is approved.
 
+**P2 done (the panel runs on `DesignSession`):**
+
+- Schema v4 runs `LegacyDesignMigration`. `Library.UpgradeNotes`, `Library.TakeUpgradeNotes()` (once, for the panel) and a `<name>.before-v{N}.notes.txt` beside the safety copy keep the notes.
+- The panel holds a `DesignSession` and no longer keeps its own design, new fields, dirty flag, recovery plumbing or note strings. The design list comes from `ListGuitars()`; Build passes `BuildKey` and `LegacyBuildKeys`; Export writes a guitar document (version 3); the old long-id `RecoveryStore.DeleteStale` call is gone (`DeleteStaleRecovery` replaces it).
+- Temporary bridge, deleted in P4: `GuitarForm.Model/GuitarFieldMap.cs` (a Guitar as the old Instrument, Body and Soundhole records and back, tested in `GuitarFieldMapTests`) and `GuitarForm/LegacyFieldAdapter.cs` (the panel's `Design`, `Fields` and `Apply`). The new-field editors edit the session's Guitar directly; the `NewFields` file I/O was removed.
+- The Instrument, Body and Soundhole presets still use the old preset tables (P5 replaces them).
+
+**Rhino check after P2** (stage 3):
+
+- Open a copy of the real library. It upgrades to v4, leaves `GuitarForm.before-v3.bak` (or the matching `before-v{N}`) and a `.notes.txt` beside it, and the panel shows the notes once (a message box and the command history). Every old design is in the list, with the same values on the Instrument, Body, Soundhole, Bracing, Fretboard, Neck, Strings and Frets tabs.
+- Edit a value: "Unsaved changes" appears, the preview updates, Save keeps it, Revert drops it. First Save of a design still asks overwrite or new copy.
+- Switch design, New, Copy, Import and Delete with unsaved changes: Save, Don't save and Cancel each behave as before; after "Don't save" no recovery offer comes back for the discarded work.
+- Edit, hide the panel (or close Rhino), reopen the design: the recovery offer appears and Yes brings the edits back. A recovery file left by the old version for a converted design is offered too, once.
+- Untick and tick the soundhole; load an Instrument, Body and Soundhole preset; type dot markers and a bad value (the Messages bar names it and Save/Export/Build refuse).
+- Export a design and import it again (also import an old version 1 file): the import opens as a new design; a missing string set or fretwire leaves a note on its tab.
+- Build, edit, Build again: only that design's objects are replaced, and objects built before the upgrade (tagged with the old design id) are replaced too, not duplicated. `DesignBuilder`'s null-key guard has no automated test.
+- Use a fretwire and a string set on a design, delete one in its tab: the design shows it as gone, with a note.
+
 **Still needed:**
 
 - A copy of the owner's real library and `NewFields` folder, for a dry run before stage 3 ships.

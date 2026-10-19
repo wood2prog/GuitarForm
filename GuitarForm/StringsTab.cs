@@ -116,13 +116,13 @@ namespace GuitarForm
         public event Action LibraryItemChanged;
 
         // The owner tells the tab whether a design is open and what its guitar uses: a set (null for none) and, when it
-        // has none, an optional note on why (e.g. the saved set no longer exists).
+        // has none (or could not be read), an optional note on why (e.g. the saved set no longer exists).
         public void ShowAssigned(bool designOpen, StringSet assigned, string note = null)
         {
             _designOpen = designOpen;
             _usedBy.Text = !designOpen ? ""
-                : "Used by this guitar: " + (assigned == null ? "none" : EmptyAs(NewFields.SetName(assigned), "(unnamed set)")) +
-                  (assigned == null && note != null ? $" ({note})" : "");
+                : "Used by this guitar: " + (assigned == null ? "none" : EmptyAs(assigned.DisplayName, "(unnamed set)")) +
+                  (note != null ? $" ({note})" : "");
             UpdateUi();
         }
 

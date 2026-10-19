@@ -120,7 +120,7 @@ namespace GuitarForm
             _designOpen = designOpen;
             _usedBy.Text = !designOpen ? ""
                 : "Used by this guitar: " + (assigned == null ? "none" : EmptyAs(DisplayName(assigned), "(unnamed fretwire)")) +
-                  (assigned == null && note != null ? $" ({note})" : "");
+                  (note != null ? $" ({note})" : "");
             UpdateUi();
         }
 

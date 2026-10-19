@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using GuitarForm.Data;
 using GuitarForm.Model;
 using Microsoft.Data.Sqlite;
@@ -11,7 +12,7 @@ namespace GuitarForm.Tests
     public class LibraryUpgradeTests
     {
         const long ApplicationId = Schema.ApplicationId;
-        const int LatestVersion = 3; // pinned: bump by hand with each migration
+        const int LatestVersion = 4; // pinned: bump by hand with each migration
 
         // The version 1 schema (migration 0 in Schema.cs), frozen here as it was released.
         const string V1Schema = @"
@@ -187,6 +188,85 @@ namespace GuitarForm.Tests
             Assert.That(File.Exists(backup));
             Assert.That(ScalarAt(backup, "PRAGMA user_version"), Is.EqualTo(2));
             Assert.That(ScalarAt(backup, "SELECT count(*) FROM parts WHERE kind = 'guitar'"), Is.EqualTo(2));
+        }
+
+        // A version 3 library that still holds designs of the old model.
+        void MakeVersion3LibraryWithDesigns()
+        {
+            using (Library.Open(_path)) { }
+            Execute(V1Data + "PRAGMA user_version = 3;");
+        }
+
+        [Test]
+        public void Version3Library_ConvertsItsDesignsToGuitars_AndKeepsTheOldTables()
+        {
+            MakeVersion3LibraryWithDesigns();
+
+            using (var library = Library.Open(_path))
+            {
+                var guitars = library.ListGuitars();
+                Assert.That(guitars.Select(g => g.Name), Is.EqualTo(new[] { "OM", "Parlour" }));
+                Assert.That(guitars.Select(g => g.LegacyDesignId), Is.EqualTo(new long?[] { 1, 2 }));
+                var om = library.LoadGuitar(guitars[0].Id);
+                Assert.That(om.ScaleLength.Value, Is.EqualTo(645));
+                Assert.That(om.NeckJoinFret.Value, Is.EqualTo(14));
+                Assert.That(om.Body.Length.Value, Is.EqualTo(495));
+                Assert.That(library.ListDesigns().Count, Is.EqualTo(2));
+            }
+
+            Assert.That(Scalar("PRAGMA user_version"), Is.EqualTo(LatestVersion));
+            Assert.That(Scalar("SELECT count(*) FROM instruments"), Is.EqualTo(3));
+            Assert.That(Scalar("SELECT count(*) FROM soundholes"), Is.EqualTo(2));
+
+            string backup = BackupPath("GuitarForm.before-v3.bak");
+            Assert.That(File.Exists(backup));
+            Assert.That(ScalarAt(backup, "PRAGMA user_version"), Is.EqualTo(3));
+            Assert.That(ScalarAt(backup, "SELECT count(*) FROM parts WHERE kind = 'guitar'"), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Version3Upgrade_KeepsItsNotes_OnTheLibrary_InAFile_AndOnce()
+        {
+            MakeVersion3LibraryWithDesigns();
+            Library.TakeUpgradeNotes();
+
+            using (var library = Library.Open(_path))
+            {
+                Assert.That(library.UpgradeNotes, Is.Not.Empty);
+                Assert.That(string.Join(" ", library.UpgradeNotes), Does.Contain("instrument preset"));
+            }
+            string notesFile = BackupPath("GuitarForm.before-v3.notes.txt");
+            Assert.That(File.Exists(notesFile));
+            Assert.That(File.ReadAllText(notesFile), Does.Contain("\"Short\""));
+
+            var pending = Library.TakeUpgradeNotes();
+            Assert.That(pending, Is.Not.Empty);
+            Assert.That(Library.TakeUpgradeNotes(), Is.Empty);
+            using (var again = Library.Open(_path))
+                Assert.That(again.UpgradeNotes, Is.Empty);
+        }
+
+        [Test]
+        public void NotesFile_IsNeverOverwritten()
+        {
+            File.WriteAllText(BackupPath("GuitarForm.before-v3.notes.txt"), "earlier");
+            MakeVersion3LibraryWithDesigns();
+
+            using (Library.Open(_path)) { }
+
+            Assert.That(File.ReadAllText(BackupPath("GuitarForm.before-v3.notes.txt")), Is.EqualTo("earlier"));
+            Assert.That(File.Exists(BackupPath("GuitarForm.before-v3.notes.txt")));
+            Assert.That(Directory.GetFiles(_folder, "*.notes.txt").Length, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void Version1Library_IsConvertedToGuitarsToo()
+        {
+            MakeVersion1Library();
+
+            using var library = Library.Open(_path);
+
+            Assert.That(library.ListGuitars().Select(g => g.Name), Is.EqualTo(new[] { "OM", "Parlour" }));
         }
 
         [Test]

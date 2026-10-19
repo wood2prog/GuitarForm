@@ -65,7 +65,7 @@ Text that can't be read is shown in Messages as an input error and leaves the fi
 
 ## Used by a guitar
 
-The design's chosen fretwire is kept by its id in the design's `NewFields` file, beside the library, and the design's JSON export also writes its name, as manufacturer and product code, under `FretwireName` in its `newFields`. When a design is opened, its fretwire is looked up by that id.
+The design's chosen fretwire is kept by its id with the design in the library, and the design's JSON export also writes it in full. When a design is opened, its fretwire is looked up by that id.
 
 - If the fretwire has been deleted, the design shows **none**, with the note "The fretwire this guitar used isn't in the library; choose another on the Frets tab." The frets are then drawn as center lines only.
 - When a design is imported, the fretwire is matched by the exported name. If no fretwire of that name is in the library, the design opens with none and the same note.

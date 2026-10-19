@@ -116,6 +116,11 @@ namespace GuitarForm.Data
             DELETE FROM part_values WHERE abbreviation = 'IN' AND item = -1
                 AND part_id IN (SELECT id FROM parts WHERE kind = 'guitar');
             "),
+
+            // 3 -> 4: the designs of the old model become guitars (the C# step); the old tables stay as they are.
+            new Migration("SELECT 1;",
+                (connection, transaction, context) =>
+                    LegacyDesignMigration.Run(connection, transaction, context.Path, context.Notes)),
         };
 
         // What a migration's C# step can use: the library's file, and a list of notes it can leave for the user.
