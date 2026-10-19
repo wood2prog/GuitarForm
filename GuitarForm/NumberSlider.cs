@@ -41,6 +41,21 @@ namespace GuitarForm
 
         public event EventHandler<EventArgs> TextChanged;
 
+        // The slider takes input and is drawn normally only while it and its bar are both enabled. (Disabling the
+        // slider doesn't change the bar's own flag, so the bar's alone can't be trusted.)
+        bool Active => Enabled && _bar.Enabled;
+
+        protected override void OnEnabledChanged(EventArgs e)
+        {
+            base.OnEnabledChanged(e);
+            if (!Active)
+            {
+                StopEditing();
+                CancelPressWithoutCapture();
+            }
+            _bar.Invalidate();
+        }
+
         // The change for each step of a drag or click on the track, in the units the value is shown in. Shift steps a
         // tenth of it.
         public double Step { get; set; } = 0.1;
@@ -83,7 +98,7 @@ namespace GuitarForm
                     StartEditing();
                     e.Handled = true;
                 }
-                else if ((e.Key == Keys.Left || e.Key == Keys.Right) && _bar.Enabled && !_editing)
+                else if ((e.Key == Keys.Left || e.Key == Keys.Right) && Active && !_editing)
                 {
                     // One step per press; Shift takes a finer step and Ctrl a coarse one (ten steps).
                     double step = e.Modifiers.HasFlag(Keys.Control) ? Step * 10 : CurrentStep(e.Modifiers.HasFlag(Keys.Shift));
@@ -164,7 +179,7 @@ namespace GuitarForm
 
         void StartEditing()
         {
-            if (_editing || !_bar.Enabled)
+            if (_editing || !Active)
                 return;
             _editing = true;
             _textBeforeEdit = _text;
@@ -209,7 +224,7 @@ namespace GuitarForm
 
         void OnMouseDown(object sender, MouseEventArgs e)
         {
-            if (!_bar.Enabled || e.Buttons != MouseButtons.Primary)
+            if (!Active || e.Buttons != MouseButtons.Primary)
                 return;
             _bar.Focus();
             e.Handled = true;
@@ -236,7 +251,7 @@ namespace GuitarForm
             if (!_pressedOnLever)
             {
                 // The typed value is on the lever, so the pointer shows a text cursor over it.
-                _bar.Cursor = _bar.Enabled && LeverBounds.Contains(e.Location) ? Cursors.IBeam : Cursors.Default;
+                _bar.Cursor = Active && LeverBounds.Contains(e.Location) ? Cursors.IBeam : Cursors.Default;
                 return;
             }
             float moved = e.Location.X - _pressX;
@@ -301,12 +316,12 @@ namespace GuitarForm
 
         void Paint(Graphics g)
         {
-            bool enabled = _bar.Enabled;
+            bool enabled = Active;
             float width = _bar.Width;
             float height = _bar.Height;
             float middle = height / 2f;
-            var groove = enabled ? SystemColors.ControlText : SystemColors.DisabledText;
-            var tick = UiMetrics.MutedTickColor;
+            var groove = enabled ? SystemColors.ControlText : UiMetrics.DisabledColor;
+            var tick = enabled ? UiMetrics.MutedTickColor : UiMetrics.DisabledTickColor;
             float s1 = UiMetrics.Scale(1), four = UiMetrics.Scale(4), nine = UiMetrics.Scale(9);
 
             // The track: a groove the length of the lever's travel, with ticks along it and a longer one at the middle.
@@ -332,7 +347,7 @@ namespace GuitarForm
             if (_editing)
                 return;
             var lever = LeverBounds;
-            g.FillRectangle(enabled ? SystemColors.ControlBackground : SystemColors.Control, lever);
+            g.FillRectangle(enabled ? SystemColors.ControlBackground : UiMetrics.DisabledFillColor, lever);
             g.DrawRectangle(_bar.HasFocus || _dragging ? SystemColors.Highlight : groove,
                 lever.X, lever.Y, lever.Width - 1, lever.Height - 1);
 
@@ -341,7 +356,7 @@ namespace GuitarForm
             string text = empty ? PlaceholderText : _text;
             var textSize = g.MeasureString(font, text);
             float textY = lever.Y + (lever.Height - textSize.Height) / 2;
-            var textColor = empty || !enabled ? SystemColors.DisabledText : SystemColors.ControlText;
+            var textColor = empty || !enabled ? UiMetrics.DisabledColor : SystemColors.ControlText;
             g.DrawText(font, textColor, lever.X + (lever.Width - textSize.Width) / 2, textY, text);
         }
     }

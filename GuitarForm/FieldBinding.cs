@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using Eto.Drawing;
 using Eto.Forms;
 using GuitarForm.Model;
 using GuitarForm.Model.Parameters;
@@ -105,7 +106,13 @@ namespace GuitarForm
         // values by whether it has one). A disabled field stays shown and keeps its value.
         public void UpdateState(Guitar guitar)
         {
-            Box.Enabled = Field.IsEnabled(guitar);
+            bool enabled = Field.IsEnabled(guitar);
+            Box.Enabled = enabled;
+            // The caption and unit gray out with the box (a label doesn't always do it by itself).
+            var textColor = enabled ? SystemColors.ControlText : UiMetrics.DisabledColor;
+            if (_row.Cells.Count > 0 && _row.Cells[0].Control is Label caption)
+                caption.TextColor = textColor;
+            _unit.TextColor = textColor;
             Box.PlaceholderText = Field.PlaceholderText();
             _visible = Field.IsVisible(guitar);
             foreach (var cell in _row.Cells)

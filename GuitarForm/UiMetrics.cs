@@ -67,6 +67,15 @@ namespace GuitarForm
         /// <summary>Color for informational notes, readable on the current background.</summary>
         public static Color NoteColor => IsDark ? Color.FromArgb(130, 180, 240) : Color.FromArgb(25, 90, 160);
 
+        /// <summary>Color for the text and outlines of a disabled control, clearly dimmer than enabled ones.</summary>
+        public static Color DisabledColor => IsDark ? Color.FromArgb(105, 105, 105) : Color.FromArgb(165, 165, 165);
+
+        /// <summary>Color for the tick marks of a disabled slider.</summary>
+        public static Color DisabledTickColor => IsDark ? Color.FromArgb(75, 75, 75) : Color.FromArgb(205, 205, 205);
+
+        /// <summary>Fill for the lever of a disabled slider, close to the background.</summary>
+        public static Color DisabledFillColor => IsDark ? Color.FromArgb(50, 50, 50) : Color.FromArgb(235, 235, 235);
+
         /// <summary>Color for faint tick marks and other secondary detail, visible but quiet on the current background.</summary>
         public static Color MutedTickColor => IsDark ? Color.FromArgb(150, 150, 150) : Color.FromArgb(120, 120, 120);
 
