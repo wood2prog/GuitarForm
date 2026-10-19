@@ -86,13 +86,13 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 
 ### Pre-migration cleanup
 
-- [ ] Delete the legacy Geometry classes used only by tests (`PlateGeometry`, `SideViewGeometry`, `SoundholeGeometry`, `DesignDrawing.Draw`) and their tests.
+- [x] Delete the legacy Geometry classes used only by tests (`PlateGeometry`, `SideViewGeometry`, `SoundholeGeometry`, `DesignDrawing.Draw`) and their tests.
 - [ ] Extract the shared shape helpers (Format, Error/Remark/Warning, Intersect, Join, Rectangle, tolerances) from the shapes.
 - [ ] Split `BracingShape` (move the outline offset and point-in-polygon maths out), `PlateShape.AddCutaway`, `NeckSideShape.Build` and `NeckProfilesShape` sampling.
 - [x] Tag `GuitarDrawing` output by role and layer, so `DesignBuilder` can use separate layers (`GuitarDrawing.Items` of `DrawnItem`; `DesignBuilder` uses the `ComponentStyles` layer tree).
 - [ ] Split the neck heel from the `NeckSideShape` outline: the Heel layer exists, but nothing is tagged Heel yet.
 - [ ] Add tests for plug-in code and for `ComponentStyles` (needs Rhino-free code moved out of the .rhp, as above).
-- [ ] The T0 deletion of the legacy Geometry classes is still pending, blocked on the owner's action (`git rm` of the listed files). `CLAUDE.md` still names `PlateGeometry`.
+- [x] The T0 deletion of the legacy Geometry classes is done, and `CLAUDE.md` is updated.
 - [ ] **(decision)** The `docs/Body.md` side-view Quick Test row disagrees with the Shapes drawing; the owner decides which is right.
 - [ ] **(question)** When the strings overlap, the fallback draws the two outer strings as center lines. Should it draw rectangles anyway?
 - [ ] **(question)** Cross-checks between the Fretwire Slot Depth (FWSD) and the Tang Height (FWTH) or the fretboard thickness: which, if any, should be errors or warnings?

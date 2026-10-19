@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using GuitarForm.Model;
@@ -23,26 +22,12 @@ namespace GuitarForm.Geometry
         public IReadOnlyList<Curve> Outline =>
             _curves.Where(c => c.Role == Shapes.DrawingRole.Outline).Select(c => c.Curve).ToList();
 
-        void Add(Curve curve, Shapes.DrawingComponent component, Shapes.DrawingRole role) =>
-            _curves.Add(new DrawnCurve(curve, component, role));
-
         public List<GeometryMessage> InstrumentMessages { get; } = new List<GeometryMessage>();
         public List<GeometryMessage> BodyMessages { get; } = new List<GeometryMessage>();
         public List<GeometryMessage> SoundholeMessages { get; } = new List<GeometryMessage>();
 
-        // Where the side view's bottom line was drawn, or null if it wasn't.
+        // Where the side view starts (its left edge), or null if it wasn't drawn.
         public double? SideViewOffset { get; private set; }
-
-        // Lengths in messages are written with formatLength; see PlateGeometry.Solve.
-        public static DesignDrawing Draw(GuitarDesign design, double tolerance, double gap, Func<double, string> formatLength = null)
-        {
-            var drawing = new DesignDrawing();
-            drawing.InstrumentMessages.AddRange(design.Instrument.Validate());
-            drawing.DrawBody(design.Body, tolerance, gap, formatLength);
-            if (design.Soundhole != null)
-                drawing.DrawSoundhole(design.Soundhole);
-            return drawing;
-        }
 
         // A drawing made by GuitarForm.Shapes, as Rhino curves, with each section's messages.
         public static DesignDrawing FromShapes(Shapes.GuitarDrawing shapes, IEnumerable<GeometryMessage> instrumentMessages,
@@ -58,54 +43,6 @@ namespace GuitarForm.Geometry
             drawing.SoundholeMessages.AddRange(soundholeMessages);
             drawing.SideViewOffset = shapes?.SideView?.Outline?.Bounds.MinX;
             return drawing;
-        }
-
-        void DrawBody(Body body, double tolerance, double gap, Func<double, string> formatLength)
-        {
-            var plate = PlateGeometry.Solve(body, tolerance, formatLength);
-            BodyMessages.AddRange(plate.Messages);
-            if (plate.Failed)
-                return;
-
-            const Shapes.DrawingComponent top = Shapes.DrawingComponent.TopPlate;
-            foreach (var line in plate.ConstructionLines)
-                Add(new LineCurve(line), top, Shapes.DrawingRole.Construction);
-            foreach (var circle in plate.OutlineRadii)
-                Add(new ArcCurve(circle), top, Shapes.DrawingRole.Construction);
-            foreach (var arc in plate.OutlineArcs)
-                Add(new ArcCurve(arc), top, Shapes.DrawingRole.Outline);
-            foreach (var line in plate.OutlineLines)
-                Add(new LineCurve(line), top, Shapes.DrawingRole.Outline);
-
-            double offset = RightEdge(plate) + gap;
-            var side = SideViewGeometry.Solve(body, offset);
-            BodyMessages.AddRange(side.Messages);
-            if (side.Failed || side.OutlineLines.Count == 0)
-                return;
-
-            foreach (var line in side.OutlineLines)
-                Add(new LineCurve(line), Shapes.DrawingComponent.Sides, Shapes.DrawingRole.Outline);
-            SideViewOffset = offset;
-        }
-
-        void DrawSoundhole(Soundhole soundhole)
-        {
-            var geometry = SoundholeGeometry.Solve(soundhole);
-            SoundholeMessages.AddRange(geometry.Messages);
-            if (!geometry.Failed)
-                Add(new ArcCurve(geometry.Circle), Shapes.DrawingComponent.Soundhole, Shapes.DrawingRole.Outline);
-        }
-
-        // The plate's widest point to the right of the centreline: its outline and construction lines, but not the
-        // outline radii circles, which can reach past the outline. 0 if nothing has been drawn.
-        static double RightEdge(PlateGeometry plate)
-        {
-            double right = 0;
-            foreach (var arc in plate.OutlineArcs)
-                right = Math.Max(right, arc.BoundingBox().Max.X);
-            foreach (var line in plate.OutlineLines.Concat(plate.ConstructionLines))
-                right = Math.Max(right, Math.Max(line.From.X, line.To.X));
-            return right;
         }
     }
 }

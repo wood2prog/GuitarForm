@@ -4,9 +4,9 @@ Running record of where the project stands. Update it at the end of each session
 
 ## State
 
-- Branch: `main`. All of this session's work is **uncommitted**.
-- Build: 0 warnings. Tests: 443 passing.
-- An independent review of this batch was done and its findings were fixed (T10). Everything is still uncommitted.
+- Branch: `main`. This session's work is committed.
+- Build: 0 warnings. Tests: 402 passing (down from 443 with the deleted legacy tests).
+- An independent review of this batch was done and its findings were fixed (T10). 
 - A code review of the whole codebase was done; the quick fixes from it are in.
 - Bracing, Fretboard and Frets docs are written.
 - `IMPROVEMENTS.md` is cleaned up and holds the tech-debt checklist, with open product questions in section 4.
@@ -25,7 +25,11 @@ Running record of where the project stands. Update it at the end of each session
   - Model fields FWSD, FWPR and FBSO (FWM is now optional).
 - Wrote `docs/Frets.md` and updated `docs/Fretboard.md`, the README, `CLAUDE.md` and `IMPROVEMENTS.md`.
 
-## Needs checking in Rhino
+## Rhino checks
+
+The owner confirmed the Rhino checks all passed.
+
+(Old checklist, kept for reference.)
 
 - Type junk such as `abc` into a field, then try Save, Save as, Build, Export and switching design. Each should refuse with a message, and work again once the field is fixed. WORKS
 - Change the document units mm to inches and back. Confirm length slider steps follow, while angle sliders don't. WORKS
@@ -76,6 +80,8 @@ Unsaved library edits, prompts and builds:
 
 ## Decisions made
 
+- T0 is done: `PlateGeometry`, `SideViewGeometry`, `SoundholeGeometry`, `DesignDrawing.Draw` and their tests are deleted. `CustomSoundholeGeometry` stays.
+- Body.md side view is resolved: the top line is straight and the back line slopes by TD - ND.
 - Partial drawing: only the failed parts go blank. The rest draws with a warning.
 - Custom soundhole is a planned feature. Keep the legacy `CustomSoundholeGeometry` until then.
 - `NEXT.md` is the running state record. Update it at the end of each session.
@@ -92,15 +98,13 @@ Unsaved library edits, prompts and builds:
 
 ## Next up
 
-1. The owner decides the T0 deletions (`git rm` of the 7 listed legacy Geometry files and their tests) and the `docs/Body.md` side-view numbers.
-2. Commit, after the Rhino checks above pass.
-3. Split the neck heel from the `NeckSideShape` outline, so the Heel layer gets objects.
-4. Remaining pre-migration cleanup, from `IMPROVEMENTS.md`: extract the shared shape helpers; add an upgrade test and a backup before migration; add culture tests; add tests for the untested shapes and for plug-in code.
-5. Migrate `NewFields` into the library. This needs the owner's sign-off and a senior-engineer plan first.
+1. Split the neck heel from the `NeckSideShape` outline, so the Heel layer gets objects.
+2. Remaining pre-migration cleanup, from `IMPROVEMENTS.md`: extract the shared shape helpers; add an upgrade test and a backup before migration; add culture tests; add tests for the untested shapes and for plug-in code.
+3. Migrate `NewFields` into the library. This needs the owner's sign-off and a senior-engineer plan first.
 
 ## Open questions for the owner
 
-- The plan in `docs/Plan-FretsAndLayers.md` is built. The T0 deletion of the legacy Geometry classes is still pending your action, and `docs/Body.md`'s side-view Quick Test row disagrees with the Shapes drawing: which is right?
+- The plan in `docs/Plan-FretsAndLayers.md` is built.
 - When the strings overlap, should the fallback draw rectangles instead of the two outer center lines?
 - Should the fretwire's Slot Depth be cross-checked against its Tang Height or the fretboard thickness, and how?
 - What unit or currency is the fretwire price in?

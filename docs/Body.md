@@ -104,9 +104,9 @@ Together with the heel flat, shoulder arcs, waist tangent lines and tail, these 
 The side view is drawn once both TD and ND are set; until then a note says so. It's built the same way up as the plate, with the tail end at y = 0 and the body length up +Y, then placed to the right of the plate: its bottom line sits the drawing gap (see [Settings](Settings.md#drawing), 50 mm by default) right of the plate's widest point. Before it's moved right, its outline is:
 
 1. **Tail depth line:** from (0, 0) to (TD, 0).
-2. **Neck depth line:** from (0, L) to (ND, L).
-3. **Bottom line:** from (0, 0) to (0, L).
-4. **Top line:** from (TD, 0) to (ND, L).
+2. **Neck depth line:** from (TD − ND, L) to (TD, L), so the depth at the neck end is ND, measured from the straight top line.
+3. **Bottom (back) line:** from (0, 0) to (TD − ND, L), sloped, so the depth at the neck end is ND.
+4. **Top line:** from (TD, 0) to (TD, L), straight.
 
 ## Quick test
 
@@ -125,5 +125,5 @@ In a document in millimetres, make a design with body length 600 and type these 
 | LbSO | 40 | Lower bout secondary circles of radius 160 centred at x = ±30, with outer edges still at x = ±190. A waist tangent line runs from about (±161.7, 220.8) on each lower secondary circle to (±130.6, 265.9) on the waist circle. |
 | LbSO | change to 70 | Error: the lower bout secondary circle overlaps the waist circle. With these values, the most LbSO can be is about 61.4. Just below that, the lower waist tangent lines become very short. |
 | LbSO, LbO | change LbSO back to 40, and LbO to 0 | The tail arc disappears and the tail becomes a straight line from (−70, 0) to (70, 0). |
-| TD, ND | 120, 95 (with UbO 5 and LbO 10 again) | The side view appears 50 right of the lower bout's widest point (x = 190): its bottom line runs from (240, 0) to (240, 600), and its top line from (360, 0) to (335, 600). |
+| TD, ND | 120, 95 (with UbO 5 and LbO 10 again) | The side view appears 50 right of the lower bout's widest point (x = 190): its top line runs straight from (360, 0) to (360, 600), and its bottom (back) line slopes from (240, 0) to (265, 600). |
 | TD | change to 0 | Error: the tail depth must be greater than zero. |
