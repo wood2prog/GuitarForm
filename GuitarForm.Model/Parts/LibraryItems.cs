@@ -34,6 +34,9 @@ namespace GuitarForm.Model.Parts
             public static readonly ParameterDefinition TangHeight = ParameterDefinition.Size("Fretwire Tang Height", "FWTH");
             public static readonly ParameterDefinition TangThickness = ParameterDefinition.Size("Fretwire Tang Thickness", "FWTT");
             public static readonly ParameterDefinition BarbThickness = ParameterDefinition.Size("Fretwire Barb Thickness", "FWBT");
+            public static readonly ParameterDefinition SlotDepth = ParameterDefinition.Size("Fretwire Slot Depth", "FWSD");
+            // A plain number (no currency), zero or more.
+            public static readonly ParameterDefinition Price = ParameterDefinition.Number("Fretwire Price", "FWPR", "", 0.01) with { MinimumExclusive = false };
         }
 
         // The library's id for this fretwire. Null until it's saved.
@@ -46,6 +49,8 @@ namespace GuitarForm.Model.Parts
         public NumberParameter TangHeight { get; init; } = new(Definitions.TangHeight);
         public NumberParameter TangThickness { get; init; } = new(Definitions.TangThickness);
         public NumberParameter BarbThickness { get; init; } = new(Definitions.BarbThickness);
+        public NumberParameter SlotDepth { get; init; } = new(Definitions.SlotDepth);
+        public NumberParameter Price { get; init; } = new(Definitions.Price);
 
         protected override IEnumerable<ModelMessage> CheckValues(LengthUnit unit, IFormatProvider culture)
         {

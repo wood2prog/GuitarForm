@@ -296,13 +296,59 @@ namespace GuitarForm.Tests
         }
 
         [Test]
-        public void LibraryItem_NeedsManufacturerAndProduct()
+        public void LibraryItem_NeedsProduct_AndStringSetsAlsoManufacturer()
         {
             var unnamed = TestGuitars.Fretwire with { ProductCode = new(Fretwire.Definitions.ProductCode) };
-
             var error = Assert.Throws<InvalidOperationException>(() => _library.SaveLibraryItem(unnamed));
             Assert.That(error.Message, Is.EqualTo(
-                "A fretwire needs a Fretwire Manufacturer (FWM) and Fretwire Product Code (FWPC) to be saved in the library."));
+                "A fretwire needs a Fretwire Product Code (FWPC) to be saved in the library."));
+
+            var noManufacturer = TestGuitars.StringSet with { Manufacturer = new(StringSet.Definitions.Manufacturer) };
+            error = Assert.Throws<InvalidOperationException>(() => _library.SaveLibraryItem(noManufacturer));
+            Assert.That(error.Message, Is.EqualTo(
+                "A string set needs a String Set Manufacturer (SSM) and String Set Name (SSN) to be saved in the library."));
+        }
+
+        [Test]
+        public void Fretwire_WithoutManufacturer_IsNamedByProductCode()
+        {
+            var bare = TestGuitars.Fretwire with { Manufacturer = new(Fretwire.Definitions.Manufacturer, "  ") };
+            long id = _library.SaveLibraryItem(bare);
+
+            Assert.That(_library.ListLibraryItems<Fretwire>().Single().Name, Is.EqualTo("47104"));
+            Assert.That(() => _library.SaveLibraryItem(bare), Throws.InvalidOperationException);
+            Assert.That(_library.SaveLibraryItem(TestGuitars.Fretwire), Is.Not.EqualTo(id));
+            Assert.That(_library.ListLibraryItems<Fretwire>().Select(i => i.Name), Is.EquivalentTo(new[] { "47104", "Jescar 47104" }));
+        }
+
+        [Test]
+        public void SlotDepthPriceAndOverage_SaveAndReload()
+        {
+            var wire = TestGuitars.Fretwire with
+            {
+                SlotDepth = new(Fretwire.Definitions.SlotDepth, 1.7),
+                Price = new(Fretwire.Definitions.Price, 12.5),
+            };
+            var guitar = TestGuitars.OM("Slots");
+            guitar = guitar with
+            {
+                Neck = guitar.Neck with
+                {
+                    Fretwire = wire,
+                    Fretboard = guitar.Neck.Fretboard with { SlotOverage = new(Fretboard.Definitions.SlotOverage, 0.4) },
+                },
+            };
+
+            long wireId = _library.SaveLibraryItem(wire);
+            var reloadedWire = _library.LoadLibraryItem<Fretwire>(wireId);
+            Assert.That(reloadedWire.SlotDepth.Value, Is.EqualTo(1.7));
+            Assert.That(reloadedWire.Price.Value, Is.EqualTo(12.5));
+
+            long id = _library.CreateGuitar(guitar with { Neck = guitar.Neck with { Fretwire = reloadedWire } });
+            var loaded = _library.LoadGuitar(id);
+            Assert.That(loaded.Neck.Fretboard.SlotOverage.Value, Is.EqualTo(0.4));
+            Assert.That(loaded.Neck.Fretwire.SlotDepth.Value, Is.EqualTo(1.7));
+            Assert.That(loaded.Neck.Fretwire.Price.Value, Is.EqualTo(12.5));
         }
 
         [Test]

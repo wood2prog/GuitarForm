@@ -88,5 +88,34 @@ namespace GuitarForm.Tests
         {
             Assert.Throws<FormatException>(() => new Body().WithStoredValues(new[] { new PartValue("CTT", null, "Spanish") }));
         }
+
+        [Test]
+        public void NumericChoiceName_Throws()
+        {
+            Assert.Throws<FormatException>(() => new Body().WithStoredValues(new[] { new PartValue("CTT", null, "1") }));
+        }
+
+        [Test]
+        public void CountTooLargeForAnInt_ThrowsFormatException()
+        {
+            Assert.Throws<FormatException>(() => new Guitar().WithStoredValues(new[] { new PartValue("NJF", null, 99999999999L) }));
+            Assert.Throws<FormatException>(() => new Guitar().WithStoredValues(new[] { new PartValue("NJF", null, 1e20) }));
+        }
+
+        [Test]
+        public void WronglyTypedValues_Throw()
+        {
+            Assert.Throws<FormatException>(() => new Guitar().WithStoredValues(new[] { new PartValue("SL", null, true) }));
+            Assert.Throws<FormatException>(() => new Guitar().WithStoredValues(new[] { new PartValue("SL", null, "645") }));
+            Assert.Throws<FormatException>(() => new Guitar().WithStoredValues(new[] { new PartValue("NJF", null, "12") }));
+            Assert.Throws<FormatException>(() => new Guitar().WithStoredValues(new[] { new PartValue("IN", null, 12L) }));
+        }
+
+        [Test]
+        public void NonFiniteNumbers_Throw()
+        {
+            Assert.Throws<FormatException>(() => new Guitar().WithStoredValues(new[] { new PartValue("SL", null, double.NaN) }));
+            Assert.Throws<FormatException>(() => new Guitar().WithStoredValues(new[] { new PartValue("SL", null, double.PositiveInfinity) }));
+        }
     }
 }

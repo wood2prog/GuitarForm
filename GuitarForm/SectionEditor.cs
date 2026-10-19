@@ -12,7 +12,7 @@ namespace GuitarForm
     // A length is stored in mm and shown in the document's units; other numbers (counts) are shown as they are.
     // A required number can't be left blank; a whole number can't have a fraction; a number with a Minimum (in mm for
     // a length) can't be less than it, and a slider stops there. Step is how much a slider changes the value per
-    // step, in the units it's shown in.
+    // step (in mm for a length, converted to the document's units when shown).
     sealed record NumberField<T>(
         string Label,
         bool IsLength,
@@ -106,13 +106,21 @@ namespace GuitarForm
                 double? number = value == null ? null : field.Get(value);
                 _boxes[i].Text = number == null ? "" : field.IsLength ? units.FormatNumber(number.Value) : Format(number.Value);
                 _unitLabels[i].Text = field.IsLength ? units.Abbreviation : "";
-                if (_boxes[i] is NumberSlider slider && field.Minimum is double minimum)
-                    slider.Minimum = field.IsLength ? units.FromMillimetres(minimum) : minimum;
+                if (_boxes[i] is NumberSlider slider)
+                {
+                    // Steps are defined in mm for a length, so they follow the document's units.
+                    slider.Step = field.IsLength ? units.FromMillimetres(field.Step) : field.Step;
+                    if (field.Minimum is double minimum)
+                        slider.Minimum = field.IsLength ? units.FromMillimetres(minimum) : minimum;
+                }
                 _inputErrors[i] = null;
             }
             _showing = false;
             ShowAllMessages();
         }
+
+        // Whether any box holds text that couldn't be read (so the record is not what the boxes show).
+        public bool HasInputErrors => _inputErrors.Any(e => e != null);
 
         // The messages from validating or drawing the section.
         public void ShowMessages(IReadOnlyList<GeometryMessage> messages)

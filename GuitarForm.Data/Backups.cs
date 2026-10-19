@@ -27,8 +27,15 @@ namespace GuitarForm.Data
             Directory.CreateDirectory(backupFolder);
             string path = System.IO.Path.Combine(backupFolder, Prefix + now.ToString(TimeFormat, CultureInfo.InvariantCulture) + ".db");
             string temporary = path + ".tmp";
-            Copy(libraryPath, temporary);
-            File.Move(temporary, path, true);
+            try
+            {
+                Copy(libraryPath, temporary);
+                File.Move(temporary, path, true);
+            }
+            finally
+            {
+                try { if (File.Exists(temporary)) File.Delete(temporary); } catch (IOException) { }
+            }
             return path;
         }
 
@@ -93,7 +100,16 @@ namespace GuitarForm.Data
                 throw new InvalidDataException($"{backupPath} is not a GuitarForm library: {e.Message}", e);
             }
 
-            string safety = File.Exists(libraryPath) ? BackUp(libraryPath, backupFolder) : null;
+            // Never overwrites an earlier backup made in the same second: the safety copy moves on to the next free second.
+            string safety = null;
+            if (File.Exists(libraryPath))
+            {
+                var time = DateTime.Now;
+                while (File.Exists(System.IO.Path.Combine(backupFolder,
+                           Prefix + time.ToString(TimeFormat, CultureInfo.InvariantCulture) + ".db")))
+                    time = time.AddSeconds(1);
+                safety = BackUp(libraryPath, backupFolder, time);
+            }
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(libraryPath)));
             Copy(backupPath, libraryPath);
             return safety;

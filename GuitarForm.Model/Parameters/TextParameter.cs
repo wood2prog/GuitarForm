@@ -11,8 +11,13 @@ namespace GuitarForm.Model.Parameters
 
         public override object StoredValue => HasValue ? Value : null;
 
-        public override Parameter WithStoredValue(object value) =>
-            this with { Value = value == null ? null : Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) };
+        // Only text is taken: a number or true/false is a wrongly typed value, not a name.
+        public override Parameter WithStoredValue(object value) => value switch
+        {
+            null => this with { Value = null },
+            string text => this with { Value = text },
+            _ => throw new FormatException($"{Label}: \"{value}\" isn't text."),
+        };
 
         public override bool TryParse(string text, LengthUnit unit, IFormatProvider culture, out Parameter result,
             out ModelMessage error)

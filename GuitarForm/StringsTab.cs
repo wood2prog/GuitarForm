@@ -26,6 +26,7 @@ namespace GuitarForm
         readonly Button _new = new Button { Text = "&New" };
         readonly Button _use = new Button { Text = "&Use for this guitar" };
         readonly Label _usedBy = new Label { Text = "", VerticalAlignment = VerticalAlignment.Center };
+        const string Kind = "string set";
         readonly Func<string> _libraryPath;
         bool _designOpen;
         DisplayUnits _units = DisplayUnits.Current;
@@ -87,7 +88,7 @@ namespace GuitarForm
             }
             catch (Exception e)
             {
-                Rhino.RhinoApp.WriteLine($"GuitarForm: couldn't list the string sets: {e.Message}");
+                global::Rhino.RhinoApp.WriteLine($"GuitarForm: couldn't list the string sets: {e.Message}");
                 ShowSet(BlankSet(), BlankSet());
             }
         }
@@ -162,21 +163,24 @@ namespace GuitarForm
         {
             if (!IsDirty)
                 return true;
+            return LibraryItemUi.ConfirmDiscard(this, Kind, DisplayName(_set), Save);
+        }
+
+        // Drops unsaved changes by showing the saved set again (no question: the caller has asked).
+        public void DiscardChanges()
+        {
+            if (!IsDirty)
+                return;
             try
             {
-                string name = DisplayName(_set);
-                var answer = MessageBox.Show(this, name.Length == 0 ? "Save changes to the new string set?" : $"Save changes to \"{name}\"?",
-                    "GuitarForm", MessageBoxButtons.YesNoCancel, MessageBoxType.Question);
-                if (answer == DialogResult.Cancel)
-                    return false;
-                if (answer == DialogResult.No)
-                    return true;
-                return Save();
+                if (_set.Id is long id)
+                    Open(id);
+                else
+                    ShowSet(BlankSet(), BlankSet());
             }
             catch (Exception e)
             {
-                MessageBox.Show(this, e.Message, "GuitarForm", MessageBoxType.Error);
-                return false;
+                global::Rhino.RhinoApp.WriteLine($"GuitarForm: couldn't reload the string set: {e.Message}");
             }
         }
 
@@ -219,10 +223,7 @@ namespace GuitarForm
             _showing = true;
             try
             {
-                _picker.Items.Clear();
-                foreach (var item in sets)
-                    _picker.Items.Add(new ListItem { Text = item.Name, Key = item.Id.ToString(CultureInfo.InvariantCulture) });
-                _picker.SelectedKey = select?.ToString(CultureInfo.InvariantCulture);
+                LibraryItemUi.FillPicker(_picker, sets, select);
             }
             finally
             {
@@ -253,7 +254,12 @@ namespace GuitarForm
                 _showing = false;
                 return;
             }
-            Run(() => Open(id));
+            if (!Run(() => Open(id)))
+            {
+                _showing = true;
+                _picker.SelectedKey = _set.Id?.ToString(CultureInfo.InvariantCulture);
+                _showing = false;
+            }
         }
 
         // --- Buttons ---
@@ -340,8 +346,7 @@ namespace GuitarForm
         {
             if (!IsDirty)
                 return;
-            if (MessageBox.Show(this, $"Discard unsaved changes to {(_set.Id == null ? "the new string set" : $"\"{DisplayName(_savedSet)}\"")}?",
-                    "GuitarForm", MessageBoxButtons.OKCancel, MessageBoxType.Warning) != DialogResult.Ok)
+            if (!LibraryItemUi.ConfirmRevert(this, Kind, _set.Id == null, DisplayName(_savedSet)))
                 return;
             if (_set.Id is long id)
                 Open(id);
@@ -354,23 +359,7 @@ namespace GuitarForm
             if (_set.Id is not long id)
                 return;
             string name = DisplayName(_savedSet);
-            var users = WithLibrary(library => library.NecksUsing(id));
-            long? replacement = null;
-            if (users.Count > 0)
-            {
-                var others = WithLibrary(library => library.ListLibraryItems<StringSet>()).Where(s => s.Id != id).ToList();
-                if (others.Count == 0)
-                {
-                    MessageBox.Show(this, $"\"{name}\" is used by {users.Count} neck{(users.Count == 1 ? "" : "s")}, and there's no other string set to replace it with. Save another set first.",
-                        "GuitarForm", MessageBoxType.Warning);
-                    return;
-                }
-                replacement = ReplacementDialog.Ask(this, name, users.Select(u => u.Name ?? u.GuitarName).ToList(), others, IsDirty);
-                if (replacement == null)
-                    return;
-            }
-            else if (MessageBox.Show(this, $"Delete the string set \"{name}\"? This can't be undone, except by restoring a backup.{(IsDirty ? " Its unsaved changes are lost too." : "")}",
-                         "GuitarForm", MessageBoxButtons.OKCancel, MessageBoxType.Warning) != DialogResult.Ok)
+            if (!LibraryItemUi.ConfirmDelete<StringSet>(this, _libraryPath, Kind, name, id, IsDirty, out long? replacement))
                 return;
 
             WithLibrary(library =>
@@ -391,66 +380,8 @@ namespace GuitarForm
 
         // --- Helpers ---
 
-        T WithLibrary<T>(Func<Library, T> action)
-        {
-            using var library = Library.Open(_libraryPath());
-            return action(library);
-        }
+        T WithLibrary<T>(Func<Library, T> action) => LibraryItemUi.WithLibrary(_libraryPath, action);
 
-        void Run(Action action)
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show(this, e.Message, "GuitarForm", MessageBoxType.Error);
-            }
-        }
-
-        // Lists the necks that use a set and asks which other set they should use from now on.
-        sealed class ReplacementDialog : Dialog<bool>
-        {
-            readonly DropDown _choices = new DropDown { Width = UiMetrics.SliderMaxWidth };
-            readonly IReadOnlyList<LibraryItemInfo> _sets;
-
-            ReplacementDialog(string name, IReadOnlyList<string> users, IReadOnlyList<LibraryItemInfo> sets, bool unsaved)
-            {
-                _sets = sets;
-                Title = "Delete string set";
-                Padding = UiMetrics.PagePadding;
-                Resizable = true;
-                foreach (var set in sets)
-                    _choices.Items.Add(set.Name);
-                _choices.SelectedIndex = 0;
-
-                var ok = new Button { Text = "Delete" };
-                ok.Click += (_, _) => Close(true);
-                var cancel = new Button { Text = "Cancel" };
-                cancel.Click += (_, _) => Close(false);
-                DefaultButton = ok;
-                AbortButton = cancel;
-
-                var layout = new StackLayout { Spacing = UiMetrics.Gap, HorizontalContentAlignment = HorizontalAlignment.Stretch };
-                layout.Items.Add(new Label
-                {
-                    Text = $"\"{name}\" is used by {users.Count} neck{(users.Count == 1 ? "" : "s")}:\n" + string.Join("\n", users) +
-                        "\n\nChoose the string set they will use instead." +
-                        (unsaved ? "\n\nUnsaved changes to the working copy will be lost." : ""),
-                    Wrap = WrapMode.Word,
-                });
-                layout.Items.Add(_choices);
-                layout.Items.Add(new StackLayout { Orientation = Orientation.Horizontal, Spacing = UiMetrics.Gap, Items = { ok, cancel } });
-                Content = layout;
-            }
-
-            public static long? Ask(Control parent, string name, IReadOnlyList<string> users, IReadOnlyList<LibraryItemInfo> sets, bool unsaved)
-            {
-                var dialog = new ReplacementDialog(name, users, sets, unsaved);
-                return dialog.ShowModal(parent) && dialog._choices.SelectedIndex >= 0
-                    ? dialog._sets[dialog._choices.SelectedIndex].Id : null;
-            }
-        }
+        bool Run(Action action) => LibraryItemUi.Run(this, action);
     }
 }

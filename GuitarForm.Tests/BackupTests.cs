@@ -135,6 +135,32 @@ namespace GuitarForm.Tests
         }
 
         [Test]
+        public void Restore_TwiceInASecond_KeepsBothSafetyCopies()
+        {
+            CreateLibrary(OM);
+            string backup = Backups.BackUp(_library, _backups, new DateTime(2026, 10, 1, 9, 0, 0));
+
+            string first = Backups.Restore(backup, _library, _backups);
+            string second = Backups.Restore(backup, _library, _backups);
+
+            Assert.That(second, Is.Not.EqualTo(first));
+            Assert.That(File.Exists(first), Is.True);
+            Assert.That(File.Exists(second), Is.True);
+        }
+
+        [Test]
+        public void BackUp_ThatFails_LeavesNoTemporaryFile()
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(_library));
+            File.WriteAllText(_library, "not a database");
+
+            Assert.That(() => Backups.BackUp(_library, _backups, new DateTime(2026, 10, 8, 9, 0, 0)),
+                Throws.InstanceOf<Exception>());
+
+            Assert.That(Directory.GetFiles(_backups), Is.Empty);
+        }
+
+        [Test]
         public void Restore_FromAFileThatIsntALibrary_LeavesTheLibraryAlone()
         {
             CreateLibrary(OM);

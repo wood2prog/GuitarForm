@@ -2,172 +2,160 @@
 
 Project-organisation work, in the order we plan to do it. Tick items off as they're done. Items marked **(decision)** need direction from the user before any code is written.
 
-## 1. Development setup
+## Where we left off
 
-Makes the refactors below easier to check in Rhino.
+- The Strings tab is built and committed (f1297f3, 40747d1, cc76023), and the user checked it in Rhino: it looks good. See [docs/Strings.md](docs/Strings.md).
+- Plan followed: library editor and picker; "Use for this guitar" stores the StringSetId in `NewFields/<id>.json`; unit weight in lb/in by default, with a remembered toggle; no crash recovery; no tension calculation.
+- Known limitations and follow-ups:
+  - Deleting a string set can't see designs that use it through `NewFields`, so they show none, with a note.
+  - Add/Remove String drops held invalid input in other boxes, and Remove has no confirmation.
+  - Collapsed string groups can re-expand under the wrong title after Add/Remove, because state is keyed by title.
+  - Imports match a string set by name only.
+  - When the panel moves to the new model, move the chosen set from `NewFields` onto library guitars' necks.
+- The Frets tab, courses, side dots, colors and layers (see [docs/Plan-FretsAndLayers.md](docs/Plan-FretsAndLayers.md)) are built but uncommitted and not yet checked in Rhino; see `NEXT.md`. The tab is documented in [docs/Frets.md](docs/Frets.md).
+- Workflow: the manager session delegates all edits to workers. All new work needs the user's explicit "build it" before implementation starts.
 
-- [x] Add a `.sln` file so the project opens in Visual Studio.
-- [x] Add `Properties/launchSettings.json` that starts Rhino 8 with Grasshopper, so F5 builds and attaches the debugger.
-- [x] Commit a clean example definition (`Examples/Plate.gh`) wired with the README Quick Test slider values. `Test File.gh` stays ignored as a scratch file. *(The user saves the .gh from Grasshopper.)*
+## Decided: plug-in and design database
 
-## 2. Shared base class for display and baking
-
-Every component draws construction geometry light grey and the final outline in the default preview colour (see CLAUDE.md). That code is currently in `PlateComponent` (`ClippingBox`, `DrawViewportWires`, `IsBakeCapable`, `BakeGeometry`, ~60 lines) and would be copied into each new component.
-
-- [x] Add a `GuitarFormComponent` base class that owns the construction and outline geometry lists and does the clipping box, preview and baking.
-- [x] Move `PlateComponent` onto it, with no change in behaviour.
-- [x] Update the "Component conventions" in CLAUDE.md to point at the base class.
-
-## 3. Separate the Plate geometry from the component
-
-`PlateComponent.cs` is 570 lines, and `SolveInstance` alone is about 325 of them. It mixes reading inputs, validating them, the geometry maths and setting outputs.
-
-- [x] Move the geometry into a plain class (e.g. `Geometry/PlateGeometry.cs`) that takes the dimensions and returns the construction lines, circles, outline arcs and outline lines, plus errors, warnings and remarks.
-- [x] The component then reads inputs, calls it, reports its messages and sets outputs.
-- [x] Add `Out*` constants for output positions, the same way inputs use `In*` constants (the code currently calls `SetDataList(0..3, …)`).
-- [x] Replace the repeated "must be greater than zero" checks (about 7) with one helper.
-- [x] Make tolerance use consistent: `AddMirroredSegment` uses a hard-coded `1e-9`, and the rest of the code uses `DocumentTolerance()`.
-
-## 4. Automated tests
-
-- [x] Add a test project for the geometry class. *(NUnit, because Rhino.Testing requires it.)*
-- [x] Turn the README Quick Test values into tests: tail arc radius 370, shoulder arc radius 116.9, tangent line end points, the largest LbSO (about 61.4), and the error cases. *(This found that the README's upper waist tangent values were wrong; corrected to (±139.2, 481.0) → (±120.3, 306.5).)*
-- [x] Check which RhinoCommon types work without Rhino running; use [Rhino.Testing](https://github.com/mcneel/Rhino.Testing) if native code is needed. *(None load without Rhino, so the tests use Rhino.Testing.)*
-- [x] Update CLAUDE.md and the README with how to run the tests.
-
-## 5. Plate decisions and polish
-
-- [x] **(decision)** `HeelMarkLength = 0.25` is in document units: visible in inches, tiny in millimetres. Keep it, scale it to the body length, or make it an input? *(Scaled: 1% of the body length.)*
-- [x] **(decision)** Also output the whole body outline as one closed, joined curve (useful for offsetting, extruding or kerfing downstream)? *(Yes: Outline (O) output, empty until the outline is complete.)*
-- [x] **(decision)** Plug-in metadata in `GuitarFormInfo.cs`: author name and contact. *(Contact set to the user's email; name left blank.)*
-- [x] Plug-in icon (`GuitarFormInfo.Icon` is `null`). *(From the user's logo; also used for the toolbar tab and the README.)*
-
-## 6. How components share data (before the second component)
-
-- [x] **(decision)** Will downstream components (neck, fretboard, strings) take plain numbers wired by hand (body length, heel width, …), or will Plate output a "Body" object that they read? This shapes every later component's inputs and outputs. *(Plain wiring: each component works on its own with its own inputs. Shared values come from one slider wired to each component that needs it, or from an upstream component's output. No settings component or custom data type. See CLAUDE.md.)* *(Later revised: an Instrument component outputs an Instrument object carrying whole-instrument values such as scale length; everything else is still wired plainly.)*
-
-## 7. Documentation layout (when the second component is added)
-
-- [x] Move per-component detail out of the README into `docs/Plate.md`, `docs/Neck.md`, etc. Keep the README for requirements, build, loading and an overview. *(`docs/Plate.md` and `docs/Soundhole.md`, which holds both soundhole components; one page per toolbar group. The README links to them from a components table.)*
-- [x] Fold `Spec.txt` into the README or `docs/`. *(Its brief is in the README intro and its working agreement in CLAUDE.md; the file was deleted.)*
-
-## Considerations for later sections
-
-Not decided yet; settle these when designing the section that needs them (probably the neck).
-
-- [ ] **(decision)** Placing parts with planes. The plate stays fixed at the origin, since it's the starting point. A part that attaches to another (e.g. the neck at the heel) would be built in simple local coordinates, with the origin at its attachment point, then moved onto a plane that `DesignDrawing` works out from the part it attaches to (e.g. a heel plane at (0, L) on the body). The neck then follows the body when L changes, and the plane can carry a neck angle (tilt out of XY). Separate views (like the side view) are placed by `DesignDrawing`'s layout. *(Rewritten for the plug-in: with every section in one design, the plane comes from the design rather than from a wire.)*
-
-## 8. Move from Grasshopper to a Rhino plug-in with a design database
-
-Replaces the Grasshopper components with a Rhino plug-in. A dockable panel has a tab for each area of the guitar, the whole design is stored in a SQLite database, and the design is drawn in Rhino live. The geometry classes in `Geometry/` carry over; the components, `GH_Instrument`, `InstrumentParameter` and `GuitarFormComponent` go.
-
-Decided:
+The decisions behind the plug-in. The work they led to is done and in git history.
 
 - **Grasshopper is dropped.** Keeping track of many wired values, and saving a copy of them, was the problem. In the plug-in every part reads shared values from the one design.
 - **SQLite holds everything.** Opening a previous design rebuilds the model from the database.
-- **A design owns copies of its sections.** Each area (Instrument, Body, Soundhole, String set, …) can also be saved as a named library preset. Loading a preset copies its values into the design, so editing a design never changes the library or other designs.
-- **The first edit after loading a design asks: overwrite it, or save a copy and edit that.** After that, changes are written to the database as you make them.
+- **A design owns copies of its sections.** Each area (Instrument, Body, Soundhole, String set, ...) can also be saved as a named library preset. Loading a preset copies its values into the design, so editing a design never changes the library or other designs.
+- **Edits change a working copy.** Save, Save as and Revert write it to the library; switching or closing with unsaved changes asks first. `RecoveryStore` keeps unsaved work outside the library, so it can be offered back.
 - **Lengths are stored in millimetres** (database, presets, JSON, geometry) **and shown and typed in the Rhino document's units** everywhere in GuitarForm: the tab fields, dialogs, settings and messages. They're converted when drawn, too.
 - **Live preview while editing, plus a Build command.** The preview is drawn, not added to the document. Build writes real objects to GuitarForm layers and replaces those from the previous build of that design.
-- **One library database, kept locally, with backups to a synced folder.** The main copy is `%LOCALAPPDATA%\GuitarForm\GuitarForm.db` by default, which isn't synced, so OneDrive never sees a half-written file. Backups are written with SQLite's backup API to `Documents\GuitarForm\Backups` by default, which OneDrive syncs. Both locations are set on a Settings page, and kept in Rhino's plug-in settings rather than the database, since they're needed before it's opened.
+- **One library database, kept locally, with backups to a synced folder.** The main copy is `%LOCALAPPDATA%\GuitarForm\GuitarForm.db` by default, which isn't synced, so OneDrive never sees a half-written file. Backups are written with SQLite's backup API to `Documents\GuitarForm\Backups` by default, which OneDrive syncs. Both locations are set on the Settings page, and kept in Rhino's plug-in settings rather than the database, since they're needed before it's opened.
 - **A design can be exported** as a structured JSON document that other programs can read.
+- **Round soundholes only** for now; custom shapes are under Planned features.
 
-### 8a. Risks first
-
-- [x] Plug-in shell: a `.rhp` project (RhinoCommon package, `PlugIn` class) with a `GuitarForm` command that opens an empty dockable Eto panel. Builds and loads in Rhino 8 alongside the existing `.gha`. *(`GuitarForm.Plugin/`. The panel shows the library's path and SQLite version. The launch profile loads the plug-in through `RHINO_PACKAGE_DIRS`, so it doesn't need installing.)*
-- [x] Spike: `Microsoft.Data.Sqlite` loads and opens a database from inside Rhino 8. The native `e_sqlite3` library has to be found from the plug-in folder. *(Rhino doesn't search `runtimes/<platform>/native/`, so the plug-in builds for `win-x64` only, which puts `e_sqlite3.dll` next to the `.rhp`. The library file gets `PRAGMA application_id` "GtFm", and a database without it is refused.)*
-
-### 8b. Model
-
-- [x] **(decision)** The sections and their fields. Proposed: **Instrument** (scale length, neck join fret); **Body** (Plate's dimensions plus tail and neck depth, so Plate and Side View share one body length); **Soundhole** (round or custom). Side View's drawing offset places the drawing; it doesn't describe the guitar. Does it become a design setting, or is the side view laid out automatically? *(As proposed, with one round soundhole per design, or none. The side view is laid out automatically, so the drawing offset isn't part of the design. The tail and neck depths are optional, so the outline can be drawn before the side view.)*
-- [x] **(decision)** Custom soundhole shape: how it's provided (picked from the Rhino document? imported?) and stored (e.g. the curve serialised into the database). *(Dropped for now: round soundholes only. See "Later".)*
-- [x] Add a `GuitarForm.Model` project with no Rhino dependency: a `GuitarDesign` record holding a record for each section, lengths in mm, optional values nullable. `Instrument` and `GeometryMessage` move there. *(`Body` and `Soundhole` are plain values; their checks stay in the geometry classes, so they aren't written twice. The Grasshopper project references the model project until it's removed.)*
-- [x] JSON export and import of a whole design, with `schemaVersion` and `"units": "mm"`. *(`DesignDocument`. Values not set are left out. Import rejects a newer schema version, other units, and a design without an instrument or body.)*
-
-### 8c. Geometry
-
-- [x] The geometry classes take the model's section records instead of their own `*Dimensions` records, and solve in mm. The plug-in scales the result to document units (`RhinoMath.UnitScale`) and converts the document tolerance to mm. Update the tests. *(The geometry classes moved to a `GuitarForm.Geometry` project shared by the plug-in, the components and the tests; the tests now reference it instead of copying the `.gha`. Plate takes a `Body`, Soundhole a `Soundhole`, and Side View a `Body` plus a drawing offset, which the layout will supply. Side View draws nothing, with a remark, until both depths are set. `DesignUnits` does the unit conversions. Custom Soundhole keeps its own record until custom shapes come back.)*
-
-### 8d. Database
-
-- [x] Schema: a `designs` table and one table per section. Each section row belongs to either a design or the library (as a named preset). Typed columns. Schema version kept in `PRAGMA user_version`, with a migration for each version. *(`GuitarForm.Data/Schema.cs`. Design names and each section's preset names are unique, ignoring case. Deleting a design deletes its sections.)*
-- [x] Storage class: create, list, load, overwrite, copy and delete designs; save a section as a preset; list presets; copy a preset into a design. Tested against a temporary database. *(`Library` in the new `GuitarForm.Data` project, which has no Rhino dependency. A copy is named "OM copy", "OM copy 2", …. A preset is copied into a design by loading it and saving the design.)*
-- [x] **(decision)** When backups are made and how many are kept. Proposed: when Rhino closes and every 15 minutes while there are changes since the last backup, as dated files (`GuitarForm 2026-10-08 1830.db`), keeping the last 20 plus one per day for 30 days. *(As proposed, as defaults: the interval and both numbers can be changed on the Settings page.)*
-- [x] Backup: writes a complete copy of the library to the backup folder with SQLite's backup API, at the times decided above, plus a **Back up now** button. *(`Backups` in `GuitarForm.Data`: backing up, listing, `NeedsBackup` (the library changed since the newest backup) and pruning. Each backup is written under a temporary name and renamed. The timer, the Rhino-closing backup and the button are in the plug-in, with the Settings page.)*
-- [x] Restore: replaces the main copy with a chosen backup, after backing up the current main copy first. Also used to start on another computer. *(`Backups.Restore`. A file that isn't a library this version can read is refused and the library left alone. Choosing the backup is on the Settings page.)*
-- [x] Settings page in the panel: main library location and backup folder (defaults above). Changing the main location offers to move the existing library there or open the one already at the new place. *(The Settings tab also has the backup interval and the two numbers of backups kept, **Back up now**, **Restore…** and **Open backup folder**. The library is chosen by folder and is always `GuitarForm.db` in it. Settings are kept in Rhino's plug-in settings. `BackupScheduler` in the plug-in backs up on its timer and when Rhino closes.)*
-
-### 8e. Editor panel
-
-- [x] Design list: new, open, copy, rename, delete. New asks for the name, body length, scale length and neck join fret (the required values); optional values start blank, with no soundhole. *(A drop-down of designs with New…, Copy, Rename…, Delete, Import… and Export… buttons.)*
-- [x] One tab per section, with number fields (blank means not set, for optional values), the section's errors and warnings, and **Load preset** / **Save as preset**. *(Fields are declared in `GuitarForm.Plugin/Sections.cs` and shown by `SectionEditor`. A blank required box or text that isn't a number is reported and doesn't change the design. Presets can also be deleted. The Soundhole tab has a box to say whether the design has one.)*
-- [x] The overwrite-or-copy prompt on the first edit after loading, then saving as you edit. *(Yes overwrites, No saves the change in a copy, Cancel undoes it. Designs just made by New, Copy or Import don't ask.)*
-- [x] Lay the drawings out automatically: the side view sits to the right of the plate, at half the lower bout width plus a gap. Later views (neck, fretboard) are placed the same way. *(`DesignDrawing` in `GuitarForm.Geometry` draws a whole design in mm. The side view sits the gap right of the plate's widest point (its outline and construction lines). The gap is a setting, 50 mm by default. Messages are kept per section.)*
-- [x] Live preview with a display conduit: construction geometry light grey, outline in Rhino's feedback colour (so it doesn't look like a built object), redrawn on every change. *(`DesignPreview`, shown while the panel is visible and Preview is ticked.)*
-- [x] Build: writes the geometry to the `GuitarForm::Outline` and `GuitarForm::Construction` layers, tagged with the design's id, replacing that design's previous build. Construction geometry is light grey with a solid linetype. *(`DesignBuilder`. The Construction layer is light grey; objects take their layer's colour and linetype. One undo step.)*
-- [x] Export: saves the design as JSON. Import: adds a design from a JSON file.
-
-### 8f. String sets
-
-- [x] **(decision)** What a string set holds: per string its description, diameter, plain or wound, unit weight (kg/m), hex core, core material, core modulus and strength, and whether it's used in saddle compensation. Tension isn't calculated. *(Decided; see [docs/Strings.md](docs/Strings.md).)*
-
-### 8g. Remove Grasshopper
-
-Done last, once the panel covers every component, so the project stays usable throughout.
-
-- [x] Remove the components, `Types/`, `GuitarFormComponent`, `GuitarFormPriority`, the component icons and `Examples/Plate.gh`; drop the Grasshopper package. Point the launch profile at Rhino without Grasshopper. *(The Grasshopper project is gone, and the plug-in project took over its name: `GuitarForm/GuitarForm.csproj`, building `GuitarForm.rhp`, namespace `GuitarForm`. The plug-in and panel GUIDs are unchanged. The artwork moved to `GuitarForm/Resources/`. `CustomSoundholeGeometry` and its tests stay for when custom shapes come back.)*
-- [x] Rewrite the README (loading the `.rhp`, using the panel), `docs/` (one page per tab instead of per component) and CLAUDE.md's conventions. *(`docs/Instrument.md`, `docs/Body.md` (Plate and Side View), `docs/Soundhole.md` and the new `docs/Settings.md`. The Quick Tests are typed into the tabs; the Body side view row is checked in `DesignDrawingTests`.)*
-- [x] Revisit "Considerations for later components" (placing parts with planes) for the plug-in. *(Rewritten above as "Considerations for later sections".)*
-
-## 9. Next
+## 1. Next
 
 - [ ] Name every setting in the user's notes and define it in `docs/Glossary.md` (name, abbreviation, short definition), one at a time with the user. Then delete `variables and settings.txt`. Implementation details that come up along the way:
   - Scale Length (SL): the field offers a list of common scale lengths to pick from, and also takes any value.
   - Compound fretboard radius (FBRN, FBRE) is planned for later; until then the fretboard uses the single Fretboard Radius (FBR).
   - String action (TSA, BSA): beside each value, also show the action measured from the fretboard surface, calculated from the chosen fretwire's height.
-  - String Unit Weight (STUW): stored in kg/m; shown and typed in lb/in by default, with a lb/in | kg/m drop-down at the top of the Strings tab, remembered in settings. *(Done for string unit weight.)*
+  - String Unit Weight (STUW): stored in kg/m; shown and typed in lb/in by default, with a lb/in | kg/m drop-down at the top of the Strings tab, remembered in settings.
   - String core (STCE, STCS): entered by hand when the core material is not specified. The known materials have no built-in values for now; they may get them later.
   - Neck Angle (NKA): typed in by hand, with a button that matches it to the top's angle.
   - Neck profile: the shoulder line and the bottom arc are fixed, and the midshoulder arc is a fillet between them, so its radius is free within a range. Report an error when it's too large (a tangent point runs past the fretboard edge or the bottom of the neck), or when the shoulder line doesn't cross the bottom arc. With a center offset, each side gets its own fillet of the same radius.
   - Heel shaft (HLSR, HLSO): at HLSO = 0 the front of the heel is a straight line through the fronts of the heel end and heel section. Above 0 it's an arc through those two points and the point where that line meets the back of the neck, moved away from the body along the back of the neck by HLSO. The heel shaft radius is tangent to the front of the heel and the back of the neck. The geometry reports an error if the radius's center would pass the Neck Thickness Fret, or it would touch the front of the heel past the heel section.
   - Replacing a guitar's neck, body or bracing with another's warns that the current one will be overwritten (it's gone unless it was saved as a named copy), and can be cancelled. Replacing a body brings its bracing.
-  - Deleting a fretwire or string set that necks use lists them and asks for a replacement, which every neck is switched to before the item is deleted. *(Done for string sets, checking saved necks in the library only; fretwire still to do.)*
+  - Deleting a fretwire or string set that necks use lists them and asks for a replacement, which every neck is switched to before the item is deleted. Done for string sets and fretwires (checking saved necks in the library only).
   - Importing a guitar document: its fretwire and string set have no library id. Match each to the library by manufacturer and product code (or set name), or offer to save it there.
   - When the panel moves to the new model, drop the old design tables (designs, instruments, bodies, soundholes) in a new migration; existing designs don't need converting.
-  - Fields that don't apply are disabled rather than hidden or checked: e.g. String Hex Core and Core Material for a plain string, and the core modulus and strength unless the core material is not specified. The model ignores their values. *(Done for the string fields.)*
-- [x] CAD-neutral geometry for the new model, starting with the body: `GuitarForm.Shapes`. *(Plate outline, cutaways, side view with skew, and soundhole, from a `Guitar`. Decided along the way: treble is +X. The neck join fret is at the body's neck end, and the fretboard is centered at both ends, Nut Width wide at the nut and SSB + BSS + TSS wide at the saddle (uncompensated), with straight edges. A cutaway's wall starts where its offset line meets the heel flat, shoulder arc or upper bout above its widest point; its end point is where the width line meets the upper bout above its widest point, toward the neck. The side view has the back on the left, toward the plate, and the top on the right. An unset secondary offset counts as 0.)*
-- [x] Fretboard geometry: plan view over the plate (outline, fret lines, slots with a fretwire, face dots, strings) and its side profile. *(Decided: the fretboard's body end is square for now and gets its own settings later. Dots sit halfway between the marker fret and the one before; a single dot is on the centerline. Fret lines are construction and slots outline. Strings are spaced with equal gaps between their edges at the nut and the saddle; for courses of two, the setbacks and SSB go to the outermost strings, each course's strings are the course spacing apart, and the equal gaps are between courses. In the side view the underside is the Overstand above the top at the neck end, square to the top's line, and a positive Neck Angle tips the nut toward the back. Lengths along the fretboard there are the plan fret distances.)*
-- [x] Neck profiles: the cross-sections at the first fret and the Neck Thickness Fret, and through the heel at the heel section and the heel end (`NeckProfilesShape`). *(Decided: they're drawn fretboard (or heel/body joint) side up, the drawing gap right of the side view. The neck profiles share a centerline and are each centered on their fret's height on the playing surface; the heel section and then the heel end follow in their own columns, level with the heel, with the front of the heel on the body's neck end. The neck thickness runs from the crown of the playing surface to the bottom arc's lowest point, which sits on the center offset. The fretboard in a neck profile is as wide as the plan view's taper and as thick at the centerline as the side profile's taper make it at that fret. The midshoulder fillet blends the shoulder line into the bottom arc where the line leaves the arc's circle. With Heel Outline Straight Sides the heel section's width is on the line from the Heel End Width at the heel end (plus any heel cap) to the fretboard's width at the body's neck end at the fretboard's underside (the Body Depth at Neck End plus the Overstand from the back). Shoulder angles are above 0° and up to 90°; each midshoulder radius must be less than its bottom radius, and the heel's straight sides shorter than the heel is thick. An unset center offset or side length counts as 0.)*
-- [x] Neck side profile: the neck under the fretboard in the side view, with the heel, heel cap and nut (`NeckSideShape`). *(Decided: the back of the shaft is a straight line through the two thickness points, each measured square to the playing surface. The neck's top is the fretboard's underside, running from the nut's far face (Nut Thickness past the fretboard's nut end) to the body's neck end; the nut end is cut square to the playing surface until the headstock is defined. The heel/body joint runs along the body's neck end, and the heel end runs square to it, the Heel End Offset from Back (plus the Heel Cap Thickness) in from the back. The heel cap is drawn on the heel end, as long as the Heel End Thickness. The nut sits on the neck's top, Nut Thickness long and Neck.NutHeight tall. The front of the heel must meet the back of the neck past the heel section and in front of the body. The Neck Thickness Fret must be past the first fret. An unset Heel Shaft Offset counts as 0.)*
-- [x] Bracing in plan view: the headblock and tailblock, upper transverse bar, graft, X brace, finger braces, tone bars and soundhole braces (`BracingShape`). *(Decided: drawn on its own copy of the plate outline and soundhole, seen from inside (mirrored, treble on the left), the drawing gap left of the plate. A brace's end toward the outline follows the outline, its edge offset inside it; the blocks' outer sides follow it too. One X bar (bass lower leg to treble upper leg) runs through the crossing and the other bar's legs end against its sides; an upper leg that reaches the upper transverse bar first ends against it. Finger braces run from the outer side of each lower leg, tone bars from the inner side of the treble lower leg toward the tail, and a tone bar can't cross the bass lower leg. Soundhole braces run both ways to the nearest brace, or the outline. Finger brace and tone bar angles are between -90° and 90°. The bridge patch waits for the bridge's footprint.)*
-- [ ] **(decision)** The bridge's plan settings (its width along the centerline, where the saddle sits in it), so the bridge patch can be drawn.
+  - Fields that don't apply are disabled rather than hidden or checked: e.g. String Hex Core and Core Material for a plain string, and the core modulus and strength unless the core material is not specified. The model ignores their values. Done for the string fields.
+- [ ] Work the user's notes (`variables and settings.txt`, untracked, don't commit) into the plan: the sections, their fields, which have their own tables of choices (string sets, fretwire, string action, dot marker layouts), and the order to build them in. String sets are already settled.
 - [ ] Move the panel, preview and Build onto the new model and `GuitarForm.Shapes`, with `GuitarForm.Geometry` reduced to turning shapes into Rhino curves; then retire `PlateGeometry`, `SideViewGeometry`, `SoundholeGeometry` and `DesignDrawing`, and rewrite `docs/Body.md` and `docs/Soundhole.md` for the new fields.
-- [ ] Work the user's notes (`variables and settings.txt`) into the plan: the sections, their fields, which have their own tables of choices (string sets, fretwire, string action, dot marker layouts), and the order to build them in. String sets are already settled (8f).
-- [ ] Convert the existing British spellings (colour, grey, centre, millimetre, organisation, …) to American English in the docs, UI text, code and CLAUDE.md. Rhino API names such as `DisplayColor` aren't affected.
-- [ ] UI polish: alignment and positioning in the panel. The user will describe or screenshot what looks off.
-- [x] Group each tab's fields in titled boxes; split the New fields tab into the Body tab and new Bracing, Fretboard and Neck tabs. *(Old groups in `Sections.cs`, new ones in `NewFields.Groups`; a new group with an old group's title shares its box.)*
-- [x] Show the selected tab's messages in a box right of the tabs, with a draggable divider whose position is remembered (`PanelSplitterPosition` in the plug-in settings).
-
+- [ ] **(decision)** The bridge's plan settings (its width along the centerline, where the saddle sits in it), so the bridge patch can be drawn.
 - [ ] The Florentine cutaway's radius doesn't work (reported by the user while trying the panel). Find out from the user what goes wrong, then fix it in `PlateShape` (the Florentine arc, around `PlateShape.cs` line 360).
+- [ ] UI polish: alignment and positioning in the panel. The user will describe or screenshot what looks off.
+- [ ] **(decision)** Placing parts with planes. The plate stays fixed at the origin, since it's the starting point. A part that attaches to another (e.g. the neck at the heel) would be built in simple local coordinates, with the origin at its attachment point, then moved onto a plane that the layout works out from the part it attaches to (e.g. a heel plane at (0, L) on the body). The neck then follows the body when L changes, and the plane can carry a neck angle (tilt out of XY). Separate views (like the side view) are placed by the layout. Not decided yet; settle it when designing the section that needs it (probably the neck).
 
-### 9a. Slider refinements
+### Slider refinements
 
 `NumberSlider` (a fader: the value is on a lever dragged along a track that springs back to the middle; each step is the field's `Step`, a tenth of it with Shift; click the lever to type) is the box for every decimal field: lengths, angles and numbers. Choices and yes/no values are drop-downs; counts and the dot marker list keep plain boxes.
 
 - [ ] The user tries the slider and says whether it feels natural; adjust the feel (reach per drag, pixels per step, lever and track size).
 - [ ] **(decision)** Each field's step. A tenth is right for some values and too much for others. `NumberField.Step` and `NewFields.Field.Step` (default 0.1) are in place; the user will say which fields need another step as they use it. Also decide how steps behave in inches, since they're in the units shown (0.1 in is much coarser than 0.1 mm).
-- [x] Put the slider on every decimal field (every tab). *(The Settings page's drawing gap keeps its stepper.)*
-- [x] The overwrite-or-copy question on the first edit of an opened design pops up on the first step of a drag. Ask once the drag ends instead, or before it starts. *(Gone: edits change the working copy, and the question is asked on Save.)*
-- [ ] Check mouse capture during a drag in Rhino (called by reflection, since the Eto RhinoCommon 8.0's package compiles against lacks it), and that a slider looks disabled when no design is open.
+- [ ] Check mouse capture during a drag in Rhino (called by reflection, since the Eto package RhinoCommon 8.0 compiles against lacks it), and that a slider looks disabled when no design is open.
 
-### 9b. Limits on values
+### Limits on values
 
-- [ ] **(decision)** Limits on many fields, so values that don't make sense can't be entered at all rather than only reported as errors. Decide with the user, field by field, the range that makes sense (some come from the glossary definitions' minimum and maximum, others from other values, e.g. a waist narrower than the bouts). Then stop sliders at the limits and refuse typed values outside them.
-- [x] Upper and lower bout secondary offsets can't go below 0. *(`NumberField.Minimum` and `NumberSlider.Minimum`: the slider stops there, and a typed value below it is refused with a message. Use them for the other limits.)*
+- [ ] **(decision)** Limits on many fields, so values that don't make sense can't be entered at all rather than only reported as errors. Decide with the user, field by field, the range that makes sense (some come from the glossary definitions' minimum and maximum, others from other values, e.g. a waist narrower than the bouts). Then stop sliders at the limits and refuse typed values outside them. `NumberField.Minimum` and `NumberSlider.Minimum` are in place for this, as the upper and lower bout secondary offsets (which can't go below 0) already use.
 
-## 10. Later
+## 2. Tech debt (from the code review)
 
-- [ ] Custom soundhole shapes, as the old Custom Soundhole component drew them, in the Soundhole section. Decide how the shape is provided (picked from the Rhino document? imported?) and stored.
+### Quick fixes (done this session; owner: manager)
 
+- [x] Fix `launchSettings.json` escaping.
+- [x] Clean up the `NewFields` file on design delete.
+- [x] Warn on Save and Build while input errors exist.
+- [x] Convert slider steps to document units on the main tabs. Open follow-up: see "Slider refinements" and the Pre-migration group (steps in inches).
+- [x] Unsubscribe static Rhino events on panel Dispose.
+- [x] Make Open load into locals before assigning.
+- [x] Clear stale new-field errors in `ShowDesign`.
+- [x] Guard throw sites in `NeckSideShape`, `FretboardShape` and `ShapeCurves`.
+- [x] Add missing messages where shapes fail silently.
+- [x] Partial drawing: only the failed parts go blank, and the rest draw with a warning.
+- [x] Tighten `WithStoredValue` coercion; count overflow throws `FormatException`.
+- [x] Backup: clean up `.tmp` files; give the restore safety copy a unique name.
+- [x] SQLite `busy_timeout`.
+- [x] Map `SqliteException` constraint errors to `InvalidOperationException` (narrowed to name conflicts).
+- [x] Document the Bracing and Fretboard tabs in `docs/` and the README tabs table.
+
+### Pre-migration cleanup
+
+- [ ] Delete the legacy Geometry classes used only by tests (`PlateGeometry`, `SideViewGeometry`, `SoundholeGeometry`, `DesignDrawing.Draw`) and their tests.
+- [ ] Extract the shared shape helpers (Format, Error/Remark/Warning, Intersect, Join, Rectangle, tolerances) from the shapes.
+- [ ] Split `BracingShape` (move the outline offset and point-in-polygon maths out), `PlateShape.AddCutaway`, `NeckSideShape.Build` and `NeckProfilesShape` sampling.
+- [x] Tag `GuitarDrawing` output by role and layer, so `DesignBuilder` can use separate layers (`GuitarDrawing.Items` of `DrawnItem`; `DesignBuilder` uses the `ComponentStyles` layer tree).
+- [ ] Split the neck heel from the `NeckSideShape` outline: the Heel layer exists, but nothing is tagged Heel yet.
+- [ ] Add tests for plug-in code and for `ComponentStyles` (needs Rhino-free code moved out of the .rhp, as above).
+- [ ] The T0 deletion of the legacy Geometry classes is still pending, blocked on the owner's action (`git rm` of the listed files). `CLAUDE.md` still names `PlateGeometry`.
+- [ ] **(decision)** The `docs/Body.md` side-view Quick Test row disagrees with the Shapes drawing; the owner decides which is right.
+- [ ] **(question)** When the strings overlap, the fallback draws the two outer strings as center lines. Should it draw rectangles anyway?
+- [ ] **(question)** Cross-checks between the Fretwire Slot Depth (FWSD) and the Tang Height (FWTH) or the fretboard thickness: which, if any, should be errors or warnings?
+- [ ] **(question)** The fretwire price's unit or currency, when job costing is built.
+- [ ] **(question)** Construction lines print at the outline weight. Confirm that is right.
+- [ ] The print colour path (a component's optional print colour to the layer's PlotColor) is untested.
+- [ ] Add a library upgrade test (a v1 library with data migrates to v2).
+- [ ] Back up the library before a schema migration.
+- [ ] Add non-invariant culture tests (de-DE).
+- [ ] Add tests for `Segment`, `FretboardSideShape`, `SideViewShape`, `SoundholeShape`, `ShapeCurves`, the Rhino-free parts of `NewFields`, and FK/cascade behaviour.
+- [ ] Centralise the csproj settings (`Directory.Build.props`).
+- [ ] Extract the duplicated UI helpers (Run, ActionButton, the discard prompt). Partly done: `LibraryItemUi` now holds the library-item helpers shared by the Strings and Frets tabs; `GuitarFormPanel` and `SettingsPage` still have their own.
+- [ ] Remove the `UiMetrics` bypasses and dead code (`ScreenScale`, the `Scale` no-op).
+- [ ] Pick one spelling (American) across code and docs, including the UI text and CLAUDE.md. Rhino API names such as `DisplayColor` aren't affected.
+- [x] Fix the Strings tab's missing unsaved-changes prompt on switch. There is still no prompt on hide or close, by design, since Rhino's shutdown must not be blocked.
+- [ ] Make `CopyDesign`, `ImportDesign` and `SaveDesign` atomic with `NewFields` (resolved by the migration).
+- [ ] Slider steps converted from mm look odd in inches (0.1 mm = 0.003937 in); snap to a sensible grid in non-mm units.
+- [ ] Tests for plug-in code (`NewFields.Delete`, `RequireNoInputErrors`, slider conversion) need Rhino-free code moved out of the .rhp.
+- [ ] Add tests for `NeckSideShape` parallel-line/near-parallel guards and the `BracingShape` unsupported segment (currently unreachable via the public API); add `InternalsVisibleTo` or a public seam for `Library.IsNameConflict`.
+- [ ] Tidy: a failed plate makes the side view jump horizontally while editing.
+- [ ] Only an unset `Body.Length` is treated as unfinished (Remark); other missing plate values rely on the plate's own Remarks.
+
+### Migration (needs product-owner sign-off and a senior-engineer plan first)
+
+- [ ] Move `NewFields` values into the library via `part_values` (fixes backup, restore, move and id reuse, with AUTOINCREMENT or equivalent).
+- [ ] Retire `GuitarDesign`, the `Sections.cs` vs `NewFields.Groups` duplication, and same-named legacy/new records.
+- [ ] Split `GuitarFormPanel` (a `DesignSession` class, and a `NewFieldBinding` per field replacing the parallel arrays).
+- [ ] Recovery ids need a kind prefix once guitars replace designs.
+- [ ] Save blank list items (`DotMarker`) so they round-trip.
+- [ ] Store the guitar name once (trimmed vs untrimmed IN), and make library item names collision-safe.
+- [ ] `SaveGuitar` and parse tolerate one bad `part_values` row.
+- [ ] The `NewFields` folder is shared by all library files in the same directory, and design ids are per library, so orphan cleanup was removed. Resolved by moving `NewFields` into the library.
+
+## 3. Planned features
+
+- [ ] **Custom soundhole** (planned). The legacy `CustomSoundholeGeometry` has no `Shapes` replacement, and the plug-in doesn't use it. It needs a `Shapes` version when the product owner specifies the shape; keep the legacy class until then. Still to decide: how the shape is provided (picked from the Rhino document, or imported) and stored (e.g. the curve serialised into the database).
 - [ ] GitHub Actions workflow that builds the plug-in on each push.
 - [ ] Yak package for distribution through Rhino's Package Manager.
+- [ ] Use Relief, Relief Fret and String Action in the drawing (future): today these are information-only fields on the Fretboard tab and don't modify any geometry.
+- [ ] Colors tab (future, global: stored in the plug-in settings, not the design): the user picks a display color and an optional print color for each component. The print color maps to Rhino's layer print color (PlotColor). The layer tree (one main grouping layer per component with a sublayer per part, e.g. Guitar > sides, top plate, bracing, heel block) is designed so each sublayer's color can come from this later. The component style table must allow this override.
+- [ ] Fretboard binding (future). See [docs/Plan-FretsAndLayers.md](docs/Plan-FretsAndLayers.md).
+- [ ] Other ways of measuring course spacing (future), e.g. between course centers, offered as an option next to the current string-to-string measure. See [docs/Plan-FretsAndLayers.md](docs/Plan-FretsAndLayers.md).
+- [ ] Job costing (future): use the optional fretwire price (and other part prices) for a cost total per guitar.
+- [ ] When a design's library item (fretwire or string set) is missing from the library, offer a pick-a-replacement choice, rather than opening it with nothing selected.
+
+## 4. Open product questions
+
+These need the product owner's direction before any code is written.
+
+- [x] **(decision)** Bracing tab: the bridge patch fields (BPT, BPWO, BPO) and the X-brace profile (XBPT) are in the model but not on the tab. Should they be?
+  - Decided: show BPT, BPWO, BPO and XBPT on the Bracing tab. Being added.
+- [x] **(decision)** Fretboard tab: Relief, Relief Fret, String Action, Strings per Course, the course spacings and the side dots exist in the model and Glossary but not on the tab. Should they be added, and where?
+  - Decided: Relief, Relief Fret and String Action are added as an information-only group. They don't change any geometry yet (see Planned features).
+  - Decided: Strings per Course, the course spacings and the side dots will add or modify geometry. Pending a plan from the senior engineer.
+- [x] **(decision)** Fretboard tab: where should the fretwire be chosen? There's no tab control for it, so fret slots only appear in tests.
+  - Decided: fretwire gets its own Frets tab, and is chosen only there. It is a stock part, saved separately in the library and added to a job from the db. Built: see [docs/Frets.md](docs/Frets.md).
+  - Decided: frets are drawn as an orange bead-width rectangle with a thinner center line marking the tang. Strings are drawn green, as rectangles at their diameter.
+  - Decided: each component is on its own sublayer under a main grouping layer.
+- [x] **(decision)** Is the split right between construction lines (frets, strings) and outline objects (slots, dots)?
+  - Decided: superseded by the layer tree. Each component has its own layer and colour (`ComponentStyles`), and each group has a light grey Construction sublayer.
+
+## Review follow-ups (layers, library tabs)
+
+- [ ] `ComponentStyles` completeness (every `DrawingComponent` has a style) needs a test. Plug-in internals aren't visible to the tests: use `InternalsVisibleTo`, or move the table's component list into a testable place.
+- [ ] Unsaved Frets and Strings library edits have no crash recovery.
+- [ ] `DesignDrawing.Construction` and `DesignDrawing.Outline` recompute on every access: cache them in callers that loop.

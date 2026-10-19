@@ -59,6 +59,47 @@ namespace GuitarForm.Tests
         }
 
         [Test]
+        public void SlotDepthPriceAndOverage_RoundTripByAbbreviation()
+        {
+            var guitar = FullOM();
+            guitar = guitar with
+            {
+                Neck = guitar.Neck with
+                {
+                    Fretwire = guitar.Neck.Fretwire with
+                    {
+                        Manufacturer = new(Fretwire.Definitions.Manufacturer),
+                        SlotDepth = new(Fretwire.Definitions.SlotDepth, 1.7),
+                        Price = new(Fretwire.Definitions.Price, 12.5),
+                    },
+                    Fretboard = guitar.Neck.Fretboard with { SlotOverage = new(Fretboard.Definitions.SlotOverage, 0.4) },
+                },
+            };
+
+            string text = GuitarDocument.ToJson(guitar);
+            var json = Parse(text);
+            Assert.That((int)json["schemaVersion"], Is.EqualTo(3));
+            Assert.That((double)json["guitar"]["neck"]["fretwire"]["values"]["FWSD"], Is.EqualTo(1.7));
+            Assert.That((double)json["guitar"]["neck"]["fretwire"]["values"]["FWPR"], Is.EqualTo(12.5));
+            Assert.That((double)json["guitar"]["neck"]["values"]["FBSO"], Is.EqualTo(0.4));
+            Assert.That(json["guitar"]["neck"]["fretwire"]["values"]["FWM"], Is.Null);
+            TestGuitars.AssertSameValues(GuitarDocument.FromJson(text), guitar);
+        }
+
+        [Test]
+        public void DocumentWithoutTheNewValues_StillLoads()
+        {
+            var guitar = GuitarDocument.FromJson(@"{ ""schemaVersion"": 3, ""units"": ""mm"", ""guitar"": { ""values"": { ""SL"": 650 },
+                ""neck"": { ""values"": { ""NTW"": 44 }, ""fretwire"": { ""values"": { ""FWPC"": ""47104"" } } } } }");
+
+            Assert.That(guitar.Neck.Fretboard.SlotOverage.HasValue, Is.False);
+            Assert.That(guitar.Neck.Fretwire.SlotDepth.HasValue, Is.False);
+            Assert.That(guitar.Neck.Fretwire.Price.HasValue, Is.False);
+            Assert.That(guitar.Neck.Fretwire.Manufacturer.HasValue, Is.False);
+            Assert.That(guitar.Neck.Fretwire.ProductCode.Value, Is.EqualTo("47104"));
+        }
+
+        [Test]
         public void LibraryIdsAreNotWritten()
         {
             var read = GuitarDocument.FromJson(GuitarDocument.ToJson(FullOM()));

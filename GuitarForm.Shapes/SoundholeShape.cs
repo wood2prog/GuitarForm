@@ -6,7 +6,8 @@ namespace GuitarForm.Shapes
     // the treble side) and the Soundhole Offset from Tail End up from the tail end.
     public static class SoundholeShape
     {
-        // The soundhole, or null when the top has none or a value it needs isn't set (the model reports it).
+        // The soundhole, or null when the top has none or a value it needs isn't set or is out of range (the model
+        // reports it).
         public static Circle? Solve(TopPlate top)
         {
             if (!(top.Soundhole.Value && top.SoundholeDiameter.Value is double diameter && diameter > 0 &&

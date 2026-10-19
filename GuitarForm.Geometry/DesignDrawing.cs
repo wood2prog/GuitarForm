@@ -12,8 +12,19 @@ namespace GuitarForm.Geometry
     // kept per section so each can be shown with that section's values.
     public sealed class DesignDrawing
     {
-        public List<Curve> Construction { get; } = new List<Curve>();
-        public List<Curve> Outline { get; } = new List<Curve>();
+        readonly List<DrawnCurve> _curves = new List<DrawnCurve>();
+
+        // Everything drawn, tagged with its component and role: the single source of truth.
+        public IReadOnlyList<DrawnCurve> Curves => _curves;
+
+        // Views of Curves: construction (and center) lines and circles, and the final outline.
+        public IReadOnlyList<Curve> Construction =>
+            _curves.Where(c => c.Role != Shapes.DrawingRole.Outline).Select(c => c.Curve).ToList();
+        public IReadOnlyList<Curve> Outline =>
+            _curves.Where(c => c.Role == Shapes.DrawingRole.Outline).Select(c => c.Curve).ToList();
+
+        void Add(Curve curve, Shapes.DrawingComponent component, Shapes.DrawingRole role) =>
+            _curves.Add(new DrawnCurve(curve, component, role));
 
         public List<GeometryMessage> InstrumentMessages { get; } = new List<GeometryMessage>();
         public List<GeometryMessage> BodyMessages { get; } = new List<GeometryMessage>();
@@ -38,12 +49,14 @@ namespace GuitarForm.Geometry
             IEnumerable<GeometryMessage> bodyMessages, IEnumerable<GeometryMessage> soundholeMessages)
         {
             var drawing = new DesignDrawing();
-            drawing.Construction.AddRange(ShapeCurves.Construction(shapes));
-            drawing.Outline.AddRange(ShapeCurves.Outline(shapes));
+            drawing._curves.AddRange(ShapeCurves.Curves(shapes, out int failed));
             drawing.InstrumentMessages.AddRange(instrumentMessages);
             drawing.BodyMessages.AddRange(bodyMessages);
+            if (failed > 0)
+                drawing.BodyMessages.Add(new GeometryMessage(MessageLevel.Error,
+                    $"{failed} outline piece(s) couldn't be turned into curves and are left out."));
             drawing.SoundholeMessages.AddRange(soundholeMessages);
-            drawing.SideViewOffset = shapes.SideView?.Outline?.Bounds.MinX;
+            drawing.SideViewOffset = shapes?.SideView?.Outline?.Bounds.MinX;
             return drawing;
         }
 
@@ -54,10 +67,15 @@ namespace GuitarForm.Geometry
             if (plate.Failed)
                 return;
 
-            Construction.AddRange(plate.ConstructionLines.Select(line => new LineCurve(line)));
-            Construction.AddRange(plate.OutlineRadii.Select(circle => new ArcCurve(circle)));
-            Outline.AddRange(plate.OutlineArcs.Select(arc => new ArcCurve(arc)));
-            Outline.AddRange(plate.OutlineLines.Select(line => new LineCurve(line)));
+            const Shapes.DrawingComponent top = Shapes.DrawingComponent.TopPlate;
+            foreach (var line in plate.ConstructionLines)
+                Add(new LineCurve(line), top, Shapes.DrawingRole.Construction);
+            foreach (var circle in plate.OutlineRadii)
+                Add(new ArcCurve(circle), top, Shapes.DrawingRole.Construction);
+            foreach (var arc in plate.OutlineArcs)
+                Add(new ArcCurve(arc), top, Shapes.DrawingRole.Outline);
+            foreach (var line in plate.OutlineLines)
+                Add(new LineCurve(line), top, Shapes.DrawingRole.Outline);
 
             double offset = RightEdge(plate) + gap;
             var side = SideViewGeometry.Solve(body, offset);
@@ -65,7 +83,8 @@ namespace GuitarForm.Geometry
             if (side.Failed || side.OutlineLines.Count == 0)
                 return;
 
-            Outline.AddRange(side.OutlineLines.Select(line => new LineCurve(line)));
+            foreach (var line in side.OutlineLines)
+                Add(new LineCurve(line), Shapes.DrawingComponent.Sides, Shapes.DrawingRole.Outline);
             SideViewOffset = offset;
         }
 
@@ -74,7 +93,7 @@ namespace GuitarForm.Geometry
             var geometry = SoundholeGeometry.Solve(soundhole);
             SoundholeMessages.AddRange(geometry.Messages);
             if (!geometry.Failed)
-                Outline.Add(new ArcCurve(geometry.Circle));
+                Add(new ArcCurve(geometry.Circle), Shapes.DrawingComponent.Soundhole, Shapes.DrawingRole.Outline);
         }
 
         // The plate's widest point to the right of the centreline: its outline and construction lines, but not the

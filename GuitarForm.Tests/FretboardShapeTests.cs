@@ -13,14 +13,14 @@ namespace GuitarForm.Tests
         static readonly double[] SixStrings = { .012, .016, .024, .032, .042, .053 };
         static readonly double[] TwelveStrings = { .010, .010, .014, .014, .023, .008, .030, .012, .039, .018, .047, .027 };
 
-        static StringSet Set(double[] inches) => new StringSet
+        internal static StringSet Set(double[] inches) => new StringSet
         {
             Strings = inches.Select(d => new GuitarString { Diameter = new(GuitarString.Definitions.Diameter, d * 25.4) }).ToArray(),
         };
 
         // The 14th fret at the neck end of a 600 body, 645 scale: the nut is at 957.69 and the saddle at 312.69. The
         // fretboard is 44 wide at the nut and 61 wide at the saddle.
-        static Guitar TestGuitar(StringSet strings = null, Fretwire fretwire = null) => new Guitar
+        internal static Guitar TestGuitar(StringSet strings = null, Fretwire fretwire = null) => new Guitar
         {
             ScaleLength = new(Guitar.Definitions.ScaleLength, 645),
             NeckJoinFret = new(Guitar.Definitions.NeckJoinFret, 14),
@@ -93,6 +93,119 @@ namespace GuitarForm.Tests
             var slot = fretboard.Slots[0].Bounds;
             Assert.That(slot.MaxY - slot.MinY, Is.EqualTo(0.53).Within(1e-9));
             Assert.That((slot.MaxY + slot.MinY) / 2, Is.EqualTo(921.484095).Within(1e-6));
+        }
+
+        static Fretwire Wire(double bead, double tang = 0.53) => new Fretwire
+        {
+            BeadWidth = new(Fretwire.Definitions.BeadWidth, bead),
+            TangThickness = new(Fretwire.Definitions.TangThickness, tang),
+        };
+
+        [Test]
+        public void Beads_BeadWidthWideAndFlushWithTheEdges()
+        {
+            var fretboard = FretboardShape.Solve(TestGuitar(fretwire: Wire(2.5)));
+
+            Assert.That(fretboard.Beads, Has.Count.EqualTo(20));
+            Assert.That(fretboard.FretLines, Has.Count.EqualTo(20));
+            // Fret 14 is at y = 600: corners on the tapered edges at 598.75 and 601.25.
+            var bead = fretboard.Beads[13];
+            Assert.That(bead.IsClosed, Is.True);
+            var corners = bead.Segments.Select(s => s.Start).ToArray();
+            Assert.That(corners, Has.Length.EqualTo(4));
+            Assert.That(bead.Bounds.MaxY - bead.Bounds.MinY, Is.EqualTo(2.5).Within(1e-9));
+            AssertPoint(corners[0], -HalfWidthAt(601.25), 601.25);
+            AssertPoint(corners[1], HalfWidthAt(601.25), 601.25);
+            AssertPoint(corners[2], HalfWidthAt(598.75), 598.75);
+            AssertPoint(corners[3], -HalfWidthAt(598.75), 598.75);
+            Assert.That(fretboard.Messages.Any(m => m.Text.Contains("Choose a fretwire")), Is.False);
+        }
+
+        // The Quick Test fretboard's half width at y: 22 at the nut (957.685163), 30.5 at the saddle (312.685163).
+        static double HalfWidthAt(double y) => 22 + (30.5 - 22) * (957.685163 - y) / 645;
+
+        [Test]
+        public void Beads_WithoutAFretwire_OnlyCenterLinesAndARemark()
+        {
+            foreach (var guitar in new[] { TestGuitar(), TestGuitar(fretwire: new Fretwire()) })
+            {
+                var fretboard = FretboardShape.Solve(guitar);
+
+                Assert.That(fretboard.Beads, Is.Empty);
+                Assert.That(fretboard.FretLines, Has.Count.EqualTo(20));
+                Assert.That(fretboard.Messages.Count(m => m.Level == GuitarForm.Model.MessageLevel.Remark && m.Text ==
+                    "Choose a fretwire on the Frets tab to draw the frets at their width."), Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        public void Drawing_FretBeadsAreOutlineAndCenterLinesStay()
+        {
+            var drawing = GuitarDrawing.Draw(TestGuitar(Set(SixStrings), Wire(2.5)), 0.001, 50);
+
+            var frets = drawing.Items.Where(i => i.Component == DrawingComponent.Frets).ToList();
+            Assert.That(frets.Count(i => i.Role == DrawingRole.Centerline), Is.EqualTo(20));
+            Assert.That(frets.Count(i => i.Role == DrawingRole.Outline && i.Path.IsClosed), Is.EqualTo(20));
+            Assert.That(drawing.Items.Count(i => i.Component == DrawingComponent.FretSlots), Is.EqualTo(20));
+        }
+
+        [Test]
+        public void StringOutlines_DiameterWideFromNutToSaddle()
+        {
+            var fretboard = FretboardShape.Solve(TestGuitar(Set(SixStrings)));
+
+            Assert.That(fretboard.StringOutlines, Has.Count.EqualTo(6));
+            // The first string is .012 in = 0.3048 mm; its ends are centered on the nut and saddle points.
+            var corners = fretboard.StringOutlines[0].Segments.Select(s => s.Start).ToArray();
+            Assert.That(fretboard.StringOutlines[0].IsClosed, Is.True);
+            Assert.That(corners, Has.Length.EqualTo(4));
+            Assert.That(Dist(corners[0], corners[1]), Is.EqualTo(0.3048).Within(1e-9));
+            Assert.That(Dist(corners[2], corners[3]), Is.EqualTo(0.3048).Within(1e-9));
+            AssertPoint(Mid(corners[0], corners[1]), 18.5, 957.685163);
+            AssertPoint(Mid(corners[2], corners[3]), 27, 312.685163);
+            // The last (.053 in).
+            var last = fretboard.StringOutlines[5].Segments.Select(s => s.Start).ToArray();
+            Assert.That(Dist(last[0], last[1]), Is.EqualTo(0.053 * 25.4).Within(1e-9));
+            AssertPoint(Mid(last[0], last[1]), -18.5, 957.685163);
+        }
+
+        static double Dist(Point2 a, Point2 b) => System.Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y));
+        static Point2 Mid(Point2 a, Point2 b) => new Point2((a.X + b.X) / 2, (a.Y + b.Y) / 2);
+
+        [Test]
+        public void StringOutlines_WithoutASet_NoRectanglesButTheCenterLinesStay()
+        {
+            var drawing = GuitarDrawing.Draw(TestGuitar(), 0.001, 50);
+
+            Assert.That(FretboardShape.Solve(TestGuitar()).StringOutlines.All(o => o == null), Is.True);
+            var strings = drawing.Items.Where(i => i.Component == DrawingComponent.Strings).ToList();
+            Assert.That(strings, Has.Count.EqualTo(2));
+            Assert.That(strings.All(i => i.Role == DrawingRole.Centerline), Is.True);
+        }
+
+        [Test]
+        public void StringOutlines_TwelveStrings_OneRectangleEach()
+        {
+            var guitar = TestGuitar(Set(TwelveStrings));
+            guitar = guitar with
+            {
+                Neck = guitar.Neck with
+                {
+                    Fretboard = guitar.Neck.Fretboard with
+                    {
+                        StringsPerCourse = new(Fretboard.Definitions.StringsPerCourse, 2),
+                        CourseStringSpacingAtNut = new(Fretboard.Definitions.CourseStringSpacingAtNut, 2),
+                        CourseStringSpacingAtBridge = new(Fretboard.Definitions.CourseStringSpacingAtBridge, 3),
+                    },
+                },
+            };
+
+            var fretboard = FretboardShape.Solve(guitar);
+
+            Assert.That(fretboard.StringOutlines, Has.Count.EqualTo(12));
+            Assert.That(fretboard.StringOutlines.All(o => o != null && o.IsClosed), Is.True);
+            var widths = fretboard.StringOutlines.Select(o => { var c = o.Segments.Select(s => s.Start).ToArray(); return Dist(c[0], c[1]); });
+            Assert.That(widths, Is.EqualTo(TwelveStrings.Select(d => d * 25.4)).Within(1e-9));
         }
 
         [Test]
@@ -211,6 +324,65 @@ namespace GuitarForm.Tests
 
             Assert.That(profile.Outline, Is.Null);
             Assert.That(profile.Messages.Single().Text, Is.EqualTo("Set the Neck Angle (NKA) to draw the fretboard in the side view."));
+        }
+
+        [TestCase(0)]
+        [TestCase(3)]
+        public void StringsPerCourse_OutOfRange_IsAnErrorNotACrash(int perCourse)
+        {
+            var guitar = TestGuitar(Set(SixStrings));
+            guitar = guitar with
+            {
+                Neck = guitar.Neck with
+                {
+                    Fretboard = guitar.Neck.Fretboard with
+                    {
+                        StringsPerCourse = new(Fretboard.Definitions.StringsPerCourse, perCourse),
+                    },
+                },
+            };
+
+            FretboardShape shape = null;
+            Assert.DoesNotThrow(() => shape = FretboardShape.Solve(guitar));
+            Assert.That(shape.Messages.Any(m => m.Level == GuitarForm.Model.MessageLevel.Error &&
+                m.Text.Contains("must be 1 or 2")), Is.True);
+        }
+
+        [Test]
+        public void Taper_NonPositiveValues_AreAnErrorNotAnInvertedFretboard()
+        {
+            var guitar = TestGuitar();
+            guitar = guitar with
+            {
+                Neck = guitar.Neck with
+                {
+                    Fretboard = guitar.Neck.Fretboard with { NutWidth = new(Fretboard.Definitions.NutWidth, 0) },
+                },
+            };
+
+            var shape = FretboardShape.Solve(guitar);
+
+            Assert.That(shape.Outline, Is.Null);
+            Assert.That(shape.Messages.Any(m => m.Level == GuitarForm.Model.MessageLevel.Error), Is.True);
+        }
+
+        [Test]
+        public void Drawing_TagsTheFretboardsItems()
+        {
+            var drawing = GuitarDrawing.Draw(TestGuitar(Set(SixStrings)), 0.001, 50);
+
+            var frets = drawing.Items.Where(i => i.Component == DrawingComponent.Frets).ToList();
+            Assert.That(frets, Has.Count.EqualTo(20));
+            Assert.That(frets.All(i => i.Role == DrawingRole.Centerline && i.Path.Segments.Count == 1), Is.True);
+            var strings = drawing.Items.Where(i => i.Component == DrawingComponent.Strings).ToList();
+            Assert.That(strings, Has.Count.EqualTo(6));
+            // The strings are closed rectangles now (outline), no longer construction lines.
+            Assert.That(strings.All(i => i.Role == DrawingRole.Outline && i.Path.IsClosed && i.Path.Segments.Count == 4), Is.True);
+            Assert.That(drawing.ConstructionLines, Is.SupersetOf(frets.Select(i => (LineSegment)i.Path.Segments[0])));
+            Assert.That(drawing.Items.Count(i => i.Component == DrawingComponent.Fretboard), Is.EqualTo(1));
+            Assert.That(drawing.Items.Count(i => i.Component == DrawingComponent.FaceDots), Is.EqualTo(3));
+            Assert.That(drawing.Items.Where(i => i.Component == DrawingComponent.FaceDots).All(i => i.Circle.HasValue && i.Role == DrawingRole.Outline), Is.True);
+            Assert.That(drawing.Items.Any(i => i.Component == DrawingComponent.SideDots), Is.False);
         }
     }
 }

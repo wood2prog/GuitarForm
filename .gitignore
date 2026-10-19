@@ -8,10 +8,6 @@ obj/
 *.user
 *.suo
 
-# Rhino / Grasshopper backups
+# Rhino backups
 *.3dmbak
 *.rhl
-*.ghbak
-
-# Local Grasshopper test files
-Test File.gh

@@ -15,8 +15,18 @@ namespace GuitarForm.Model.Parameters
 
         public override object StoredValue => Value;
 
-        public override Parameter WithStoredValue(object value) =>
-            this with { Value = value == null ? null : Convert.ToDouble(value, CultureInfo.InvariantCulture) };
+        // Only a number is taken (not text or true/false), and not an infinite one or NaN.
+        public override Parameter WithStoredValue(object value)
+        {
+            if (value == null)
+                return this with { Value = null };
+            if (value is not (byte or sbyte or short or ushort or int or uint or long or ulong or float or double or decimal))
+                throw new FormatException($"{Label}: \"{value}\" isn't a number.");
+            double number = Convert.ToDouble(value, CultureInfo.InvariantCulture);
+            if (double.IsNaN(number) || double.IsInfinity(number))
+                throw new FormatException($"{Label}: {value} isn't a finite number.");
+            return this with { Value = number };
+        }
 
         public override string Symbol(LengthUnit unit) => Definition.Kind switch
         {

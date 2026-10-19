@@ -33,6 +33,8 @@ namespace GuitarForm.Model.Parts
             public static readonly ParameterDefinition SideDotDiameter = ParameterDefinition.Size("Side Dot Diameter", "SDD");
             public static readonly ParameterDefinition SideDotOffset = ParameterDefinition.Distance("Side Dot Offset", "SDO");
             public static readonly ParameterDefinition SideDoubleDotSpacing = ParameterDefinition.Size("Side Double Dot Spacing", "SDDS");
+
+            public static readonly ParameterDefinition SlotOverage = ParameterDefinition.Distance("Fretboard Slot Overage", "FBSO");
         }
 
         public CountParameter FretCount { get; init; } = new(Definitions.FretCount);
@@ -58,6 +60,8 @@ namespace GuitarForm.Model.Parts
         public NumberParameter SideDotDiameter { get; init; } = new(Definitions.SideDotDiameter);
         public NumberParameter SideDotOffset { get; init; } = new(Definitions.SideDotOffset);
         public NumberParameter SideDoubleDotSpacing { get; init; } = new(Definitions.SideDoubleDotSpacing);
+
+        public NumberParameter SlotOverage { get; init; } = new(Definitions.SlotOverage);
 
         // The frets that have position dots, and how many.
         public IReadOnlyList<DotMarker> Markers { get; init; } = Array.Empty<DotMarker>();

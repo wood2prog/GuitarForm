@@ -24,6 +24,7 @@ Save is refused, with the reason shown, while any text can't be read or the set 
 ### Delete
 
 - A set that no saved neck uses is deleted after you confirm (**OK** or **Cancel**). Its unsaved changes are lost too, and the message says so.
+- The check for necks that use the set covers only saved necks in the library, not designs that use it (a design using a deleted set shows **none** with a note).
 - A set that saved necks use can't be deleted without a replacement. The dialog lists those necks and asks for the set they should use instead, chosen from the other saved sets. **Delete** replaces the set in those necks and then deletes it; **Cancel** does nothing.
 - If no other set exists, the dialog says so and asks you to save another set first.
 
@@ -38,6 +39,7 @@ Choosing it makes the set the open design's guitar set, which marks the design a
 ## Unsaved changes
 
 - Choosing another set in the picker, **New**, or changing the library in Settings asks **Save changes to "…"?** with **Yes** (save, then carry on), **No** (discard, then carry on) or **Cancel** (stay where you are). If the save is refused, the switch is cancelled too.
+- Switching, creating, copying, opening or importing a design asks only about the design's own unsaved changes. Unsaved string set edits are independent of the design and stay in the tab while you change designs. Changing the library in Settings asks about the design and then about unsaved set changes; **No** puts the tab back to the saved set, so the question isn't asked again.
 - **Revert** asks to confirm before discarding.
 - The Strings tab has no recovery file. Unsaved changes to a set are lost if Rhino closes before you save them.
 

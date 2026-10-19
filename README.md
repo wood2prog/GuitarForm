@@ -33,16 +33,21 @@ Then run the **`GuitarForm`** command to open the panel. Dock it by dragging its
 - **Working copy and saving:** edits change a working copy of the open design, not the library, and the **Unsaved changes** label beside the design list shows while there are any. **Save** (enabled while there are changes) writes them to the library. **Save as…** saves the working copy as a new design and switches to it, leaving the original as it was. **Revert** throws the changes away, after asking. The first Save after opening a design asks whether to overwrite it (**Yes**), save as a new design (**No**), or do neither (**Cancel**). A design you've just made with New, Copy or Import doesn't ask.
 - **Unsaved changes:** switching design, **New…**, **Copy**, **Import…**, **Delete**, or moving or restoring the library in Settings asks whether to save them (**Yes**), discard them (**No**) or cancel. Unsaved work is also kept in a recovery file (in `%LOCALAPPDATA%\GuitarForm\recovery`, apart from the library), so if Rhino closes before you save, the panel offers **Recover unsaved changes?** the next time you open that design.
 - **Section tabs:** each section's values in groups. The Messages bar below the tabs shows the selected tab's errors, warnings and notes, each in its own colour. It hides when the tab has none, and its header collapses it. A tab's title shows its number of errors, e.g. **Body (2)**. Click a group's title to collapse or open it.
-- **Sliders:** a decimal value sits on the lever of a slider, which fills the field's width. Drag the lever to change it in steps (tenths; hold Shift for hundredths, or Ctrl for ten steps at a time); it springs back to the middle when let go. When a field has focus, the arrow keys step it, with the same Shift and Ctrl. Click the lever to type a value, or click the track beside it to step once. Hover over a field for its description and range. Optional fields can be left blank; the drawing shows whatever the values set so far allow.
+- **Sliders:** a decimal value sits on the lever of a slider, which fills the field's width. Drag the lever to change it in steps (tenths; hold Shift for hundredths, or Ctrl for ten steps at a time); it springs back to the middle when let go. When a field has focus, the arrow keys step it, with the same Shift and Ctrl. Click the lever to type a value, or click the track beside it to step once. Length slider steps follow the document units (a 0.1 mm step becomes 0.1 mm converted, so in an inch document it is a smaller fraction of an inch). Hover over a field for its description and range. Optional fields can be left blank; the drawing shows whatever the values set so far allow.
 - **Presets:** each section tab's preset row stays at the top while its fields scroll. **Save as…** writes the section as a named preset straight away. **Load** copies a preset into the design, so changing the preset later doesn't change the design; loading counts as an edit, so it needs a Save. **Delete** removes a preset.
-- **Preview:** the working copy is drawn in the viewports as you type, while the panel is visible and **Preview** is ticked. Unsaved changes show. Construction geometry is light grey and the outline is in Rhino's feedback colour.
-- **Build:** writes the working copy into the document, on the `GuitarForm::Outline` and `GuitarForm::Construction` layers (light grey). Build's message says when the design has unsaved changes. Building a design again replaces its previous build. One Undo removes a build.
+- **Preview:** the working copy is drawn in the viewports as you type, while the panel is visible and **Preview** is ticked. Unsaved changes show. Each part is drawn in its component's colour, as Build will make it (see [Layers and colors](#layers-and-colors)).
+- **Show strings:** a tick box at the top of the Fretboard tab. It hides or shows the strings in the preview and in Build. It's a setting for all designs, kept between sessions, not part of the design.
+- **Build:** writes the working copy into the document, on the `Guitar` layer tree (see [Layers and colors](#layers-and-colors)). Build's message says when the design has unsaved changes. Building a design again replaces its previous build. One Undo removes a build.
 
 The guitar is drawn **vertically**: the tail end of the body is at the origin and the body length runs up the **+Y** axis. The side view is drawn to the right of the plate.
 
 ### Units
 
 Every length in GuitarForm is shown and typed in the **Rhino document's units**, and the unit is shown beside each field. GuitarForm stores everything in **millimetres**, so a design means the same in any document. Change the document's units, or open a document in other units, and the panel shows the same design in the new units. The JSON design documents are in millimetres too.
+
+### Layers and colors
+
+Build puts objects on a `Guitar` layer tree: `Guitar::Body`, `Guitar::Neck` and `Guitar::Fretboard`, each with a sublayer per component (for example `Guitar::Fretboard::Frets`) and a light grey `Construction` sublayer for construction geometry. Objects are colored by layer. A layer's colour is set only when Build creates it, so a layer you recolour stays that way. Build removes the old `GuitarForm::Outline` and `GuitarForm::Construction` layers when they are empty. Centerlines are thinner than outlines. The preview uses the same component colours.
 
 ## Tabs
 
@@ -51,10 +56,11 @@ Every length in GuitarForm is shown and typed in the **Rhino document's units**,
 | Instrument | Values for the whole instrument: scale length, neck join fret. | [docs/Instrument.md](docs/Instrument.md) |
 | Body | The body outline (plate) from its bouts, waist, tail and heel, the side view from its depths and skew, the cutaway, and the head and tail blocks. | [docs/Body.md](docs/Body.md) |
 | Soundhole | A round soundhole. | [docs/Soundhole.md](docs/Soundhole.md) |
-| Bracing | The top's X brace, graft, upper transverse bar, finger braces, tone bars and soundhole braces. | Not yet documented; see [docs/Glossary.md](docs/Glossary.md) |
-| Fretboard | Its width and string spacing, frets, thickness and radius, and dot markers. | Not yet documented; see [docs/Glossary.md](docs/Glossary.md) |
+| Bracing | The top's X brace, graft, upper transverse bar, finger braces, tone bars and soundhole braces. | [docs/Bracing.md](docs/Bracing.md) |
+| Fretboard | Its width and string spacing, frets, thickness and radius, and dot markers. | [docs/Fretboard.md](docs/Fretboard.md) |
 | Neck | Its angle, nut, thickness, profiles (squareness, asymmetry and blend) at the first and selected frets, and the heel. | [docs/Neck.md](docs/Neck.md) |
 | Strings | The library of string sets: each string's description, diameter, construction, unit weight and core, and the set each guitar uses. | [docs/Strings.md](docs/Strings.md) |
+| Frets | The library of fretwires: bead and tang dimensions, slot depth and price, and the fretwire each guitar uses. | [docs/Frets.md](docs/Frets.md) |
 | Settings | Where the library and its backups are kept, backup timing, and the drawing gap. | [docs/Settings.md](docs/Settings.md) |
 
 ## Library and backups

@@ -57,6 +57,11 @@ namespace GuitarForm.Data
                 ForeignKeys = true,
             }.ToString());
             connection.Open();
+            using (var timeout = connection.CreateCommand())
+            {
+                timeout.CommandText = "PRAGMA busy_timeout = 5000";
+                timeout.ExecuteNonQuery();
+            }
             return connection;
         }
 
@@ -281,11 +286,20 @@ namespace GuitarForm.Data
                 transaction.Commit();
                 return result;
             }
+            catch (SqliteException e) when (e.SqliteErrorCode == 19 && e.SqliteExtendedErrorCode is 2067 or 1555 && IsNameConflict(e))
+            {
+                // A name check that passed lost a race, or was skipped: give the same kind of message as the checks.
+                throw new InvalidOperationException("There's already an item with that name.", e);
+            }
             finally
             {
                 _transaction = null;
             }
         }
+
+        // Whether a unique violation concerns a name (designs.name, preset_name, the parts' kind and name index).
+        static bool IsNameConflict(SqliteException e) =>
+            e.Message.Contains("name", StringComparison.OrdinalIgnoreCase);
 
         static string Now() => DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
 

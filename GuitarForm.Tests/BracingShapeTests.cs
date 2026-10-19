@@ -19,7 +19,7 @@ namespace GuitarForm.Tests
 
         // The Quick Test body (docs/Body.md), with a 100 soundhole centered 380 from the tail end. The X crosses at
         // y = 300, its legs 50° from the centerline; the upper transverse bar spans y = 450 to 470, above the soundhole.
-        static Guitar TestGuitar(Func<Bracing, Bracing> change = null)
+        internal static Guitar TestGuitar(Func<Bracing, Bracing> change = null)
         {
             var bracing = new Bracing
             {
@@ -387,6 +387,34 @@ namespace GuitarForm.Tests
                 "Set the Headblock Width (HBW) to draw the headblock.",
                 "Set the Tailblock Width (TBW) to draw the tailblock.",
             }));
+        }
+
+        [Test]
+        public void BraceKinds_MarkOnlyTheBlocks()
+        {
+            var (bracing, _) = Solve(TestGuitar());
+
+            Assert.That(bracing.Braces.Single(b => b.Kind == BracingShape.BraceKind.Headblock).Name, Is.EqualTo("The headblock"));
+            Assert.That(bracing.Braces.Single(b => b.Kind == BracingShape.BraceKind.Tailblock).Name, Is.EqualTo("The tailblock"));
+            Assert.That(bracing.Braces.Count(b => b.Kind == BracingShape.BraceKind.Brace), Is.EqualTo(bracing.Braces.Count - 2));
+            Assert.That(bracing.Placed(-300).Braces.Select(b => b.Kind), Is.EqualTo(bracing.Braces.Select(b => b.Kind)));
+        }
+
+        [Test]
+        public void Drawing_TagsTheBlocksAndTheRestOfTheBracing()
+        {
+            var drawing = GuitarDrawing.Draw(TestGuitar(), Tolerance, Gap);
+
+            var head = drawing.Items.Single(i => i.Component == DrawingComponent.Headblock);
+            var tail = drawing.Items.Single(i => i.Component == DrawingComponent.Tailblock);
+            Assert.That(head.Role, Is.EqualTo(DrawingRole.Outline));
+            Assert.That(tail.Path.Bounds.MaxY, Is.LessThan(head.Path.Bounds.MinY));
+            var bracing = drawing.Items.Where(i => i.Component == DrawingComponent.Bracing).ToList();
+            // The plate's copy and the braces other than the blocks, and the copy's centerline as construction.
+            Assert.That(bracing.Count(i => i.Role == DrawingRole.Outline && i.Path != null),
+                Is.EqualTo(1 + drawing.Bracing.Braces.Count - 2));
+            Assert.That(bracing.Count(i => i.Role == DrawingRole.Construction), Is.EqualTo(1));
+            Assert.That(bracing.Any(i => i.Circle.HasValue), Is.True, "the soundhole on the copy");
         }
     }
 }

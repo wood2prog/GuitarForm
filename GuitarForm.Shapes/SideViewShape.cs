@@ -38,7 +38,11 @@ namespace GuitarForm.Shapes
             }
             // The model reports values out of range.
             if (!(body.Length.Value is double length && length > 0 && tailDepth.Value > 0 && neckDepth.Value > 0))
+            {
+                side.Messages.Add(new GeometryMessage(MessageLevel.Error,
+                    $"The {body.Length.Label}, {tailDepth.Label} and {neckDepth.Label} must be greater than zero to draw the side view."));
                 return side;
+            }
 
             double neckTop = tailDepth.Value.Value + (body.ProfileSkew.Value ?? 0);
             double neckBack = neckTop - neckDepth.Value.Value;

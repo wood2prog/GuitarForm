@@ -18,10 +18,24 @@ namespace GuitarForm.Model.Parameters
         // A fraction isn't rounded: it's refused.
         public override Parameter WithStoredValue(object value)
         {
-            if (value is double or float or decimal &&
-                Convert.ToDouble(value, CultureInfo.InvariantCulture) % 1 != 0)
-                throw new FormatException($"{Label}: {value} isn't a whole number.");
-            return this with { Value = value == null ? null : Convert.ToInt32(value, CultureInfo.InvariantCulture) };
+            if (value == null)
+                return this with { Value = null };
+            if (value is not (byte or sbyte or short or ushort or int or uint or long or ulong or float or double or decimal))
+                throw new FormatException($"{Label}: \"{value}\" isn't a whole number.");
+            if (value is double or float or decimal)
+            {
+                double number = Convert.ToDouble(value, CultureInfo.InvariantCulture);
+                if (double.IsNaN(number) || double.IsInfinity(number) || number % 1 != 0)
+                    throw new FormatException($"{Label}: {value} isn't a whole number.");
+            }
+            try
+            {
+                return this with { Value = Convert.ToInt32(value, CultureInfo.InvariantCulture) };
+            }
+            catch (OverflowException e)
+            {
+                throw new FormatException($"{Label}: {value} is too large for a whole number.", e);
+            }
         }
 
         public override bool TryParse(string text, LengthUnit unit, IFormatProvider culture, out Parameter result,

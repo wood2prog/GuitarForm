@@ -62,8 +62,16 @@ namespace GuitarForm
             Content = _bar;
 
             _bar.GotFocus += (_, _) => _bar.Invalidate();
-            _bar.LostFocus += (_, _) => _bar.Invalidate();
-            _bar.MouseLeave += (_, _) => _bar.Cursor = Cursors.Default;
+            _bar.LostFocus += (_, _) =>
+            {
+                CancelPressWithoutCapture();
+                _bar.Invalidate();
+            };
+            _bar.MouseLeave += (_, _) =>
+            {
+                _bar.Cursor = Cursors.Default;
+                CancelPressWithoutCapture();
+            };
             _bar.Paint += (_, e) => Paint(e.Graphics);
             _bar.MouseDown += OnMouseDown;
             _bar.MouseMove += OnMouseMove;
@@ -142,8 +150,10 @@ namespace GuitarForm
             TextChanged?.Invoke(this, EventArgs.Empty);
         }
 
+        // An empty box steps from its placeholder's value when that is a number (the default it falls back to), else 0.
         double CurrentValue =>
-            double.TryParse(_text, NumberStyles.Float, CultureInfo.CurrentCulture, out double value) && double.IsFinite(value)
+            double.TryParse(_text.Length == 0 ? PlaceholderText : _text, NumberStyles.Float, CultureInfo.CurrentCulture, out double value) &&
+            double.IsFinite(value)
                 ? value : 0;
 
         // Rounding drops floating-point noise, and keeps any finer digits typed in by hand.
@@ -264,6 +274,20 @@ namespace GuitarForm
             if (clicked)
                 StartEditing();
         }
+
+        // Without mouse capture the button-up can go to another control, so a drag in progress is ended when the pointer
+        // leaves or focus moves, rather than left stuck.
+        void CancelPressWithoutCapture()
+        {
+            if (!_pressedOnLever || CanCaptureMouse)
+                return;
+            _pressedOnLever = false;
+            _dragging = false;
+            _leverOffset = 0;
+            _bar.Invalidate();
+        }
+
+        static readonly bool CanCaptureMouse = typeof(Control).GetMethod("CaptureMouse", Type.EmptyTypes) != null;
 
         // Mouse capture keeps the drag going when the pointer leaves the slider. Rhino 8's Eto has it, but the Eto that
         // RhinoCommon 8.0's package compiles against doesn't, so it's called when it's there.

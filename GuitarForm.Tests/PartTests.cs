@@ -349,6 +349,24 @@ namespace GuitarForm.Tests
         };
 
         [Test]
+        public void SlotDepthPriceAndOverage_Limits()
+        {
+            var good = Fretwire(2.4, 0.5, 0.6);
+            Assert.That(Messages(good with { SlotDepth = new(Model.Parts.Fretwire.Definitions.SlotDepth, 1.7) }), Is.Empty);
+            Assert.That(Messages(good with { SlotDepth = new(Model.Parts.Fretwire.Definitions.SlotDepth, 0) }), Is.Not.Empty);
+            Assert.That(Messages(good with { Price = new(Model.Parts.Fretwire.Definitions.Price, 0) }), Is.Empty);
+            Assert.That(Messages(good with { Price = new(Model.Parts.Fretwire.Definitions.Price, 12.5) }), Is.Empty);
+            Assert.That(Messages(good with { Price = new(Model.Parts.Fretwire.Definitions.Price, -1) }), Is.Not.Empty);
+            Assert.That(good.Manufacturer.Definition.Required, Is.False);
+            Assert.That(Model.Parts.Fretwire.Definitions.Price.Unit, Is.Empty);
+
+            var board = new Fretboard();
+            Assert.That(Messages(board with { SlotOverage = new(Fretboard.Definitions.SlotOverage, 0) }), Is.Empty);
+            Assert.That(Messages(board with { SlotOverage = new(Fretboard.Definitions.SlotOverage, 0.4) }), Is.Empty);
+            Assert.That(Messages(board with { SlotOverage = new(Fretboard.Definitions.SlotOverage, -0.1) }), Is.Not.Empty);
+        }
+
+        [Test]
         public void Fretwire_BarbsWiderThanTangNarrowerThanBead()
         {
             Assert.That(Messages(Fretwire(2.4, 0.5, 0.6)), Is.Empty);

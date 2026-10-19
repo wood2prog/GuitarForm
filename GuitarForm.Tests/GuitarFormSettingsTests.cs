@@ -16,6 +16,13 @@ namespace GuitarForm.Tests
             Assert.That(settings.KeepDailyBackupsDays, Is.EqualTo(30));
             Assert.That(settings.DrawingGap, Is.EqualTo(50));
             Assert.That(settings.StringUnitWeightInLbPerIn, Is.True);
+            Assert.That(settings.ShowStrings, Is.True);
+        }
+
+        [Test]
+        public void ShowStrings_SurvivesCorrected()
+        {
+            Assert.That(new GuitarFormSettings { ShowStrings = false }.Corrected().ShowStrings, Is.False);
         }
 
         [Test]

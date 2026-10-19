@@ -28,8 +28,16 @@ namespace GuitarForm.Shapes
         // The face dots, halfway between each marker's fret and the fret before it.
         public List<Circle> Dots { get; } = new List<Circle>();
 
+        // Each fret at the chosen fretwire's Bead Width, centered on its fret line and ending on the fretboard's edges.
+        // Empty without a fretwire bead width.
+        public List<Path> Beads { get; } = new List<Path>();
+
         // Each string's centerline from the nut to the saddle, treble first. Only the outer strings without a string set.
         public List<LineSegment> Strings { get; } = new List<LineSegment>();
+
+        // Each string as a rectangle, as wide as its diameter, from the nut to the saddle; parallel to Strings. Null for
+        // a string without a diameter (only its centerline is drawn then).
+        public List<Path> StringOutlines { get; } = new List<Path>();
 
         public List<GeometryMessage> Messages { get; } = new List<GeometryMessage>();
 
@@ -61,6 +69,18 @@ namespace GuitarForm.Shapes
             return shape.FindTaper() ? shape.HalfWidthAt(shape.FretY(fret)) : null;
         }
 
+        // Where a marker's dots are along the fretboard: halfway between its fret and the fret before it (the nut for
+        // fret 1), as a distance from the nut. The face dots and the side dots both use it.
+        internal static double DotDistanceFromNut(Guitar guitar, int fret) =>
+            (guitar.FretDistance(fret - 1).Value + guitar.FretDistance(fret).Value) / 2;
+
+        // Half the fretboard's width the given distance from the nut. Null when a value it needs isn't set.
+        internal static double? HalfWidthAtDistance(Guitar guitar, double fromNut)
+        {
+            var shape = new FretboardShape(guitar);
+            return shape.FindTaper() ? shape.HalfWidthAt(shape.NutY - fromNut) : null;
+        }
+
         // The values the fretboard's width depends on.
         internal static Parameter[] TaperParameters(Guitar guitar)
         {
@@ -83,7 +103,18 @@ namespace GuitarForm.Shapes
         {
             if (!FindTaper())
             {
-                RemarkMissing("the fretboard", TaperParameters(_guitar));
+                if (TaperParameters(_guitar).All(p => p.HasValue))
+                    Messages.Add(new GeometryMessage(MessageLevel.Error,
+                        "The fretboard can't be drawn: the scale length, nut width, string spacing at the bridge and " +
+                        "setbacks must be greater than zero (the setbacks, zero or more)."));
+                else
+                    RemarkMissing("the fretboard", TaperParameters(_guitar));
+                return;
+            }
+            if (_fretboard.StringsPerCourse.Value is int perCourse && perCourse != 1 && perCourse != 2)
+            {
+                Messages.Add(new GeometryMessage(MessageLevel.Error,
+                    $"The {_fretboard.StringsPerCourse.Label} must be 1 or 2 to draw the strings."));
                 return;
             }
             AddStrings();
@@ -94,10 +125,19 @@ namespace GuitarForm.Shapes
                 return;
             }
             double? tang = _guitar.Neck.Fretwire?.TangThickness.Value;
+            double? bead = _guitar.Neck.Fretwire?.BeadWidth.Value;
+            if (!(bead > 0))
+            {
+                const string choose = "Choose a fretwire on the Frets tab to draw the frets at their width.";
+                if (!Messages.Any(m => m.Text == choose))
+                    Messages.Add(new GeometryMessage(MessageLevel.Remark, choose));
+            }
             for (int fret = 1; fret <= fretCount; fret++)
             {
                 double y = FretY(fret);
                 FretLines.Add(Across(y));
+                if (bead > 0)
+                    Beads.Add(Rectangle(y + bead.Value / 2, y - bead.Value / 2));
                 if (tang > 0)
                     Slots.Add(Rectangle(y + tang.Value / 2, y - tang.Value / 2));
             }
@@ -118,6 +158,8 @@ namespace GuitarForm.Shapes
                   _guitar.NeckJoinDistance is double join && _fretboard.NutWidth.Value is double nutWidth &&
                   _fretboard.StringSpacingAtBridge.Value is double spacing &&
                   _fretboard.BassStringSetback.Value is double bass && _fretboard.TrebleStringSetback.Value is double treble))
+                return false;
+            if (!(nutWidth > 0 && spacing > 0 && bass >= 0 && treble >= 0))
                 return false;
             NutY = length + join;
             SaddleY = NutY - scale;
@@ -158,7 +200,7 @@ namespace GuitarForm.Shapes
             foreach (var marker in markers)
             {
                 int fret = marker.Fret.Value.Value;
-                double y = ((fret == 1 ? NutY : FretY(fret - 1)) + FretY(fret)) / 2;
+                double y = NutY - DotDistanceFromNut(_guitar, fret);
                 if (marker.DotCount.Value != 2)
                 {
                     Dots.Add(new Circle(new Point2(0, y), radius));
@@ -192,8 +234,29 @@ namespace GuitarForm.Shapes
                 nut = new[] { nutTreble, nutBass };
                 saddle = new[] { saddleHalf, -saddleHalf };
             }
+            var strings = _guitar.Neck.StringSet?.Strings;
+            bool sized = strings != null && strings.Count == nut.Length;
             for (int i = 0; i < nut.Length; i++)
-                Strings.Add(new LineSegment(new Point2(nut[i], NutY), new Point2(saddle[i], SaddleY)));
+            {
+                var line = new LineSegment(new Point2(nut[i], NutY), new Point2(saddle[i], SaddleY));
+                Strings.Add(line);
+                double? diameter = sized ? strings[i].Diameter.Value : null;
+                StringOutlines.Add(diameter > 0 ? StringRectangle(line, diameter.Value / 2) : null);
+            }
+        }
+
+        // The string's line widened by the radius each side, square to the line, ending on the nut and saddle.
+        static Path StringRectangle(LineSegment line, double radius)
+        {
+            double dx = line.To.X - line.From.X, dy = line.To.Y - line.From.Y;
+            double length = Math.Sqrt(dx * dx + dy * dy);
+            double nx = -dy / length * radius, ny = dx / length * radius;
+            var corners = new[]
+            {
+                new Point2(line.From.X - nx, line.From.Y - ny), new Point2(line.From.X + nx, line.From.Y + ny),
+                new Point2(line.To.X + nx, line.To.Y + ny), new Point2(line.To.X - nx, line.To.Y - ny),
+            };
+            return new Path(corners.Select((corner, i) => (Segment)new LineSegment(corner, corners[(i + 1) % 4])), isClosed: true);
         }
 
         // The strings' centers across the fretboard, treble (+X) first, or null when they can't be worked out: no
@@ -202,6 +265,8 @@ namespace GuitarForm.Shapes
         {
             var strings = _guitar.Neck.StringSet?.Strings;
             int perCourse = _fretboard.StringsPerCourse.Value ?? 1;
+            if (perCourse != 1 && perCourse != 2)
+                return null;
             if (strings == null || strings.Count < 2 || strings.Any(s => !(s.Diameter.Value > 0)) ||
                 strings.Count % perCourse != 0 || perCourse == 2 && !(courseSpacing > 0))
                 return null;

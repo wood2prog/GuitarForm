@@ -260,10 +260,15 @@ namespace GuitarForm.Data
                 StringSet s => (s.Manufacturer, s.Name),
                 _ => throw new ArgumentException($"{item.GetType().Name} isn't a fretwire or string set."),
             };
-            if (!manufacturer.HasValue || !product.HasValue)
-                throw new InvalidOperationException(
-                    $"A {KindName(item.GetType())} needs a {manufacturer.Label} and {product.Label} to be saved in the library.");
-            return $"{manufacturer.Value.Trim()} {product.Value.Trim()}";
+            // A fretwire's manufacturer is optional: without one, its name is just the product code.
+            bool manufacturerOptional = item is Fretwire;
+            if ((!manufacturerOptional && string.IsNullOrWhiteSpace(manufacturer.Value)) || string.IsNullOrWhiteSpace(product.Value))
+                throw new InvalidOperationException(manufacturerOptional
+                    ? $"A {KindName(item.GetType())} needs a {product.Label} to be saved in the library."
+                    : $"A {KindName(item.GetType())} needs a {manufacturer.Label} and {product.Label} to be saved in the library.");
+            return string.IsNullOrWhiteSpace(manufacturer.Value)
+                ? product.Value.Trim()
+                : $"{manufacturer.Value.Trim()} {product.Value.Trim()}";
         }
 
         // --- Saving and reading parts ---

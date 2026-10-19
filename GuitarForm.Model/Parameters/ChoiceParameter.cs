@@ -27,7 +27,8 @@ namespace GuitarForm.Model.Parameters
         {
             if (value == null)
                 return this with { Value = default };
-            if (value is string name && Enum.TryParse(name, out T option) && Enum.IsDefined(option))
+            // A name starts with a letter: Enum.TryParse would also take a number such as "1" as that option's value.
+            if (value is string name && name.Length > 0 && char.IsLetter(name[0]) && Enum.TryParse(name, out T option) && Enum.IsDefined(option))
                 return this with { Value = option };
             throw new FormatException($"{Label}: \"{value}\" isn't one of its options.");
         }

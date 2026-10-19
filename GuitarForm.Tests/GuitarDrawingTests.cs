@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using GuitarForm.Model;
+using GuitarForm.Model.Parameters;
 using GuitarForm.Model.Parts;
 using GuitarForm.Shapes;
 using NUnit.Framework;
@@ -116,6 +117,26 @@ namespace GuitarForm.Tests
         }
 
         [Test]
+        public void Soundhole_QuickTestValues()
+        {
+            // docs/Soundhole.md Quick Test: diameter 100 at tail offset 420 is a circle of radius 50 centred on (0, 420);
+            // a horizontal offset of -20 moves it left; a diameter of 0 leaves no soundhole.
+            var top = new TopPlate
+            {
+                Soundhole = new(TopPlate.Definitions.Soundhole, true),
+                SoundholeDiameter = new(TopPlate.Definitions.SoundholeDiameter, 100),
+                SoundholeOffsetFromTailEnd = new(TopPlate.Definitions.SoundholeOffsetFromTailEnd, 420),
+            };
+            Assert.That(SoundholeShape.Solve(top), Is.EqualTo(new Circle(new Point2(0, 420), 50)));
+
+            top = top with { SoundholeOffsetFromCenterline = new(TopPlate.Definitions.SoundholeOffsetFromCenterline, -20) };
+            Assert.That(SoundholeShape.Solve(top), Is.EqualTo(new Circle(new Point2(-20, 420), 50)));
+
+            top = top with { SoundholeDiameter = new(TopPlate.Definitions.SoundholeDiameter, 0) };
+            Assert.That(SoundholeShape.Solve(top), Is.Null);
+        }
+
+        [Test]
         public void SideView_WaitsForBothDepths()
         {
             var drawing = Draw(QuickTestBody(neckDepth: null));
@@ -164,6 +185,110 @@ namespace GuitarForm.Tests
             Assert.That(drawing.ConstructionLines, Has.Count.EqualTo(6));
             Assert.That(drawing.ConstructionCircles, Has.Count.EqualTo(6));
             Assert.That(drawing.OutlinePaths.Count(path => path.IsClosed), Is.EqualTo(2));
+        }
+
+        [Test]
+        public void SideView_ZeroDepth_SaysItMustBeGreaterThanZero()
+        {
+            var drawing = Draw(QuickTestBody(tailDepth: 0));
+
+            Assert.That(drawing.SideView.Outline, Is.Null);
+            Assert.That(drawing.BodyMessages.Any(m => m.Level == MessageLevel.Error &&
+                m.Text.Contains("must be greater than zero to draw the side view")), Is.True);
+        }
+
+        [Test]
+        public void FailedPlate_StillDrawsTheOtherPartsWithAWarning()
+        {
+            // A negative upper bout radius fails the plate; the side view is independent of it.
+            var body = QuickTestBody() with
+            {
+                UpperBoutPrimaryRadius = new(Body.Definitions.UpperBoutPrimaryRadius, -1),
+            };
+
+            var drawing = Draw(body);
+
+            Assert.That(drawing.Plate.Failed, Is.True);
+            Assert.That(drawing.SideView.Outline, Is.Not.Null);
+            Assert.That(drawing.OutlinePaths, Does.Contain(drawing.SideView.Outline));
+            Assert.That(drawing.BodyMessages.Any(m => m.Level == MessageLevel.Error), Is.True);
+            Assert.That(drawing.BodyMessages.Any(m => m.Level == MessageLevel.Warning &&
+                m.Text.Contains("the rest is drawn without it")), Is.True);
+            // With no plate the side view's offset falls back to the gap from 0.
+            Assert.That(drawing.SideView.Outline.Bounds.MinX, Is.EqualTo(Gap).Within(1e-9));
+        }
+
+        [Test]
+        public void Soundhole_OnWithoutADiameter_IsReportedOnceByTheModel()
+        {
+            var top = new TopPlate { Soundhole = new(TopPlate.Definitions.Soundhole, true) };
+            var drawing = Draw(QuickTestBody() with { TopPlate = top });
+
+            Assert.That(drawing.Soundhole, Is.Null);
+            var diameter = top.SoundholeDiameter.Label;
+            // The panel lists the model's messages and the drawing's; the diameter is named exactly once.
+            int count = top.Validate(LengthUnit.Millimeters).Count(m => m.Text.Contains(diameter)) +
+                drawing.BodyMessages.Count(m => m.Text.Contains(diameter));
+            Assert.That(count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Plate_WithoutALength_IsARemark_NotAnError()
+        {
+            var drawing = Draw(new Body());
+
+            Assert.That(drawing.Plate.Failed, Is.True);
+            Assert.That(drawing.BodyMessages.Any(m => m.Level == MessageLevel.Error || m.Level == MessageLevel.Warning), Is.False);
+            Assert.That(drawing.BodyMessages.Any(m => m.Level == MessageLevel.Remark && m.Text.Contains("to draw the body outline")), Is.True);
+        }
+
+        [Test]
+        public void Plate_WithAZeroLength_IsAnErrorWithAWarning()
+        {
+            var drawing = Draw(QuickTestBody() with { Length = new(Body.Definitions.Length, 0) });
+
+            Assert.That(drawing.Plate.Failed, Is.True);
+            Assert.That(drawing.BodyMessages.Any(m => m.Level == MessageLevel.Error), Is.True);
+            Assert.That(drawing.BodyMessages.Any(m => m.Level == MessageLevel.Warning), Is.True);
+        }
+
+        [Test]
+        public void Items_TagSideViewAndSoundhole()
+        {
+            var body = QuickTestBody() with
+            {
+                TopPlate = new TopPlate
+                {
+                    Soundhole = new(TopPlate.Definitions.Soundhole, true),
+                    SoundholeDiameter = new(TopPlate.Definitions.SoundholeDiameter, 100),
+                    SoundholeOffsetFromTailEnd = new(TopPlate.Definitions.SoundholeOffsetFromTailEnd, 380),
+                },
+            };
+
+            var drawing = Draw(body);
+
+            var side = drawing.Items.Single(i => i.Component == DrawingComponent.Sides);
+            Assert.That(side.Path, Is.SameAs(drawing.SideView.Outline));
+            Assert.That(side.Role, Is.EqualTo(DrawingRole.Outline));
+            var hole = drawing.Items.Single(i => i.Component == DrawingComponent.Soundhole);
+            Assert.That(hole.Circle, Is.EqualTo(drawing.Soundhole));
+            Assert.That(drawing.Items.Where(i => i.Component == DrawingComponent.TopPlate && i.Role == DrawingRole.Construction).ToList(),
+                Has.Count.EqualTo(12));
+            Assert.That(drawing.Items.Count(i => i.Component == DrawingComponent.TopPlate && i.Role == DrawingRole.Outline), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Items_FailedPlate_StillTagsTheOthers()
+        {
+            var body = QuickTestBody() with
+            {
+                UpperBoutPrimaryRadius = new(Body.Definitions.UpperBoutPrimaryRadius, -1),
+            };
+
+            var drawing = Draw(body);
+
+            Assert.That(drawing.Items.Any(i => i.Component == DrawingComponent.Sides), Is.True);
+            Assert.That(drawing.Items.Any(i => i.Component == DrawingComponent.TopPlate && i.Role == DrawingRole.Outline), Is.False);
         }
     }
 }

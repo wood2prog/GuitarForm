@@ -33,7 +33,10 @@ namespace GuitarForm.Shapes
     // their brace out without a message of their own.
     public sealed class BracingShape
     {
-        public sealed record Brace(string Name, Path Outline);
+        // What a brace is, so the headblock and tailblock can be told apart from the rest.
+        public enum BraceKind { Brace, Headblock, Tailblock }
+
+        public sealed record Brace(string Name, Path Outline, BraceKind Kind = BraceKind.Brace);
 
         // The plate outline the bracing is drawn on; null when the outline isn't complete.
         public Path Plate { get; private set; }
@@ -94,7 +97,16 @@ namespace GuitarForm.Shapes
                 return shape;
             shape.Plate = plate.ClosedOutline;
             shape.Soundhole = soundhole;
-            shape.Build(guitar);
+            try
+            {
+                shape.Build(guitar);
+            }
+            catch (NotSupportedException e)
+            {
+                shape.Braces.Clear();
+                shape.ConstructionLines.Clear();
+                shape.Error(e.Message);
+            }
             return shape;
         }
 
@@ -129,14 +141,14 @@ namespace GuitarForm.Shapes
             {
                 var inner = new Point2(0, length - body.HeadblockDepth.Value.Value);
                 Add(laid, Lay("the headblock", inner, Vector2.YAxis, body.HeadblockWidth.Value.Value,
-                    new LineStop(inner, Vector2.XAxis), new OutlineStop(Boundary(0))));
+                    new LineStop(inner, Vector2.XAxis), new OutlineStop(Boundary(0)), BraceKind.Headblock));
             }
             if (Ready("the tailblock", body.TailblockWidth, body.TailblockDepth) &&
                 body.TailblockDepth.Value < length)
             {
                 var inner = new Point2(0, body.TailblockDepth.Value.Value);
                 Add(laid, Lay("the tailblock", inner, -Vector2.YAxis, body.TailblockWidth.Value.Value,
-                    new LineStop(inner, Vector2.XAxis), new OutlineStop(Boundary(0))));
+                    new LineStop(inner, Vector2.XAxis), new OutlineStop(Boundary(0)), BraceKind.Tailblock));
             }
 
             Laid upperBar = null;
@@ -387,10 +399,12 @@ namespace GuitarForm.Shapes
 
         // A brace with its centerline through origin along direction, from its start stop (behind origin) to its end
         // stop (ahead of it). Its outline is added to Braces; null, with an error, when it doesn't fit.
-        Laid Lay(string name, Point2 origin, Vector2 direction, double width, Stop start, Stop end) =>
-            Lay(name, origin, direction, width, start, end, Braces);
+        Laid Lay(string name, Point2 origin, Vector2 direction, double width, Stop start, Stop end,
+            BraceKind kind = BraceKind.Brace) =>
+            Lay(name, origin, direction, width, start, end, Braces, kind);
 
-        Laid Lay(string name, Point2 origin, Vector2 direction, double width, Stop start, Stop end, List<Brace> into)
+        Laid Lay(string name, Point2 origin, Vector2 direction, double width, Stop start, Stop end, List<Brace> into,
+            BraceKind kind = BraceKind.Brace)
         {
             direction = direction.Unit;
             var normal = direction.Left;
@@ -420,7 +434,7 @@ namespace GuitarForm.Shapes
                 segments.AddRange(Across(end, ends[0], ends[1]));
                 segments.Add(new LineSegment(ends[1].Point, starts[1].Point));
                 segments.AddRange(Across(start, starts[1], starts[0]));
-                into.Add(new Brace(Capitalized(name), new Path(segments, isClosed: true)));
+                into.Add(new Brace(Capitalized(name), new Path(segments, isClosed: true), kind));
             }
             return new Laid(origin, direction, width, new[] { starts[0].Point, ends[0].Point, ends[1].Point, starts[1].Point });
         }
@@ -514,6 +528,9 @@ namespace GuitarForm.Shapes
                     if (radius > Slack)
                         boundary.Add(arc with { Radius = radius });
                 }
+                else
+                    throw new NotSupportedException(
+                        "The bracing can't be drawn: the plate outline has a piece that isn't a line or an arc.");
             }
             return _boundaries[offset] = boundary;
         }

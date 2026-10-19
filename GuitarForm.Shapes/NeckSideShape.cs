@@ -42,6 +42,9 @@ namespace GuitarForm.Shapes
 
         public List<GeometryMessage> Messages { get; } = new List<GeometryMessage>();
 
+        // The least half-angle at the corner of the heel's front and the neck's back that a fillet is drawn in.
+        const double MinimumHalfAngle = 0.001;
+
         readonly double _tolerance;
         readonly LengthUnit _unit;
         readonly IFormatProvider _culture;
@@ -87,7 +90,11 @@ namespace GuitarForm.Shapes
             if (!(neck.ThicknessFret.Value <= neck.Fretboard.FretCount.Value && neck.ThicknessAtFirstFret.Value > 0 &&
                   neck.ThicknessAtSelectedFret.Value > 0 && neck.Nut.Thickness.Value > 0 && neck.HeelEndThickness.Value > 0 &&
                   neck.HeelSectionThickness.Value > 0 && neck.HeelShaftRadius.Value > 0))
+            {
+                Error("The neck can't be drawn in the side view: a thickness, the nut thickness or the heel shaft radius " +
+                      "is zero or less, or the selected fret is past the last.");
                 return;
+            }
             int selectedFret = neck.ThicknessFret.Value.Value;
             if (selectedFret < 2)
             {
@@ -112,8 +119,18 @@ namespace GuitarForm.Shapes
             var boardToNut = (fretboardSide.NutUnder - fretboardSide.EndUnder).Unit;
             var nutEnd = fretboardSide.NutUnder + boardToNut * neck.Nut.Thickness.Value.Value;
             double neckEnd = side.BackAtNeckEnd.Y;
-            var joint = Intersect(fretboardSide.NutUnder, boardToNut, new Point2(0, neckEnd), Vector2.XAxis).Value;
-            var nutBack = Intersect(nutEnd, up, firstBack, toNut).Value;
+            var jointMeet = Intersect(fretboardSide.NutUnder, boardToNut, new Point2(0, neckEnd), Vector2.XAxis);
+            var nutBackMeet = Intersect(nutEnd, up, firstBack, toNut);
+            if (jointMeet == null || nutBackMeet == null)
+            {
+                Error(jointMeet == null
+                    ? "The fretboard's underside runs along the body's neck end, so the neck can't be drawn: check the neck angle."
+                    : "The back of the neck runs square to the playing surface at the nut, so the nut end can't be drawn: " +
+                      "check the neck thicknesses at the first and selected frets.");
+                return;
+            }
+            var joint = jointMeet.Value;
+            var nutBack = nutBackMeet.Value;
 
             // The heel end and heel section, along the body's neck end from the back.
             double capOuter = side.BackAtNeckEnd.X + neck.HeelEndOffsetFromBack.Value.Value;
@@ -146,6 +163,11 @@ namespace GuitarForm.Shapes
                 // Between two lines: the fillet sits in the corner they make, on the bisector.
                 var towardHeel = -alongFront;
                 double half = Math.Acos(Math.Clamp(towardHeel.Dot(toNut), -1, 1)) / 2;
+                if (half < MinimumHalfAngle || half > Math.PI / 2 - MinimumHalfAngle)
+                {
+                    Error($"The front of the heel and the back of the neck meet at too shallow an angle to fit the {shaft.Label}.");
+                    return;
+                }
                 double reach = radius / Math.Tan(half);
                 onFront = meet.Value + towardHeel * reach;
                 onBack = meet.Value + toNut * reach;

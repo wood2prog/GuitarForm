@@ -51,8 +51,17 @@ namespace GuitarForm
             Settings.SetInteger(nameof(GuitarFormSettings.KeepDailyBackupsDays), GuitarFormSettings.KeepDailyBackupsDays);
             Settings.SetDouble(nameof(GuitarFormSettings.DrawingGap), GuitarFormSettings.DrawingGap);
             Settings.SetBool(nameof(GuitarFormSettings.StringUnitWeightInLbPerIn), GuitarFormSettings.StringUnitWeightInLbPerIn);
+            Settings.SetBool(nameof(GuitarFormSettings.ShowStrings), GuitarFormSettings.ShowStrings);
             SaveSettings();
             BackupScheduler?.Restart();
+        }
+
+        // Saves just the Show strings setting; the backup timer isn't touched.
+        public void SetShowStrings(bool show)
+        {
+            GuitarFormSettings = GuitarFormSettings with { ShowStrings = show };
+            Settings.SetBool(nameof(GuitarFormSettings.ShowStrings), show);
+            SaveSettings();
         }
 
         GuitarFormSettings ReadGuitarFormSettings()
@@ -67,6 +76,7 @@ namespace GuitarForm
                 KeepDailyBackupsDays = Settings.GetInteger(nameof(defaults.KeepDailyBackupsDays), defaults.KeepDailyBackupsDays),
                 DrawingGap = Settings.GetDouble(nameof(defaults.DrawingGap), defaults.DrawingGap),
                 StringUnitWeightInLbPerIn = Settings.GetBool(nameof(defaults.StringUnitWeightInLbPerIn), defaults.StringUnitWeightInLbPerIn),
+                ShowStrings = Settings.GetBool(nameof(defaults.ShowStrings), defaults.ShowStrings),
             }.Corrected();
         }
 

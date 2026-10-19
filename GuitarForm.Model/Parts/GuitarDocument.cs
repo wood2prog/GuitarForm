@@ -8,7 +8,7 @@ namespace GuitarForm.Model.Parts
 {
     // Reads and writes a guitar as a JSON document that other programs can read:
     //
-    //   { "schemaVersion": 2, "units": "mm",
+    //   { "schemaVersion": 3, "units": "mm",
     //     "guitar": { "values": { "IN": "OM", "SL": 645, ... },
     //                 "neck": { "values": { ... }, "markers": [ { "MKF": 3, "MKDC": 1 }, ... ],
     //                           "fretwire": { "values": { ... } },
@@ -189,7 +189,8 @@ namespace GuitarForm.Model.Parts
 
         // --- Version 1 ---
 
-        // DesignDocument's fields, with the abbreviations they became.
+        // DesignDocument's fields, with the abbreviations they became. This mapping is frozen: version 1 documents
+        // only ever had these fields, so don't extend it for new sections or fields.
         static readonly (string Section, string Field, string Abbreviation)[] DesignFields =
         {
             ("instrument", "scaleLength", "SL"), ("instrument", "neckJoinFret", "NJF"),

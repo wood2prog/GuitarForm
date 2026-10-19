@@ -33,6 +33,7 @@ namespace GuitarForm
         readonly SectionEditor<Body> _body = new SectionEditor<Body>(Sections.Body);
         readonly SectionEditor<Soundhole> _soundhole = new SectionEditor<Soundhole>(Sections.Soundhole);
         readonly CheckBox _hasSoundhole = new CheckBox { Text = "This design has a soundhole" };
+        readonly CheckBox _showStrings = new CheckBox { Text = "Show &strings", ToolTip = "Draw the strings in the preview and in Build. A setting for all designs." };
         readonly CheckBox _showPreview = new CheckBox { Text = "&Preview", Checked = true };
         readonly SettingsPage _settings = new SettingsPage();
         readonly DesignPreview _preview = new DesignPreview();
@@ -61,11 +62,13 @@ namespace GuitarForm
         readonly Dictionary<string, TabMessages> _tabMessages = new[] { NewFields.BracingTab, NewFields.FretboardTab, NewFields.NeckTab }
             .ToDictionary(tab => tab, _ => new TabMessages());
 
-        // The selected tab's messages, in a box to the right of the tabs; the divider between them can be dragged.
+        // The tabs; the selected tab's messages are shown in the MessagesBar below them.
         readonly TabControl _tabs = new TabControl();
         readonly Dictionary<TabPage, TabMessages> _pageMessages = new Dictionary<TabPage, TabMessages>();
         readonly MessagesBar _messagesBar = new MessagesBar();
         Guitar _newFields = new Guitar();
+        string _fretwireNote; // Why the guitar has no fretwire although it was saved with one.
+        FretsTab _frets;
         string _stringSetNote; // Why the guitar has no string set although it was saved with one.
         Dictionary<string, List<GeometryMessage>> _newTabMessages = new Dictionary<string, List<GeometryMessage>>();
 
@@ -114,13 +117,19 @@ namespace GuitarForm
             _hasSoundhole.CheckedChanged += (_, _) => OnHasSoundholeChanged();
             _designs.SelectedIndexChanged += (_, _) => OnDesignSelected();
             _showPreview.CheckedChanged += (_, _) => Redraw();
+            _showStrings.Checked = GuitarFormPlugin.Instance.GuitarFormSettings.ShowStrings;
+            _showStrings.CheckedChanged += (_, _) =>
+            {
+                GuitarFormPlugin.Instance.SetShowStrings(_showStrings.Checked == true);
+                Redraw();
+            };
             _settings.DrawingChanged += Redraw;
 
             // Lengths are shown in the active document's units, which change with its properties or another document.
-            RhinoDoc.DocumentPropertiesChanged += (_, _) => Application.Instance.AsyncInvoke(OnUnitsMaybeChanged);
-            RhinoDoc.EndOpenDocument += (_, _) => Application.Instance.AsyncInvoke(OnUnitsMaybeChanged);
-            RhinoDoc.NewDocument += (_, _) => Application.Instance.AsyncInvoke(OnUnitsMaybeChanged);
-            _settings.ConfirmLibraryChange = () => ConfirmDiscard() && (_strings?.ConfirmDiscard() ?? true);
+            RhinoDoc.DocumentPropertiesChanged += OnDocumentUnitsEvent;
+            RhinoDoc.EndOpenDocument += OnDocumentUnitsEvent;
+            RhinoDoc.NewDocument += OnDocumentUnitsEvent;
+            _settings.ConfirmLibraryChange = ConfirmLibraryChange;
             _settings.LibraryChanged += () =>
             {
                 CloseDesign();
@@ -132,6 +141,14 @@ namespace GuitarForm
                 catch (Exception e)
                 {
                     RhinoApp.WriteLine($"GuitarForm: couldn't list the string sets: {e.Message}");
+                }
+                try
+                {
+                    _frets?.Reload();
+                }
+                catch (Exception e)
+                {
+                    RhinoApp.WriteLine($"GuitarForm: couldn't list the fretwires: {e.Message}");
                 }
                 foreach (var refresh in _refreshPresets)
                     refresh();
@@ -162,12 +179,16 @@ namespace GuitarForm
                 Groups(null, _soundhole.GroupTitles, _soundhole.Rows, "Soundhole"),
                 _soundhole.Messages));
             foreach (string tab in _tabMessages.Keys)
-                tabs.Pages.Add(SectionPage(tab, Array.Empty<Control>(), Groups(tab), _tabMessages[tab]));
+                tabs.Pages.Add(SectionPage(tab, tab == NewFields.FretboardTab ? new Control[] { _showStrings } : Array.Empty<Control>(), Groups(tab), _tabMessages[tab]));
             // The string set library works with no design open.
             _strings = new StringsTab(() => CurrentLibraryPath);
             _strings.UseRequested += OnUseStringSet;
             _strings.LibraryItemChanged += OnStringLibraryChanged;
             tabs.Pages.Add(MessagesPage("Strings", _strings, _strings.Messages));
+            _frets = new FretsTab(() => CurrentLibraryPath);
+            _frets.UseRequested += OnUseFretwire;
+            _frets.LibraryItemChanged += OnFretwireLibraryChanged;
+            tabs.Pages.Add(MessagesPage("Frets", _frets, _frets.Messages));
             tabs.Pages.Add(new TabPage { Text = "Settings", Content = new Scrollable { Content = _settings, Border = BorderType.None } });
 
             Content = new TableLayout
@@ -204,6 +225,19 @@ namespace GuitarForm
 
             ShowDesignList(null);
             ShowDesign();
+        }
+
+        bool _disposed;
+
+        // The static RhinoDoc events outlive the panel, so Dispose unsubscribes this one handler from all three.
+        void OnDocumentUnitsEvent(object sender, EventArgs e)
+        {
+            if (!_disposed)
+                Application.Instance.AsyncInvoke(() =>
+                {
+                    if (!_disposed)
+                        OnUnitsMaybeChanged();
+                });
         }
 
         // --- Layout ---
@@ -373,11 +407,14 @@ namespace GuitarForm
             return FieldLayout.Row("Starting shape", null, list, FieldLayout.UnitLabel());
         }
 
-        // Shows or hides each new field's row from the working copy's values (e.g. squareness or blend, by profile mode).
+        // Shows or hides each new field's row, and enables or disables its box, from the working copy's values (e.g.
+        // squareness or blend by profile mode, the course spacings by strings per course).
         void UpdateNewFieldVisibility()
         {
             for (int i = 0; i < NewFields.Fields.Length; i++)
             {
+                if (NewFields.Fields[i].Enabled is { } enabled)
+                    _newFieldBoxes[i].Enabled = enabled(_newFields);
                 var visible = NewFields.Fields[i].Visible;
                 if (visible == null || _newFieldRows[i] == null)
                     continue;
@@ -404,6 +441,8 @@ namespace GuitarForm
                 {
                     var definition = parameter.Definition;
                     double Shown(double v) => definition.Kind == ParameterKind.Length ? _units.FromMillimetres(v) : v;
+                    // Steps are defined in mm for a length, so they follow the document's units.
+                    slider.Step = Shown(NewFields.Fields[i].Step);
                     slider.Minimum = definition.Minimum is double min && !definition.MinimumExclusive ? Shown(min) : null;
                     slider.Maximum = definition.Maximum is double max && !definition.MaximumExclusive ? Shown(max) : null;
                 }
@@ -605,7 +644,19 @@ namespace GuitarForm
                 _showing = false;
                 return;
             }
-            Run(() => Open(id, false));
+            try
+            {
+                Open(id, false);
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(this, e.Message, "GuitarForm", MessageBoxType.Error);
+                // Nothing was replaced: put the current design back in the drop-down.
+                _discardChosen = false;
+                _showing = true;
+                _designs.SelectedKey = _designId?.ToString(CultureInfo.InvariantCulture);
+                _showing = false;
+            }
         }
 
         // Opens a design from the library as the working copy, dropping any unsaved changes the user chose to discard.
@@ -613,7 +664,9 @@ namespace GuitarForm
         // (new, copied, imported or saved as) needs no first-save prompt.
         void Open(long id, bool confirmed)
         {
+            // Everything is loaded first, so a failure leaves the open design as it was.
             var loaded = WithLibrary(library => library.LoadDesign(id));
+            var newFields = ResolveLibraryItems(NewFields.Load(id));
             DiscardWorkingCopy();
             _design = loaded;
             _designId = id;
@@ -622,7 +675,7 @@ namespace GuitarForm
             _dirty = false;
             _savePrompted = confirmed;
             _lastSoundhole = null;
-            _newFields = ResolveStringSet(NewFields.Load(id));
+            _newFields = newFields;
             Array.Clear(_newFieldErrors);
             _markersError = null;
             if (!confirmed)
@@ -646,7 +699,7 @@ namespace GuitarForm
                 try
                 {
                     _design = DesignDocument.FromJson(recovery.Document);
-                    _newFields = ResolveStringSet(NewFields.ReadFromDocument(recovery.Document) ?? new Guitar());
+                    _newFields = ResolveLibraryItems(NewFields.ReadFromDocument(recovery.Document) ?? new Guitar());
                     MarkDirty();
                     return;
                 }
@@ -660,20 +713,55 @@ namespace GuitarForm
 
         // The guitar with its string set (known only by id after loading) read from the library. Sets the note shown on
         // the Strings tab when the saved set no longer exists. With expectedName, a set of another name counts as missing.
-        Guitar ResolveStringSet(Guitar guitar, string expectedName = null)
+        // The same for the fretwire. With expected names (an import), an item of another name counts as missing.
+        Guitar ResolveLibraryItems(Guitar guitar, string expectedStringSetName = null, string expectedFretwireName = null)
         {
             _stringSetNote = null;
-            if (guitar.Neck.StringSet == null)
+            _fretwireNote = null;
+            if (guitar.Neck.StringSet == null && guitar.Neck.Fretwire == null)
                 return guitar;
-            var resolved = WithLibrary(library => NewFields.ResolveStringSet(guitar, library, out bool missing, expectedName));
-            if (resolved.Neck.StringSet == null)
+            bool setMissing = false, wireMissing = false;
+            Guitar resolved;
+            try
+            {
+                resolved = WithLibrary(library => NewFields.ResolveLibraryItems(
+                    guitar, library, out setMissing, out wireMissing, expectedStringSetName, expectedFretwireName));
+            }
+            catch (Exception e)
+            {
+                RhinoApp.WriteLine($"GuitarForm: couldn't read the string set or fretwire: {e.Message}");
+                setMissing = guitar.Neck.StringSet != null;
+                wireMissing = guitar.Neck.Fretwire != null;
+                resolved = guitar with { Neck = guitar.Neck with { StringSet = null, Fretwire = null } };
+            }
+            if (setMissing)
                 _stringSetNote = "the string set this guitar used is no longer in the library";
+            if (wireMissing)
+                _fretwireNote = "The fretwire this guitar used isn't in the library; choose another on the Frets tab.";
             return resolved;
         }
 
-        // Tells the Strings tab whether a design is open and which set its guitar uses.
-        void UpdateStringsState() =>
+        // Tells the Strings and Frets tabs whether a design is open and which item its guitar uses.
+        void UpdateStringsState()
+        {
             _strings?.ShowAssigned(_design != null, _newFields.Neck.StringSet, _stringSetNote);
+            _frets?.ShowAssigned(_design != null, _newFields.Neck.Fretwire, _fretwireNote);
+        }
+
+        // "Use for this guitar" on the Frets tab (null for none): the fretwire becomes the working guitar's, as an unsaved edit.
+        void OnUseFretwire(Fretwire wire)
+        {
+            if (_design == null || _designId == null)
+                return;
+            _newFields = _newFields with { Neck = _newFields.Neck with { Fretwire = wire } };
+            _fretwireNote = null;
+            MarkDirty();
+            UpdateStringsState();
+            Redraw();
+        }
+
+        // A fretwire was saved or deleted in the library: the guitar's copy is read again (not an edit of the design).
+        void OnFretwireLibraryChanged() => OnStringLibraryChanged();
 
         // "Use for this guitar": the saved set becomes the working guitar's string set, as an unsaved edit.
         void OnUseStringSet(StringSet set)
@@ -690,9 +778,10 @@ namespace GuitarForm
         // A string set was saved or deleted in the library: the guitar's copy is read again (not an edit of the design).
         void OnStringLibraryChanged()
         {
-            if (_design == null || _newFields.Neck.StringSet?.Id == null)
+            if (_design == null || (_newFields.Neck.StringSet?.Id == null && _newFields.Neck.Fretwire?.Id == null))
                 return;
-            _newFields = ResolveStringSet(_newFields);
+            // Both library items are read again (a deleted one leaves the guitar with none and a note).
+            _newFields = ResolveLibraryItems(_newFields);
             UpdateStringsState();
             Redraw();
         }
@@ -774,6 +863,18 @@ namespace GuitarForm
         {
             if (disposing)
             {
+                _disposed = true;
+                RhinoDoc.DocumentPropertiesChanged -= OnDocumentUnitsEvent;
+                RhinoDoc.EndOpenDocument -= OnDocumentUnitsEvent;
+                RhinoDoc.NewDocument -= OnDocumentUnitsEvent;
+                try
+                {
+                    _preview.Hide(RhinoDoc.ActiveDoc);
+                }
+                catch (Exception e)
+                {
+                    RhinoApp.WriteLine($"GuitarForm: couldn't hide the preview: {e.Message}");
+                }
                 _recoveryTimer.Stop();
                 _recoveryTimer.Dispose();
                 if (Current == this)
@@ -789,6 +890,7 @@ namespace GuitarForm
         {
             if (_design == null || _designId == null)
                 return;
+            RequireNoInputErrors("saved");
             if (!_savePrompted && !overwriteConfirmed)
             {
                 var answer = MessageBox.Show(this,
@@ -827,6 +929,7 @@ namespace GuitarForm
         {
             if (_design == null)
                 return;
+            RequireNoInputErrors("saved");
             if (name == null)
             {
                 string initial = WithLibrary(library => library.UnusedDesignName(_design.Name + " copy"));
@@ -862,7 +965,23 @@ namespace GuitarForm
 
         // True when it's fine to replace the working copy: there are no unsaved changes, or the user saved them or chose
         // to discard them. False when they cancelled, or the save didn't happen.
-        bool ConfirmDiscard()
+        // Only the design's own unsaved changes count: edits to a string set or fretwire in the library tabs are
+        // independent of the design and stay in memory across design switches.
+        bool ConfirmDiscard() => ConfirmDiscardDesign();
+
+        // For a change of library (Settings: switch or restore), which replaces everything: the design's unsaved
+        // changes are asked about, then those in the Strings and Frets tabs. Tabs whose changes were discarded are
+        // put back to their saved state so the question doesn't come back.
+        bool ConfirmLibraryChange()
+        {
+            if (!ConfirmDiscardDesign() || !(_strings?.ConfirmDiscard() ?? true) || !(_frets?.ConfirmDiscard() ?? true))
+                return false;
+            _strings?.DiscardChanges();
+            _frets?.DiscardChanges();
+            return true;
+        }
+
+        bool ConfirmDiscardDesign()
         {
             if (!_dirty || _design == null)
                 return true;
@@ -909,6 +1028,7 @@ namespace GuitarForm
                 return;
             ShowDesign();
             _strings?.RefreshUnits();
+            _frets?.RefreshUnits();
             _settings.ShowSettings();
         }
 
@@ -916,6 +1036,8 @@ namespace GuitarForm
         void ShowDesign()
         {
             _units = DisplayUnits.Current;
+            Array.Clear(_newFieldErrors);
+            _markersError = null;
             _showing = true;
             _instrument.Show(_design?.Instrument, _units);
             _body.Show(_design?.Body, _units);
@@ -932,6 +1054,20 @@ namespace GuitarForm
             UpdateDirtyUi();
             UpdateStringsState();
             Redraw();
+        }
+
+        // Whether any box holds text that couldn't be read, so the working copy isn't what the boxes show.
+        bool HasInputErrors() =>
+            _instrument.HasInputErrors || _body.HasInputErrors ||
+            (_design?.Soundhole != null && _soundhole.HasInputErrors) || _markersError != null ||
+            _newFieldErrors.Where((_, i) => NewFields.Fields[i].Visible?.Invoke(_newFields) ?? true).Any(e => e != null);
+
+        // Stops an action (shown to the user by Run or ConfirmDiscard) while some text couldn't be read.
+        void RequireNoInputErrors(string what)
+        {
+            if (HasInputErrors())
+                throw new InvalidOperationException(
+                    $"Some text couldn't be read, so the design can't be {what} yet. Fix the fields marked in Messages first.");
         }
 
         // Changes the working copy of the open design; nothing is written to the library until Save.
@@ -1026,7 +1162,7 @@ namespace GuitarForm
             foreach (var (tab, messages) in _tabMessages)
                 messages.Show(_newTabMessages[tab]);
             if (_showPreview.Checked == true && _panelVisible && doc != null)
-                _preview.Show(drawing, doc);
+                _preview.Show(drawing, doc, _showStrings.Checked == true);
             else
                 _preview.Hide(doc);
         }
@@ -1034,7 +1170,17 @@ namespace GuitarForm
         void Build()
         {
             var doc = RhinoDoc.ActiveDoc ?? throw new InvalidOperationException("There's no Rhino document to build into.");
-            int added = DesignBuilder.Build(doc, _designId.Value, _design.Name, Draw());
+            RequireNoInputErrors("built");
+            var drawing = Draw();
+            // A part with errors is drawn blank in the preview, so building would leave it out.
+            int errors = drawing.InstrumentMessages.Concat(drawing.BodyMessages).Concat(drawing.SoundholeMessages)
+                .Concat(_newTabMessages.Values.SelectMany(m => m))
+                .Where(m => m.Level == MessageLevel.Error).Distinct().Count();
+            if (errors > 0 && MessageBox.Show(this,
+                    $"The design has {errors} {(errors == 1 ? "error" : "errors")} (see Messages), so the parts with errors will be missing from the build.\n\nBuild anyway?",
+                    "GuitarForm", MessageBoxButtons.YesNo, MessageBoxType.Warning) != DialogResult.Yes)
+                return;
+            int added = DesignBuilder.Build(doc, _designId.Value, _design.Name, drawing, _showStrings.Checked == true);
             RhinoApp.WriteLine($"GuitarForm: built \"{_design.Name}\"{(_dirty ? " (unsaved)" : "")} ({added} objects).");
         }
 
@@ -1106,6 +1252,14 @@ namespace GuitarForm
                 return;
             long id = _designId.Value;
             WithLibrary(library => library.DeleteDesign(id));
+            try
+            {
+                NewFields.Delete(id);
+            }
+            catch (Exception e)
+            {
+                RhinoApp.WriteLine($"GuitarForm: couldn't delete the design's new-field values: {e.Message}");
+            }
             _dirty = false;
             ClearRecovery();
             CloseDesign();
@@ -1114,6 +1268,7 @@ namespace GuitarForm
 
         void ExportDesign()
         {
+            RequireNoInputErrors("exported");
             var dialog = new SaveFileDialog
             {
                 Title = "Export design",
@@ -1141,7 +1296,8 @@ namespace GuitarForm
                 return;
             // The file's string set id belongs to the library it was exported from, so it counts only if the name matches.
             if (newFields != null)
-                newFields = ResolveStringSet(newFields, NewFields.DocumentStringSetName(json) ?? "");
+                newFields = ResolveLibraryItems(newFields, NewFields.DocumentStringSetName(json) ?? "",
+                    NewFields.DocumentFretwireName(json) ?? "");
             string name = string.IsNullOrWhiteSpace(design.Name) ? Path.GetFileNameWithoutExtension(dialog.FileName) : design.Name;
             long id = WithLibrary(library => library.CreateDesign(design with { Name = library.UnusedDesignName(name) }));
             if (newFields != null)

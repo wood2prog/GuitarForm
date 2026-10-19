@@ -20,11 +20,12 @@ namespace GuitarForm
     // in mm. They're shown on the Body tab and on the Bracing, Fretboard and Neck tabs.
     static class NewFields
     {
-        // Step is how much a slider changes the value per step, in the units it's shown in.
+        // Step is how much a slider changes the value per step (in mm for a length, converted to the units shown).
         // Visible, when set, says whether the field is shown for the working copy's values. Placeholder is shown on a
-        // slider while the value is unset (e.g. the default it falls back to).
+        // slider while the value is unset (e.g. the default it falls back to). Enabled, when set, says whether the field
+        // can be edited for the working copy's values; a disabled field stays shown and keeps its value.
         public sealed record Field(Func<Guitar, Parameter> Get, Func<Guitar, Parameter, Guitar> Set, double Step = 0.1,
-            Func<Guitar, bool> Visible = null, string Placeholder = null);
+            Func<Guitar, bool> Visible = null, string Placeholder = null, Func<Guitar, bool> Enabled = null);
 
         static Field BodyField(Func<Body, Parameter> get) =>
             new Field(g => get(g.Body), (g, p) => g with { Body = (Body)g.Body.With(p) });
@@ -47,6 +48,8 @@ namespace GuitarForm
 
         static Field NutField(Func<Nut, Parameter> get) =>
             new Field(g => get(g.Neck.Nut), (g, p) => g with { Neck = g.Neck with { Nut = (Nut)g.Neck.Nut.With(p) } });
+
+        static bool TwoStringCourses(Guitar g) => g.Neck.Fretboard.StringsPerCourse.Value == 2;
 
         static bool SimpleProfile(Guitar g) => !g.Neck.ProfileAdvancedMode.Value;
         static bool AdvancedProfile(Guitar g) => g.Neck.ProfileAdvancedMode.Value;
@@ -104,7 +107,8 @@ namespace GuitarForm
                 BracingField(b => b.XBraceAngle),
                 BracingField(b => b.XBraceEdgeOffset),
                 BracingField(b => b.XBraceWidth),
-                BracingField(b => b.XBraceHeight)),
+                BracingField(b => b.XBraceHeight),
+                BracingField(b => b.XBraceProfileType)),
             new(BracingTab, "Graft",
                 BracingField(b => b.Graft),
                 BracingField(b => b.GraftThickness),
@@ -138,15 +142,28 @@ namespace GuitarForm
                 BracingField(b => b.SoundholeBraceOffset),
                 BracingField(b => b.SoundholeBraceWidth),
                 BracingField(b => b.SoundholeBraceHeight)),
+            // Not drawn until the bridge's footprint is defined.
+            new(BracingTab, "Bridge patch",
+                BracingField(b => b.BridgePatchThickness),
+                BracingField(b => b.BridgePatchWidthOffset),
+                BracingField(b => b.BridgePatchOffset)),
 
             new(FretboardTab, "Width and string spacing",
                 FretboardField(f => f.NutWidth),
                 FretboardField(f => f.StringSpacingAtBridge),
                 FretboardField(f => f.BassStringSetback),
                 FretboardField(f => f.TrebleStringSetback)),
+            // The course spacings apply only to courses of two strings.
+            new(FretboardTab, "Courses",
+                FretboardField(f => f.StringsPerCourse),
+                FretboardField(f => f.CourseStringSpacingAtNut) with { Enabled = TwoStringCourses },
+                FretboardField(f => f.CourseStringSpacingAtBridge) with { Enabled = TwoStringCourses }),
             new(FretboardTab, "Frets",
                 FretboardField(f => f.FretCount),
                 FretboardField(f => f.LastFretOverhang)),
+            // Not drawn yet.
+            new(FretboardTab, "Fret slots",
+                FretboardField(f => f.SlotOverage)),
             new(FretboardTab, "Thickness and radius",
                 FretboardField(f => f.ThicknessAtNut),
                 FretboardField(f => f.ThicknessAtEnd),
@@ -154,7 +171,16 @@ namespace GuitarForm
             // The panel adds the dot marker list to this group.
             new(FretboardTab, MarkersGroup,
                 FretboardField(f => f.FaceDotDiameter),
-                FretboardField(f => f.DoubleDotEdgeDistance)),
+                FretboardField(f => f.DoubleDotEdgeDistance),
+                FretboardField(f => f.SideDotDiameter),
+                FretboardField(f => f.SideDotOffset),
+                FretboardField(f => f.SideDoubleDotSpacing)),
+            // Information only: no shape uses these, so they never change the drawing.
+            new(FretboardTab, "Setup (information only)",
+                FretboardField(f => f.Relief),
+                FretboardField(f => f.ReliefFret),
+                FretboardField(f => f.TrebleStringAction),
+                FretboardField(f => f.BassStringAction)),
 
             new(NeckTab, ModeGroup,
                 NeckField(n => n.ProfileAdvancedMode)),
@@ -328,7 +354,7 @@ namespace GuitarForm
         public static Guitar CopyFields(Guitar from, Guitar to)
         {
             var copied = WithMarkers(Fields.Aggregate(to, (guitar, field) => field.Set(guitar, field.Get(from))), FormatMarkers(from));
-            return copied with { Neck = copied.Neck with { StringSet = from.Neck.StringSet } };
+            return copied with { Neck = copied.Neck with { StringSet = from.Neck.StringSet, Fretwire = from.Neck.Fretwire } };
         }
 
         static string FilePath(long designId) =>
@@ -342,6 +368,14 @@ namespace GuitarForm
             return File.Exists(path)
                 ? FromTexts(JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(path)) ?? new())
                 : new Guitar();
+        }
+
+        // Removes a deleted design's saved new fields.
+        public static void Delete(long designId)
+        {
+            string path = FilePath(designId);
+            if (File.Exists(path))
+                File.Delete(path);
         }
 
         public static void Save(long designId, Guitar guitar)
@@ -368,6 +402,8 @@ namespace GuitarForm
             var texts = ToTexts(guitar);
             if (guitar.Neck.StringSet is { } set && SetName(set).Length > 0)
                 texts[StringSetNameKey] = SetName(set);
+            if (guitar.Neck.Fretwire is { } wire && FretwireName(wire).Length > 0)
+                texts[FretwireNameKey] = FretwireName(wire);
             document["newFields"] = JsonSerializer.SerializeToNode(texts);
             return document.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
         }
@@ -389,6 +425,9 @@ namespace GuitarForm
             if (texts.TryGetValue(StringSetIdKey, out string id) &&
                 long.TryParse(id, NumberStyles.Integer, CultureInfo.InvariantCulture, out long setId))
                 guitar = guitar with { Neck = guitar.Neck with { StringSet = new StringSet { Id = setId } } };
+            if (texts.TryGetValue(FretwireIdKey, out string wireIdText) &&
+                long.TryParse(wireIdText, NumberStyles.Integer, CultureInfo.InvariantCulture, out long wireId))
+                guitar = guitar with { Neck = guitar.Neck with { Fretwire = new Fretwire { Id = wireId } } };
             return guitar;
         }
 
@@ -399,36 +438,55 @@ namespace GuitarForm
             texts[MarkersKey] = FormatMarkers(guitar);
             if (guitar.Neck.StringSet?.Id is long id)
                 texts[StringSetIdKey] = id.ToString(CultureInfo.InvariantCulture);
+            if (guitar.Neck.Fretwire?.Id is long wireId)
+                texts[FretwireIdKey] = wireId.ToString(CultureInfo.InvariantCulture);
             return texts;
         }
 
         const string StringSetIdKey = "StringSetId";
         const string StringSetNameKey = "StringSetName";
+        const string FretwireIdKey = "FretwireId";
+        const string FretwireNameKey = "FretwireName";
 
-        // The neck's string set from the library by the id it carries (see Load and ReadFromDocument, which leave only
-        // the id). A set that no longer exists leaves the neck with none, and missing is true. If expectedName is given
-        // (an import), a set whose name differs is a different set, so it's treated as missing too.
-        public static Guitar ResolveStringSet(Guitar guitar, Library library, out bool missing, string expectedName = null)
+        // The neck's string set and fretwire from the library by the ids they carry (see Load and ReadFromDocument, which
+        // leave only the ids). One that no longer exists leaves the neck with none, and its flag is true. If an expected
+        // name is given (an import), one whose name differs is a different item, so it's treated as missing too.
+        public static Guitar ResolveLibraryItems(Guitar guitar, Library library, out bool stringSetMissing, out bool fretwireMissing,
+            string expectedStringSetName = null, string expectedFretwireName = null)
+        {
+            var stringSet = ResolveLibraryItem<StringSet>(guitar.Neck.StringSet?.Id, library, expectedStringSetName, SetName, out stringSetMissing);
+            var fretwire = ResolveLibraryItem<Fretwire>(guitar.Neck.Fretwire?.Id, library, expectedFretwireName, FretwireName, out fretwireMissing);
+            return guitar with { Neck = guitar.Neck with { StringSet = stringSet, Fretwire = fretwire } };
+        }
+
+        static T ResolveLibraryItem<T>(long? id, Library library, string expectedName, Func<T, string> name, out bool missing)
+            where T : Part
         {
             missing = false;
-            if (guitar.Neck.StringSet?.Id is not long id)
-                return guitar;
-            StringSet set = null;
+            if (id is not long itemId)
+                return null;
+            T item = null;
             try
             {
-                set = library.LoadLibraryItem<StringSet>(id);
+                item = library.LoadLibraryItem<T>(itemId);
             }
             catch (Exception e) when (e is InvalidOperationException || e is KeyNotFoundException)
             {
             }
-            if (set != null && expectedName != null &&
-                !string.Equals(SetName(set), expectedName, StringComparison.OrdinalIgnoreCase))
-                set = null;
-            missing = set == null;
-            return guitar with { Neck = guitar.Neck with { StringSet = set } };
+            if (item != null && expectedName != null &&
+                !string.Equals(name(item), expectedName, StringComparison.OrdinalIgnoreCase))
+                item = null;
+            missing = item == null;
+            return item;
         }
 
         public static string SetName(StringSet set) => $"{set.Manufacturer.Value} {set.Name.Value}".Trim();
+
+        public static string FretwireName(Fretwire wire) => $"{wire.Manufacturer.Value} {wire.ProductCode.Value}".Trim();
+
+        // The fretwire name a design document carries, or null.
+        public static string DocumentFretwireName(string json) =>
+            JsonNode.Parse(json)?["newFields"]?[FretwireNameKey]?.GetValue<string>();
 
         // The string set name a design document carries, or null.
         public static string DocumentStringSetName(string json) =>

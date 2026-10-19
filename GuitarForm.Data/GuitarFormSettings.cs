@@ -28,6 +28,9 @@ namespace GuitarForm.Data
         // Whether the Strings tab shows and takes the unit weight in lb/in (true) or kg/m. Display only.
         public bool StringUnitWeightInLbPerIn { get; init; } = true;
 
+        // Whether the drawing (preview and Build) includes the strings. A user preference, not part of a design.
+        public bool ShowStrings { get; init; } = true;
+
         // The settings with empty paths replaced by the defaults and numbers brought into range.
         public GuitarFormSettings Corrected() => this with
         {

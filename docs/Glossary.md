@@ -58,6 +58,9 @@ The slight forward bow built into the fretboard's playing surface along its leng
 **Fretboard Relief Fret (FBRF)**
 Optional. The fret at which the Fretboard Relief is measured.
 
+**Fretboard Slot Overage (FBSO)**
+Optional. Extra slot depth, added to the Fretwire Slot Depth, for when the fretboard's thickness tapers more than the wire's recommended depth covers. The depth the fret slots are cut to is the Fretwire Slot Depth plus this. At 0 or when not given, there's no extra.
+
 **Nut Thickness (NTT)**
 The nut's thickness along the length of the neck, from its fretboard face to its headstock face.
 
@@ -411,7 +414,7 @@ For a custom back: the distance in from the body's outline to where the arch sta
 ## Fretwire
 
 **Fretwire Manufacturer (FWM)**
-The company that makes the fretwire.
+Optional. The company that makes the fretwire. A fretwire in the library is named by its manufacturer and product code, or by the product code alone when there's no manufacturer.
 
 **Fretwire Product Code (FWPC)**
 The manufacturer's name or product code for the fretwire, e.g. 47104.
@@ -430,6 +433,12 @@ The thickness of the fret's tang along the length of the fretboard, not counting
 
 **Fretwire Barb Thickness (FWBT)**
 Optional. The thickness of the fret's tang along the length of the fretboard, measured across its barbs. With the Fretwire Tang Thickness, it shows how tightly the fret grips its slot. When given, it must be more than the Fretwire Tang Thickness.
+
+**Fretwire Slot Depth (FWSD)**
+The depth of the fret slot the wire recommends, from the fretboard's playing surface down. The fretboard's slots are cut this deep, plus the Fretboard Slot Overage where the fretboard's thickness tapers.
+
+**Fretwire Price (FWPR)**
+Optional. What the fretwire costs, for job costing. A plain number, zero or more, with no currency or per-length unit: use the same unit for every fretwire, e.g. the price per piece or per length that you buy it in.
 
 ## Bracing
 

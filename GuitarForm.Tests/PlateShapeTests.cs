@@ -246,6 +246,14 @@ namespace GuitarForm.Tests
         }
 
         [Test]
+        public void LowerSecondaryOffset_LimitIsWhereItTouchesTheWaist()
+        {
+            // docs/Body.md: with these values the most LbSO can be is about 61.4.
+            Assert.That(Solve(With(QuickTestBody(), Body.Definitions.LowerBoutSecondaryOffset, 61.4)).Failed, Is.False);
+            Assert.That(Solve(With(QuickTestBody(), Body.Definitions.LowerBoutSecondaryOffset, 70)).Failed, Is.True);
+        }
+
+        [Test]
         public void FretboardTrebleEdge_TapersFromNutToSaddle()
         {
             var guitar = QuickTestGuitar(QuickTestBody());
