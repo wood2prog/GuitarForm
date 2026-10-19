@@ -4,16 +4,16 @@ Project-organization work, in the order we plan to do it. Tick items off as they
 
 ## Where we left off
 
-- The Strings tab is built and committed (f1297f3, 40747d1, cc76023), and the user checked it in Rhino: it looks good. See [docs/Strings.md](docs/Strings.md).
-- Plan followed: library editor and picker; "Use for this guitar" stores the StringSetId in `NewFields/<id>.json`; unit weight in lb/in by default, with a remembered toggle; no crash recovery; no tension calculation.
-- Known limitations and follow-ups:
-  - Deleting a string set can't see designs that use it through `NewFields`, so they show none, with a note.
+- Latest commit: 7d155aa. The Florentine and Venetian cutaway wall now runs parallel to the fretboard's treble edge, offset by the Cutaway Offset from Neck, so a tapered fretboard is no longer undercut.
+- The move onto the new model is finished and committed, in this order: Strings tab (f1297f3, 40747d1, cc76023); Frets tab, courses, side dots, colors and layer tree (bbd7e07); legacy geometry removed (14ea0ec); shape refactors and tests (3e79f8d, f136626); library migration stages 1 to 3 (90f33b0, fa80373, 7017346, df52dfe, ccd5081); saved copies of the body, neck and bracing replacing preset rows (be349bf); old model and storage retired (a2588ae); schema v5 dropping the old design tables (6763b2d); disabled sliders grayed out (f4d10b4); the "Use no fretwire" button removed (9978932).
+- What is built: the panel works on a `DesignSession` holding a `Guitar`; every tab is built from `GuitarFields`; preview and Build draw through `GuitarForm.Shapes` and `DesignDrawing.FromShapes`; the string set and fretwire a neck uses live on the neck in the library (no more `NewFields` files). `NEXT.md` is older than this and describes the earlier pre-migration waves.
+- Workflow: the manager session delegates all edits to workers. All new work needs the user's explicit "build it" before implementation starts.
+- Next: the glossary pass and the remaining items in section 1 (bridge settings, UI polish, limits on values), then the Rhino checks of the migrated panel (Frets, Strings, saved copies) if not yet done.
+- Known limitations of the library tabs:
   - Add/Remove String drops held invalid input in other boxes, and Remove has no confirmation.
   - Collapsed string groups can re-expand under the wrong title after Add/Remove, because state is keyed by title.
-  - Imports match a string set by name only.
-  - When the panel moves to the new model, move the chosen set from `NewFields` onto library guitars' necks.
-- The Frets tab, courses, side dots, colors and layers (see [docs/Plan-FretsAndLayers.md](docs/Plan-FretsAndLayers.md)) are built but uncommitted and not yet checked in Rhino; see `NEXT.md`. The tab is documented in [docs/Frets.md](docs/Frets.md).
-- Workflow: the manager session delegates all edits to workers. All new work needs the user's explicit "build it" before implementation starts.
+  - Import matches a fretwire or string set by id and name, then by name only (not by manufacturer and product code).
+  - Unsaved Frets and Strings edits have no crash recovery.
 
 ## Decided: plug-in and design database
 
@@ -31,7 +31,7 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 
 ## 1. Next
 
-- [ ] Name every setting in the user's notes and define it in `docs/Glossary.md` (name, abbreviation, short definition), one at a time with the user. Then delete `variables and settings.txt`. Implementation details that come up along the way:
+- [ ] **(question)** Name every setting in the user's notes and define it in `docs/Glossary.md` (name, abbreviation, short definition), one at a time with the user. `docs/Glossary.md` is now long (about 575 lines; only Fretboard Radius at Nut/End and Neck Joint Type are still marked planned), and `variables and settings.txt` is no longer in the working folder. Ask the user whether the glossary pass is finished, and tick this once they confirm. Implementation details that come up along the way:
   - Scale Length (SL): the field offers a list of common scale lengths to pick from, and also takes any value.
   - Compound fretboard radius (FBRN, FBRE) is planned for later; until then the fretboard uses the single Fretboard Radius (FBR).
   - String action (TSA, BSA): beside each value, also show the action measured from the fretboard surface, calculated from the chosen fretwire's height.
@@ -41,14 +41,14 @@ The decisions behind the plug-in. The work they led to is done and in git histor
   - Neck profile: the shoulder line and the bottom arc are fixed, and the midshoulder arc is a fillet between them, so its radius is free within a range. Report an error when it's too large (a tangent point runs past the fretboard edge or the bottom of the neck), or when the shoulder line doesn't cross the bottom arc. With a center offset, each side gets its own fillet of the same radius.
   - Heel shaft (HLSR, HLSO): at HLSO = 0 the front of the heel is a straight line through the fronts of the heel end and heel section. Above 0 it's an arc through those two points and the point where that line meets the back of the neck, moved away from the body along the back of the neck by HLSO. The heel shaft radius is tangent to the front of the heel and the back of the neck. The geometry reports an error if the radius's center would pass the Neck Thickness Fret, or it would touch the front of the heel past the heel section.
   - Replacing a guitar's neck, body or bracing with another's warns that the current one will be overwritten (it's gone unless it was saved as a named copy), and can be cancelled. Replacing a body brings its bracing.
-  - Deleting a fretwire or string set that necks use lists them and asks for a replacement, which every neck is switched to before the item is deleted. Done for string sets and fretwires (checking saved necks in the library only).
-  - Importing a guitar document: its fretwire and string set have no library id. Match each to the library by manufacturer and product code (or set name), or offer to save it there.
+  - Deleting a fretwire or string set that necks use lists them and asks for a replacement, which every neck is switched to before the item is deleted. Done for string sets and fretwires (`Library.NecksUsing`, `DeleteLibraryItem` with a replacement, `ReplacementDialog`); it checks saved necks in the library only.
+  - Importing a guitar document: its fretwire and string set are matched by id and name, then by name only (`ResolveReference` in `DesignSession`); a missing one is reported. Still open: match by manufacturer and product code, or offer to save the item to the library.
   - [x] Done: migration v5 drops the old design tables (designs, instruments, bodies, soundholes) after the v4 conversion.
   - Fields that don't apply are disabled rather than hidden or checked: e.g. String Hex Core and Core Material for a plain string, and the core modulus and strength unless the core material is not specified. The model ignores their values. Done for the string fields.
-- [ ] Work the user's notes (`variables and settings.txt`, untracked, don't commit) into the plan: the sections, their fields, which have their own tables of choices (string sets, fretwire, string action, dot marker layouts), and the order to build them in. String sets are already settled.
-- [ ] Move the panel, preview and Build onto the new model and `GuitarForm.Shapes`, with `GuitarForm.Geometry` reduced to turning shapes into Rhino curves; then retire `PlateGeometry`, `SideViewGeometry`, `SoundholeGeometry` and `DesignDrawing`, and rewrite `docs/Body.md` and `docs/Soundhole.md` for the new fields.
+- [ ] Work the user's notes (`variables and settings.txt`, untracked, don't commit; no longer in the working folder, so ask the user) into the plan: the sections, their fields, which have their own tables of choices (string sets, fretwire, string action, dot marker layouts), and the order to build them in. String sets are already settled.
+- [x] Move the panel, preview and Build onto the new model and `GuitarForm.Shapes`, with `GuitarForm.Geometry` reduced to turning shapes into Rhino curves; then retire `PlateGeometry`, `SideViewGeometry` and `SoundholeGeometry`. Done in a981ab7 (preview and Build), 14ea0ec (legacy classes deleted), ccd5081 and a2588ae (panel and storage on the new model). `DesignDrawing` stays as the adapter (`DesignDrawing.FromShapes`); `docs/Body.md` and `docs/Soundhole.md` describe the new fields.
 - [ ] **(decision)** The bridge's plan settings (its width along the centerline, where the saddle sits in it), so the bridge patch can be drawn.
-- [ ] The Florentine cutaway's radius doesn't work (reported by the user while trying the panel). Find out from the user what goes wrong, then fix it in `PlateShape` (the Florentine arc, around `PlateShape.cs` line 360).
+- [ ] **(question)** The Florentine cutaway's radius didn't work (reported by the user while trying the panel). 7d155aa fixed the wall, which now follows the fretboard's treble edge. Ask the user whether anything else about the Florentine arc's radius is still wrong; tick this only when they say it is fine.
 - [ ] UI polish: alignment and positioning in the panel. The user will describe or screenshot what looks off.
 - [ ] **(decision)** Placing parts with planes. The plate stays fixed at the origin, since it's the starting point. A part that attaches to another (e.g. the neck at the heel) would be built in simple local coordinates, with the origin at its attachment point, then moved onto a plane that the layout works out from the part it attaches to (e.g. a heel plane at (0, L) on the body). The neck then follows the body when L changes, and the plane can carry a neck angle (tilt out of XY). Separate views (like the side view) are placed by the layout. Not decided yet; settle it when designing the section that needs it (probably the neck).
 
@@ -57,7 +57,7 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 `NumberSlider` (a fader: the value is on a lever dragged along a track that springs back to the middle; each step is the field's `Step`, a tenth of it with Shift; click the lever to type) is the box for every decimal field: lengths, angles and numbers. Choices and yes/no values are drop-downs; counts and the dot marker list keep plain boxes.
 
 - [ ] The user tries the slider and says whether it feels natural; adjust the feel (reach per drag, pixels per step, lever and track size).
-- [ ] **(decision)** Each field's step. A tenth is right for some values and too much for others. `NumberField.Step` and `NewFields.Field.Step` (default 0.1) are in place; the user will say which fields need another step as they use it. Also decide how steps behave in inches, since they're in the units shown (0.1 in is much coarser than 0.1 mm).
+- [ ] **(decision)** Each field's step. A tenth is right for some values and too much for others. the step in `GuitarFields` (default 0.1) are in place; the user will say which fields need another step as they use it. Also decide how steps behave in inches, since they're in the units shown (0.1 in is much coarser than 0.1 mm).
 - [ ] Check mouse capture during a drag in Rhino (called by reflection, since the Eto package RhinoCommon 8.0 compiles against lacks it), and that a slider looks disabled when no design is open.
 
 ### Limits on values
@@ -93,7 +93,7 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 - [x] Split the neck heel from the `NeckSideShape` outline: `Heel` and `Shaft` are drawn separately, the Heel layer has objects.
 - [ ] Add tests for plug-in code and for `ComponentStyles`. Done for `ComponentStyles` (moved to `GuitarForm.Geometry`, `ComponentStylesTests`); other plug-in code is still untested.
 - [x] The T0 deletion of the legacy Geometry classes is done, and `CLAUDE.md` is updated.
-- [ ] **(decision)** The `docs/Body.md` side-view Quick Test row disagrees with the Shapes drawing; the owner decides which is right.
+- [x] **(decision)** The `docs/Body.md` side-view Quick Test row disagreed with the Shapes drawing. Done in 14ea0ec: the doc was changed to match the drawing (top line straight, back line slopes by TD - ND).
 - [ ] **(question)** When the strings overlap, the fallback draws the two outer strings as center lines. Should it draw rectangles anyway?
 - [ ] **(question)** Cross-checks between the Fretwire Slot Depth (FWSD) and the Tang Height (FWTH) or the fretboard thickness: which, if any, should be errors or warnings?
 - [ ] **(question)** The fretwire price's unit or currency, when job costing is built.
@@ -102,7 +102,7 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 - [x] Add a library upgrade test (a v1 library with data migrates to v2).
 - [x] Back up the library before a schema migration.
 - [x] Add non-invariant culture tests (de-DE).
-- [x] Add tests for `Segment`, `FretboardSideShape`, `SideViewShape`, `SoundholeShape`, `ShapeCurves` and FK/cascade behavior (the Rhino-free parts of `NewFields` are still untested).
+- [x] Add tests for `Segment`, `FretboardSideShape`, `SideViewShape`, `SoundholeShape`, `ShapeCurves` and FK/cascade behavior (`NewFields` itself is gone).
 - [x] Centralize the csproj settings (`Directory.Build.props`).
 - [ ] Extract the duplicated UI helpers (Run, ActionButton, the discard prompt). Partly done: `LibraryItemUi` now holds the library-item helpers shared by the Strings and Frets tabs; `GuitarFormPanel` and `SettingsPage` still have their own.
 - [x] Remove the `UiMetrics` bypasses and dead code. Partly done: `ScreenScale` is gone and `NumberSlider`'s sizes are named in `UiMetrics`; `Scale` stays as a no-op wrapper. The bypasses in `SectionEditor.cs` and `Sections.cs` are left for the migration.
@@ -110,7 +110,7 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 - [x] Fix the Strings tab's missing unsaved-changes prompt on switch. There is still no prompt on hide or close, by design, since Rhino's shutdown must not be blocked.
 - [x] Make `CopyDesign`, `ImportDesign` and `SaveDesign` atomic with `NewFields` (resolved by the migration).
 - [ ] Slider steps converted from mm look odd in inches (0.1 mm = 0.003937 in); snap to a sensible grid in non-mm units.
-- [ ] Tests for plug-in code (`NewFields.Delete`, `RequireNoInputErrors`, slider conversion) need Rhino-free code moved out of the .rhp.
+- [ ] Tests for plug-in code (`RequireNoInputErrors`, slider conversion) need Rhino-free code moved out of the .rhp.
 - [ ] Add tests for `NeckSideShape` parallel-line/near-parallel guards and the `BracingShape` unsupported segment (currently unreachable via the public API); add `InternalsVisibleTo` or a public seam for `Library.IsNameConflict` (`InternalsVisibleTo` is already in for Shapes).
 - [ ] Tidy: a failed plate makes the side view jump horizontally while editing.
 - [ ] Only an unset `Body.Length` is treated as unfinished (Remark); other missing plate values rely on the plate's own Remarks.
@@ -142,7 +142,7 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 ### Migration (complete)
 
 - [x] Move `NewFields` values into the library via `part_values` (fixes backup, restore, move and id reuse, with AUTOINCREMENT or equivalent).
-- [x] Retire `GuitarDesign`, the `Sections.cs` vs `NewFields.Groups` duplication, and same-named legacy/new records. Done: the old model, `DesignDocument`, `SectionTables` and the design/preset API of `Library` are deleted (the old tables stay in the file for a later migration to drop).
+- [x] Retire `GuitarDesign`, the `Sections.cs` vs `NewFields.Groups` duplication, and same-named legacy/new records. Done: the old model, `DesignDocument`, `SectionTables` and the design/preset API of `Library` are deleted (the old tables were dropped by migration v5, 6763b2d).
 - [x] Split `GuitarFormPanel` (a `DesignSession` class, and a `NewFieldBinding` per field replacing the parallel arrays).
 - [x] Recovery ids need a kind prefix once guitars replace designs.
 - [x] Save blank list items (`DotMarker`) so they round-trip.
@@ -154,7 +154,7 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 
 - [ ] `CopyGuitar` of a blank-named guitar gives "copy".
 - [ ] `ReadPart` doesn't report a null `parts.name`.
-- [ ] `MigrationContext`/`Notes` scaffolding is unused until the v4 conversion.
+- [x] `MigrationContext`/`Notes` scaffolding is unused until the v4 conversion. Done: the v4 conversion (7017346) uses it.
 
 ### Follow-ups from migration stage 2
 
@@ -200,7 +200,7 @@ These need the product owner's direction before any code is written.
 ## Review follow-ups (layers, library tabs)
 
 - [x] `ComponentStyles` completeness (every `DrawingComponent` has a style) and the print color path (a Print override reaches `Layer.PlotColor`) are tested: `ComponentStyles` moved to `GuitarForm.Geometry` (`ComponentStylesTests`).
-- [ ] Unsaved Frets and Strings library edits have no crash recovery.
+- [ ] Unsaved Frets and Strings library edits have no crash recovery (the source comments in `StringsTab` and `FretsTab` say so on purpose; ask whether that is still wanted).
 - [x] `DesignDrawing.Construction` and `DesignDrawing.Outline` recompute on every access. Done: each is computed once, on first use.
 - [ ] NeckSideShape heel split: the Error for a seam that doesn't land on the joint line between the heel end and the top of the joint has no test (hard to reach through the public API: other Errors fire first); also nothing checks that the back line stays beyond heelEndX all the way up to the heel end's front (extreme neck angle could make the heel self-intersect without an Error).
 
