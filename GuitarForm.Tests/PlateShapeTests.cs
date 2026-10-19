@@ -274,6 +274,28 @@ namespace GuitarForm.Tests
         }
 
         [Test]
+        public void TrebleEdgeAtY_FollowsTheTaper()
+        {
+            var guitar = QuickTestGuitar(QuickTestBody());
+            guitar = guitar with
+            {
+                Neck = guitar.Neck with
+                {
+                    Fretboard = guitar.Neck.Fretboard with
+                    {
+                        StringSpacingAtBridge = new(Fretboard.Definitions.StringSpacingAtBridge, 54),
+                    },
+                },
+            };
+            double length = guitar.Body.Length.Value.Value;
+
+            Assert.That(FretboardShape.TrebleEdgeAtY(guitar, length), Is.EqualTo(FretboardShape.TrebleEdgeAtNeckEnd(guitar)).Within(1e-9));
+            // The board widens toward the saddle, which is at the tail end side of the neck end.
+            Assert.That(FretboardShape.TrebleEdgeAtY(guitar, length - 100), Is.GreaterThan(FretboardShape.TrebleEdgeAtY(guitar, length)));
+            Assert.That(FretboardShape.TrebleEdgeAtY(new Guitar(), 100), Is.Null);
+        }
+
+        [Test]
         public void FlorentineCutaway()
         {
             // The offset line is 30 from the centerline, past the heel flat's end at 28, so the wall starts on the

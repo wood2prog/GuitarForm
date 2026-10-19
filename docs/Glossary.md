@@ -349,13 +349,13 @@ The distance from the tail end to the bottom of the Lower Bout Primary Radius's 
 Which cutaway the body has: none, Florentine or Venetian. A Florentine cutaway is one arc from the wall to the cutaway's end point on the upper bout, which leaves a sharp point. A Venetian cutaway rounds the point: a valley arc, a point arc and a straight line between them. With a cutaway, the Cutaway Offset from Neck, Width and Depth are required, and a Venetian cutaway also needs its Valley Radius and Point Radius.
 
 **Cutaway Offset from Neck (CTO)**
-The distance from the fretboard's treble edge where the neck meets the body, square to the centerline, out to the offset line: a line parallel to the centerline that the cutaway's wall runs down. At 0 the wall carries straight on from the fretboard's edge. Above 0 the neck end leaves a step of this width between the fretboard and the cutaway. It can't be negative. The Heel Flat Width doesn't affect it. Florentine and Venetian cutaways both use it.
+The horizontal distance (square to the centerline) from the fretboard's treble edge out to the offset line: a line parallel to the fretboard's treble edge, so it slants outward toward the tail as the fretboard widens, that the cutaway's wall runs down. At 0 the wall carries straight on from the fretboard's edge. Above 0 the neck end leaves a step of this width between the fretboard and the cutaway. It can't be negative. The Heel Flat Width doesn't affect it. Florentine and Venetian cutaways both use it.
 
 **Cutaway Width (CTW)**
-The distance from the offset line, square to the centerline, out to a second line parallel to the centerline on the treble side. The cutaway ends where this line meets the upper bout outline above its widest point, toward the neck, so the widest point stays. Florentine and Venetian cutaways both use it.
+The distance, square to the centerline, from where the offset line is at the neck end out to a vertical line on the treble side. The cutaway ends where this line meets the upper bout outline above its widest point, toward the neck, so the widest point stays. Florentine and Venetian cutaways both use it.
 
 **Cutaway Depth (CTD)**
-The distance from the neck end, along the offset line, to where the cutaway's arc starts. The wall runs straight down the offset line from the neck end to that point. The arc starts there, tangent to the offset line. In a Florentine cutaway, its radius and center are calculated so it also passes through the cutaway's end point on the upper bout. In a Venetian cutaway, its radius is the Cutaway Valley Radius.
+The vertical distance from the neck end to where the cutaway's arc starts. The wall runs straight down the offset line from the neck end to that point. The arc starts there, tangent to the offset line. In a Florentine cutaway, its radius and center are calculated so it also passes through the cutaway's end point on the upper bout. In a Venetian cutaway, its radius is the Cutaway Valley Radius.
 
 **Cutaway Valley Radius (CTVR)**
 Venetian cutaway only. The radius of the valley arc. The arc stays tangent to the offset line where the straight wall ends, at the Cutaway Depth, but its radius is set here instead of being calculated to pass through the end point. This lets the cutaway undercut the end point.

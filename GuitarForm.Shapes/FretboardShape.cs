@@ -62,6 +62,14 @@ namespace GuitarForm.Shapes
             return shape.FindTaper() && guitar.Body.Length.Value is double length ? shape.HalfWidthAt(length) : null;
         }
 
+        // The distance from the centerline to the fretboard's treble edge at the given y, along the taper's straight
+        // line (also beyond the board's ends). Null when a value it needs isn't set.
+        internal static double? TrebleEdgeAtY(Guitar guitar, double y)
+        {
+            var shape = new FretboardShape(guitar);
+            return shape.FindTaper() ? shape.HalfWidthAt(y) : null;
+        }
+
         // Half the fretboard's width at the given fret. Null when a value it needs isn't set.
         public static double? HalfWidthAtFret(Guitar guitar, int fret)
         {

@@ -296,9 +296,10 @@ namespace GuitarForm.Shapes
         }
 
         // The cutaway replaces the treble side between the wall's top and the cutaway's end point. The wall runs down
-        // the offset line, the Cutaway Offset from Neck past the fretboard's treble edge, from where it meets the heel
-        // flat, shoulder arc or upper bout above its widest point, to the Cutaway Depth below the neck end. The end
-        // point is where the Cutaway Width line meets the upper bout above its widest point (toward the neck). Above the
+        // the offset line, parallel to the fretboard's treble edge and the Cutaway Offset from Neck past it (measured
+        // horizontally), from where it meets the heel flat, shoulder arc or upper bout above its widest point, to the
+        // Cutaway Depth below the neck end. The end point
+        // is where the Cutaway Width line meets the upper bout above its widest point (toward the neck). Above the
         // widest point the treble side only moves outward, so each line meets it once, the end point after the wall. A
         // Florentine cutaway is one arc from the wall to the end point; a Venetian one is a valley arc, a straight line
         // and a point arc tangent to the outline at the end point.
@@ -316,20 +317,24 @@ namespace GuitarForm.Shapes
 
             double wallX = edge + offset.Value.Value, endX = wallX + width.Value.Value;
             double arcStartY = _length - depth.Value.Value;
+            // The wall is parallel to the fretboard's treble edge, the offset past it horizontally.
+            var wallTopPoint = new Point2(wallX, _length);
+            var arcStart = new Point2(FretboardShape.TrebleEdgeAtY(_guitar, arcStartY).Value + offset.Value.Value, arcStartY);
+            var wallDown = new Vector2(FretboardShape.TrebleEdgeAtY(_guitar, _length - 1).Value - edge, -1).Unit;
+            var wallNormal = wallDown.Left;
             var segments = treble.SelectMany((slot, index) => slot.Select(segment => (segment, index))).ToList();
 
-            if (!FindCutawayJoins(segments, wallX, endX, arcStartY, out var wallTop, out var end))
+            if (!FindCutawayJoins(segments, wallTopPoint, wallDown, endX, arcStartY, out var wallTop, out var end))
                 return false;
             var endPoint = end.Point;
-            var arcStart = new Point2(wallX, arcStartY);
 
             var cut = type == CutawayType.Florentine
-                ? BuildFlorentineCut(wallX, arcStartY, arcStart, endPoint)
-                : BuildVenetianCut(wallX, arcStartY, arcStart, end);
+                ? BuildFlorentineCut(arcStart, wallDown, wallNormal, endPoint)
+                : BuildVenetianCut(arcStart, wallNormal, end);
             if (cut == null)
                 return false;
 
-            ConstructionLines.Add(new LineSegment(new Point2(wallX, _length), arcStart));
+            ConstructionLines.Add(new LineSegment(wallTopPoint, arcStart));
             ConstructionLines.Add(new LineSegment(new Point2(endX, _length), endPoint));
 
             SpliceCutaway(treble, segments, wallTop, end, arcStart, cut);
@@ -380,22 +385,23 @@ namespace GuitarForm.Shapes
         }
 
         // Where the wall and the end point meet the outline; fails, with an error, when they don't or the arc can't start.
-        bool FindCutawayJoins(List<(Segment segment, int slot)> segments, double wallX, double endX, double arcStartY,
+        bool FindCutawayJoins(List<(Segment segment, int slot)> segments, Point2 wallThrough, Vector2 wallDirection,
+            double endX, double arcStartY,
             out OutlineCrossing wallTop, out OutlineCrossing end)
         {
             var offset = _body.CutawayOffsetFromNeck; var width = _body.CutawayWidth; var depth = _body.CutawayDepth;
             wallTop = default; end = default;
 
-            var top = FirstCrossing(segments, wallX);
+            var top = FirstCrossing(segments, segment => segment.CrossingsWithLine(wallThrough, wallDirection));
             if (top == null)
-                return Fail($"The cutaway's offset line, {_messages.Format(wallX)} from the centerline, doesn't meet the neck end " +
+                return Fail($"The cutaway's offset line, {_messages.Format(wallThrough.X)} from the centerline, doesn't meet the neck end " +
                             $"or the upper bout above its widest point: reduce the {offset.Label}.");
             wallTop = top.Value;
             if (arcStartY > wallTop.Point.Y + _tolerance)
                 return Fail($"The cutaway's arc must start below where its offset line meets the outline: the " +
                             $"{depth.Label} must be at least {_messages.Format(_length - wallTop.Point.Y)}.");
 
-            var found = FirstCrossing(segments, endX);
+            var found = FirstCrossing(segments, segment => segment.CrossingsAtX(endX));
             if (found == null)
                 return Fail($"The cutaway's end point, {_messages.Format(endX)} from the centerline, must be on the upper bout " +
                             $"above its widest point: no more than {_messages.Format(_body.UpperBoutWidth.Value.Value / 2)} from " +
@@ -404,32 +410,33 @@ namespace GuitarForm.Shapes
             return true;
         }
 
-        // Florentine: one arc tangent to the wall at the arc's start, so its center is level with it, and through the
-        // end point. Null, after an error, when the arc would start at or below the end point.
-        List<Segment> BuildFlorentineCut(double wallX, double arcStartY, Point2 arcStart, Point2 endPoint)
+        // Florentine: one arc tangent to the wall at the arc's start, so its center is along the wall's normal from it,
+        // and through the end point. Null, after an error, when the arc would start at or below the end point.
+        List<Segment> BuildFlorentineCut(Point2 arcStart, Vector2 wallDown, Vector2 normal, Point2 endPoint)
         {
-            var width = _body.CutawayWidth; var depth = _body.CutawayDepth;
-            double dy = arcStartY - endPoint.Y;
-            if (dy <= _tolerance)
+            var depth = _body.CutawayDepth;
+            var d = endPoint - arcStart;
+            double along = normal.Dot(d);
+            if (wallDown.Dot(d) <= _tolerance || along <= _tolerance)
             {
                 Fail($"The cutaway's arc must start above its end point: the {depth.Label} must be less " +
                      $"than {_messages.Format(_length - endPoint.Y)}.");
                 return null;
             }
-            double w = width.Value.Value, radius = (w * w + dy * dy) / (2 * w);
-            var arc = new Circle(new Point2(wallX + radius, arcStartY), radius);
+            double radius = d.Dot(d) / (2 * along);
+            var arc = new Circle(arcStart + normal * radius, radius);
             Radii.Add(arc);
             return new List<Segment> { ArcSegment.Around(arc, arcStart, endPoint, clockwise: false, _tolerance) };
         }
 
         // Venetian: a valley arc, a straight line and a point arc tangent to the outline at the end point. Null, after an
         // error, when the two arcs overlap.
-        List<Segment> BuildVenetianCut(double wallX, double arcStartY, Point2 arcStart, OutlineCrossing end)
+        List<Segment> BuildVenetianCut(Point2 arcStart, Vector2 wallNormal, OutlineCrossing end)
         {
             var width = _body.CutawayWidth;
             var valley = _body.CutawayValleyRadius; var point = _body.CutawayPointRadius;
             var endPoint = end.Point;
-            var valleyCircle = new Circle(new Point2(wallX + valley.Value.Value, arcStartY), valley.Value.Value);
+            var valleyCircle = new Circle(arcStart + wallNormal * valley.Value.Value, valley.Value.Value);
             // Inside the body, the point radius away from the end point. The outline runs clockwise, so outward is
             // to the left of its direction.
             var outward = end.Segment.TangentAt(end.Parameter).Left;
@@ -482,12 +489,13 @@ namespace GuitarForm.Shapes
 
         readonly record struct OutlineCrossing(int Index, Segment Segment, Point2 Point, double Parameter);
 
-        // The first place, going down the treble side, where the vertical line at x crosses the heel flat, shoulder arc
-        // or upper bout above its widest point.
-        static OutlineCrossing? FirstCrossing(List<(Segment segment, int slot)> segments, double x)
+        // The first place, going down the treble side, where a line crosses the heel flat, shoulder arc or upper bout
+        // above its widest point.
+        static OutlineCrossing? FirstCrossing(List<(Segment segment, int slot)> segments,
+            Func<Segment, IReadOnlyList<Crossing>> crossings)
         {
             for (int i = 0; i < segments.Count && segments[i].slot <= UpperPrimary; i++)
-                foreach (var crossing in segments[i].segment.CrossingsAtX(x))
+                foreach (var crossing in crossings(segments[i].segment))
                     return new OutlineCrossing(i, segments[i].segment, crossing.Point, crossing.Parameter);
             return null;
         }
