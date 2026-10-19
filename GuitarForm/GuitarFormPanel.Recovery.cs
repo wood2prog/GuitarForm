@@ -72,6 +72,8 @@ namespace GuitarForm
         // Writes the unsaved working copy to its recovery file now (also on hiding, closing and shutting down).
         internal void FlushRecovery()
         {
+            _strings?.FlushRecovery();
+            _frets?.FlushRecovery();
             try
             {
                 _recoveryTimer.Stop();

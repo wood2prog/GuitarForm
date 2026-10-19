@@ -13,7 +13,8 @@ namespace GuitarForm
 {
     // The Strings tab: the library of string sets, which can be edited with no design open. A picker of the saved sets,
     // New, Save, Save as…, Revert and Delete, and the StringSetEditor showing the working copy. Edits change only the
-    // working copy (_set); nothing reaches the library until Save. There are no recovery files for it.
+    // working copy (_set); nothing reaches the library until Save. Unsaved work goes to a recovery file shortly after the
+    // last edit (see FlushRecovery), and is offered back after a crash.
     sealed class StringsTab : Panel
     {
         readonly StringSetEditor _editor = new StringSetEditor();
@@ -34,6 +35,13 @@ namespace GuitarForm
         StringSet _set = BlankSet();
         StringSet _savedSet = BlankSet();
         bool _showing;
+        bool _disposed;
+        // True from a Reload until its recovery offer has been settled: a file found then must not be deleted.
+        bool _recoveryHeld;
+        // Reload counts up; an offer started for an earlier count is out of date. Only one offer runs at a time.
+        int _generation;
+        bool _offering;
+        readonly UITimer _recoveryTimer = new UITimer { Interval = 2 };
 
         public StringsTab(Func<string> libraryPath)
         {
@@ -42,7 +50,15 @@ namespace GuitarForm
             {
                 _set = set with { Id = _set.Id };
                 UpdateUi();
+                if (IsDirty)
+                {
+                    _recoveryTimer.Stop();
+                    _recoveryTimer.Start();
+                }
+                else
+                    FlushRecovery();
             };
+            _recoveryTimer.Elapsed += (_, _) => FlushRecovery();
             // The unit weight display is remembered in the settings.
             _editor.UnitWeightInLbPerIn = GuitarFormPlugin.Instance.GuitarFormSettings.StringUnitWeightInLbPerIn;
             _editor.UnitWeightUnitChanged += () =>
@@ -148,14 +164,18 @@ namespace GuitarForm
         // asks ConfirmDiscard first.
         public void Reload()
         {
+            _recoveryHeld = true;
+            _generation++;
+            _recoveryTimer.Stop();
             var sets = WithLibrary(library => library.ListLibraryItems<StringSet>());
             if (sets.Count == 0)
             {
                 FillPicker(sets, null);
                 ShowSet(BlankSet(), BlankSet());
-                return;
             }
-            Open(sets[0].Id, sets);
+            else
+                Open(sets[0].Id, sets);
+            ScheduleRecoveryOffer();
         }
 
         // True when it's fine to replace the working copy: no unsaved changes, or the user saved or discarded them.
@@ -163,7 +183,11 @@ namespace GuitarForm
         {
             if (!IsDirty)
                 return true;
-            return LibraryItemUi.ConfirmDiscard(this, Kind, DisplayName(_set), Save);
+            if (!LibraryItemUi.ConfirmDiscard(this, Kind, DisplayName(_set), Save))
+                return false;
+            // "No" means the caller will discard the work (DiscardChanges, or showing another item, which clears
+            // the recovery file then); if the flow is cancelled instead, the dirty tab and its file stay as they are.
+            return true;
         }
 
         // Drops unsaved changes by showing the saved set again (no question: the caller has asked).
@@ -202,6 +226,173 @@ namespace GuitarForm
             _savedSet = saved;
             _editor.Show(set, _units);
             UpdateUi();
+            if (!IsDirty)
+            {
+                _recoveryTimer.Stop();
+                ClearRecovery();
+            }
+        }
+
+        // --- Recovery ---
+
+        LibraryItemRecovery Recovery => new LibraryItemRecovery(new RecoveryStore(RecoveryStore.DefaultFolder), _libraryPath());
+
+        // Writes the unsaved working copy to its recovery file now, or deletes the file when there is nothing unsaved.
+        // Also called when the panel hides or closes and when Rhino shuts down.
+        public void FlushRecovery()
+        {
+            try
+            {
+                _recoveryTimer.Stop();
+                if (IsDirty)
+                {
+                    _recoveryHeld = false;
+                    // Named by the saved item, or by the working name when it is new.
+                    Recovery.Write(_set, _set.Id, _set.Id != null && DisplayName(_savedSet).Length > 0 ? DisplayName(_savedSet) : DisplayName(_set));
+                }
+                else
+                    ClearRecovery();
+            }
+            catch (Exception e)
+            {
+                global::Rhino.RhinoApp.WriteLine($"GuitarForm: couldn't write the string set recovery file: {e.Message}");
+            }
+        }
+
+        void ClearRecovery()
+        {
+            if (_recoveryHeld)
+                return;
+            try
+            {
+                Recovery.ClearStringSet();
+            }
+            catch (Exception e)
+            {
+                global::Rhino.RhinoApp.WriteLine($"GuitarForm: couldn't delete the string set recovery file: {e.Message}");
+            }
+        }
+
+        // After a Reload: once the panel has settled, offers back unsaved edits left by a crash.
+        void ScheduleRecoveryOffer()
+        {
+            _recoveryHeld = true;
+            Application.Instance.AsyncInvoke(() =>
+            {
+                // A second offer would otherwise start inside the first one's prompt.
+                if (_disposed || _offering)
+                    return;
+                _offering = true;
+                int generation = _generation;
+                try
+                {
+                    OfferRecovery(generation);
+                }
+                catch (Exception e)
+                {
+                    global::Rhino.RhinoApp.WriteLine($"GuitarForm: couldn't recover the string set: {e.Message}");
+                    ReleaseRecovery(generation);
+                }
+                finally
+                {
+                    _offering = false;
+                }
+                // The library changed again during the prompt: offer for the new state.
+                if (generation != _generation && !_disposed)
+                    ScheduleRecoveryOffer();
+            });
+        }
+
+        // The recovery file stays protected until its offer is answered (or the tab is next edited).
+        void ReleaseRecovery(int generation)
+        {
+            if (generation == _generation)
+                _recoveryHeld = false;
+        }
+
+        void OfferRecovery(int generation)
+        {
+            var recovery = Recovery;
+            var status = recovery.TryReadStringSet(out var found);
+            if (status == RecoveryReadStatus.Unavailable)
+                return; // Leave the file alone; it stays held until the tab is edited.
+            if (status == RecoveryReadStatus.Missing)
+            {
+                ReleaseRecovery(generation);
+                return;
+            }
+            if (status == RecoveryReadStatus.Corrupt)
+            {
+                global::Rhino.RhinoApp.WriteLine("GuitarForm: the string set recovery file couldn't be read and was deleted.");
+                recovery.ClearStringSet();
+                ReleaseRecovery(generation);
+                return;
+            }
+            try
+            {
+                Offer(recovery, found, generation);
+            }
+            finally
+            {
+                ReleaseRecovery(generation);
+            }
+        }
+
+        void Offer(LibraryItemRecovery recovery, RecoveredItem<StringSet> found, int generation)
+        {
+            if (IsDirty)
+                return;
+
+            var list = WithLibrary(library => library.ListLibraryItems<StringSet>());
+            if (found.SavedId is long savedId)
+            {
+                if (list.Any(s => s.Id == savedId && string.Equals(s.Name, found.Name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    var saved = WithLibrary(library => library.LoadLibraryItem<StringSet>(savedId));
+                    if (LibraryItemRecovery.SameContent(saved, found.Item))
+                    {
+                        recovery.ClearStringSet();
+                        return;
+                    }
+                    if (!LibraryItemUi.OfferRecovery(this, Kind, found.Name, false))
+                    {
+                        recovery.ClearStringSet();
+                        return;
+                    }
+                    if (generation != _generation || IsDirty)
+                        return;
+                    FillPicker(list, savedId);
+                    ShowSet(found.Item with { Id = savedId }, saved);
+                    _recoveryTimer.Start();
+                    return;
+                }
+                if (!LibraryItemUi.OfferRecoveryAsNew(this, Kind))
+                {
+                    recovery.ClearStringSet();
+                    return;
+                }
+            }
+            else if (!LibraryItemUi.OfferRecovery(this, Kind, found.Name, true))
+            {
+                recovery.ClearStringSet();
+                return;
+            }
+            if (generation != _generation || IsDirty)
+                return;
+            FillPicker(list, null);
+            ShowSet(found.Item with { Id = null }, BlankSet());
+            _recoveryTimer.Start();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _disposed = true;
+                _recoveryTimer.Stop();
+                _recoveryTimer.Dispose();
+            }
+            base.Dispose(disposing);
         }
 
         void UpdateUi()

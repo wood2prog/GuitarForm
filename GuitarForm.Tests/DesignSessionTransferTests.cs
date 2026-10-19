@@ -372,6 +372,21 @@ namespace GuitarForm.Tests
         }
 
         [Test]
+        public void DeleteStaleRecovery_KeepsLibraryItemWorkFiles()
+        {
+            var items = new LibraryItemRecovery(_recovery, _path);
+            items.Write(TestGuitars.StringSet, null, "s");
+            items.Write(TestGuitars.Fretwire, 4, "f");
+            _recovery.Write(_path, "guitar-gone", "Gone", V1("G"));
+            _recovery.WriteLegacy(_path, 42L, "Old", V1("O"));
+            _session.DeleteStaleRecovery();
+            Assert.That(_recovery.Exists(_path, RecoveryKeys.StringSetWork));
+            Assert.That(_recovery.Exists(_path, RecoveryKeys.FretwireWork));
+            Assert.That(_recovery.Exists(_path, "guitar-gone"), Is.False);
+            Assert.That(_recovery.LegacyExists(_path, 42L));
+        }
+
+        [Test]
         public void ReloadLibraryItems_ReadsEditsAndNotesDeletedItems()
         {
             var (setId, wireId) = SaveItems();

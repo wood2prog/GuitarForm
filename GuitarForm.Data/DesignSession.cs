@@ -167,13 +167,14 @@ namespace GuitarForm.Data
             return library.GuitarExists(name, IsOpen ? GuitarId : null);
         }
 
-        // Deletes the recovery files of guitars that no longer exist.
+        // Deletes the recovery files of guitars that no longer exist (the string set and fretwire work files stay).
         public void DeleteStaleRecovery()
         {
             IReadOnlyList<GuitarInfo> guitars;
             using (var library = Library.Open(_libraryPath))
                 guitars = library.ListGuitars();
-            _recovery.DeleteStale(_libraryPath, guitars.Where(g => !string.IsNullOrEmpty(g.Uid)).Select(g => "guitar-" + g.Uid));
+            _recovery.DeleteStale(_libraryPath, guitars.Where(g => !string.IsNullOrEmpty(g.Uid)).Select(g => "guitar-" + g.Uid)
+                .Concat(new[] { RecoveryKeys.StringSetWork, RecoveryKeys.FretwireWork }));
         }
 
         // The working copy as a guitar document (version 3), with its string set and fretwire embedded.

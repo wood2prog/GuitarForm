@@ -41,7 +41,14 @@ Choosing it makes the set the open design's guitar set, which marks the design a
 - Choosing another set in the picker, **New**, or changing the library in Settings asks **Save changes to "…"?** with **Yes** (save, then carry on), **No** (discard, then carry on) or **Cancel** (stay where you are). If the save is refused, the switch is cancelled too.
 - Switching, creating, copying, opening or importing a design asks only about the design's own unsaved changes. Unsaved string set edits are independent of the design and stay in the tab while you change designs. Changing the library in Settings asks about the design and then about unsaved set changes; **No** puts the tab back to the saved set, so the question isn't asked again.
 - **Revert** asks to confirm before discarding.
-- The Strings tab has no recovery file. Unsaved changes to a set are lost if Rhino closes before you save them.
+
+## Recovery
+
+- Unsaved edits to a string set are kept in one recovery file per library, outside the library. The file is written 2 s after an edit, and when the panel hides or Rhino closes.
+- When the tab loads, and after a library change, a recovered set is offered with **Yes** or **No**: **Recover unsaved changes to the string set "…"?** for a saved set, or **Recover the unsaved new string set?** for one not yet saved. If the saved set has been deleted meanwhile, the offer is **Recover as a new string set?**. **Yes** restores the recovered content; **No** deletes the file.
+- If the recovered content equals the saved set, the file is deleted without a prompt.
+- The file is deleted on Save, Save as, Revert, Delete and New, and when the offer is declined.
+- Not recovered: text typed in a box that doesn't parse, and the unit-weight display preference.
 
 ## Set fields
 
@@ -86,7 +93,6 @@ The design's chosen set is kept by its id with the design in the library, and th
 ## Limitations
 
 - Tension is not calculated. The unit weight is stored for a later calculation, which is not decided.
-- Unsaved work on a string set has no crash recovery (see Unsaved changes).
 - Deleting a set can't see designs that use it, only saved necks in the library (see Delete). Such a design shows none the next time it's opened.
 
 ## Quick Test

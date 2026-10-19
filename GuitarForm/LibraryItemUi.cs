@@ -75,6 +75,16 @@ namespace GuitarForm
             MessageBox.Show(owner, $"Discard unsaved changes to {(isNew ? $"the new {kind}" : $"\"{name}\"")}?",
                 Title, MessageBoxButtons.OKCancel, MessageBoxType.Warning) == DialogResult.Ok;
 
+        // Asks whether to take back unsaved edits found in a recovery file. name is the saved item's name; isNew when
+        // the edits were to a new item that was never saved.
+        public static bool OfferRecovery(Control owner, string kind, string name, bool isNew) =>
+            MessageBox.Show(owner, isNew ? $"Recover the unsaved new {kind}?" : $"Recover unsaved changes to the {kind} \"{name}\"?",
+                Title, MessageBoxButtons.YesNo, MessageBoxType.Question) == DialogResult.Yes;
+
+        // Asks whether to recover edits as a new item, when the item they were made to no longer exists.
+        public static bool OfferRecoveryAsNew(Control owner, string kind) =>
+            MessageBox.Show(owner, $"Recover as a new {kind}?", Title, MessageBoxButtons.YesNo, MessageBoxType.Question) == DialogResult.Yes;
+
         public static void Warn(Control owner, string text) =>
             MessageBox.Show(owner, text, Title, MessageBoxType.Warning);
 

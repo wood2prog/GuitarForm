@@ -214,6 +214,8 @@ namespace GuitarForm
                 }
                 _recoveryTimer.Stop();
                 _recoveryTimer.Dispose();
+                _strings?.Dispose();
+                _frets?.Dispose();
                 if (Current == this)
                     Current = null;
             }

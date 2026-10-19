@@ -4,16 +4,16 @@ Project-organization work, in the order we plan to do it. Tick items off as they
 
 ## Where we left off
 
-- Latest commit: 7d155aa. The Florentine and Venetian cutaway wall now runs parallel to the fretboard's treble edge, offset by the Cutaway Offset from Neck, so a tapered fretboard is no longer undercut.
+- Latest commit: the crash recovery commit for Strings and Frets edits, on top of 3746d0d (records the cutaway, glossary and recovery decisions). The Florentine and Venetian cutaway wall, done in 7d155aa, runs parallel to the fretboard's treble edge, offset by the Cutaway Offset from Neck, so a tapered fretboard is no longer undercut.
 - The move onto the new model is finished and committed, in this order: Strings tab (f1297f3, 40747d1, cc76023); Frets tab, courses, side dots, colors and layer tree (bbd7e07); legacy geometry removed (14ea0ec); shape refactors and tests (3e79f8d, f136626); library migration stages 1 to 3 (90f33b0, fa80373, 7017346, df52dfe, ccd5081); saved copies of the body, neck and bracing replacing preset rows (be349bf); old model and storage retired (a2588ae); schema v5 dropping the old design tables (6763b2d); disabled sliders grayed out (f4d10b4); the "Use no fretwire" button removed (9978932).
 - What is built: the panel works on a `DesignSession` holding a `Guitar`; every tab is built from `GuitarFields`; preview and Build draw through `GuitarForm.Shapes` and `DesignDrawing.FromShapes`; the string set and fretwire a neck uses live on the neck in the library (no more `NewFields` files). `NEXT.md` is older than this and describes the earlier pre-migration waves.
 - Workflow: the manager session delegates all edits to workers. All new work needs the user's explicit "build it" before implementation starts.
-- Next: the glossary pass and the remaining items in section 1 (bridge settings, UI polish, limits on values), then the Rhino checks of the migrated panel (Frets, Strings, saved copies) if not yet done.
+- Done: crash recovery for Strings and Frets edits (`LibraryItemRecovery`). It needs a Rhino check, listed in `NEXT.md` with the migrated panel.
+- Next: the Rhino checks in `NEXT.md`, then the remaining items in section 1 (bridge settings, UI polish, limits on values and slider feel). The glossary pass is finished.
 - Known limitations of the library tabs:
   - Add/Remove String drops held invalid input in other boxes, and Remove has no confirmation.
   - Collapsed string groups can re-expand under the wrong title after Add/Remove, because state is keyed by title.
   - Import matches a fretwire or string set by id and name, then by name only (not by manufacturer and product code).
-  - Decided: Strings and Frets edits get crash recovery; being planned.
 
 ## Decided: plug-in and design database
 
@@ -22,7 +22,7 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 - **Grasshopper is dropped.** Keeping track of many wired values, and saving a copy of them, was the problem. In the plug-in every part reads shared values from the one design.
 - **SQLite holds everything.** Opening a previous design rebuilds the model from the database.
 - **A design owns copies of its sections.** The body, neck and bracing can also be saved as named copies in the library, and string sets and fretwires are library items. Loading a saved copy copies its values into the guitar, so editing a design never changes the library or other designs.
-- **Edits change a working copy.** Save, Save as and Revert write it to the library; switching or closing with unsaved changes asks first. `RecoveryStore` keeps unsaved work outside the library, so it can be offered back.
+- **Edits change a working copy.** Save, Save as and Revert write it to the library; switching or closing with unsaved changes asks first. `RecoveryStore` keeps unsaved work outside the library, so it can be offered back; `LibraryItemRecovery` does the same for the string set and fretwire being edited.
 - **Lengths are stored in millimeters** (database, saved copies, JSON, geometry) **and shown and typed in the Rhino document's units** everywhere in GuitarForm: the tab fields, dialogs, settings and messages. They're converted when drawn, too.
 - **Live preview while editing, plus a Build command.** The preview is drawn, not added to the document. Build writes real objects to GuitarForm layers and replaces those from the previous build of that design.
 - **One library database, kept locally, with backups to a synced folder.** The main copy is `%LOCALAPPDATA%\GuitarForm\GuitarForm.db` by default, which isn't synced, so OneDrive never sees a half-written file. Backups are written with SQLite's backup API to `Documents\GuitarForm\Backups` by default, which OneDrive syncs. Both locations are set on the Settings page, and kept in Rhino's plug-in settings rather than the database, since they're needed before it's opened.
@@ -200,7 +200,9 @@ These need the product owner's direction before any code is written.
 ## Review follow-ups (layers, library tabs)
 
 - [x] `ComponentStyles` completeness (every `DrawingComponent` has a style) and the print color path (a Print override reaches `Layer.PlotColor`) are tested: `ComponentStyles` moved to `GuitarForm.Geometry` (`ComponentStylesTests`).
-- [ ] Unsaved Frets and Strings library edits have no crash recovery. Decided: Strings and Frets edits get crash recovery; being planned.
+- [x] Unsaved Frets and Strings library edits have no crash recovery. Done: `LibraryItemRecovery` keeps one file per library for the edited string set or fretwire, offered back on load and after a library change; needs a Rhino check.
+- [ ] Known limitation of Strings and Frets recovery: after a library switch with "No" to unsaved work, the old library's recovery file isn't cleared, so it is offered again if you return to that library.
+- [ ] Text in a box that doesn't parse isn't recovered, and neither is the unit-weight display preference (only the parsed values are).
 - [x] `DesignDrawing.Construction` and `DesignDrawing.Outline` recompute on every access. Done: each is computed once, on first use.
 - [ ] NeckSideShape heel split: the Error for a seam that doesn't land on the joint line between the heel end and the top of the joint has no test (hard to reach through the public API: other Errors fire first); also nothing checks that the back line stays beyond heelEndX all the way up to the heel end's front (extreme neck angle could make the heel self-intersect without an Error).
 

@@ -42,7 +42,15 @@ Choosing it makes the fretwire the open design's guitar fretwire, which marks th
 - Switching, creating, copying, opening or importing a design asks only about the design's own unsaved changes. Unsaved fretwire edits are independent of the design and stay in the tab while you change designs.
 - Changing the library in Settings (switch or restore) asks about the design and then about unsaved fretwire changes; **No** puts the tab back to the saved fretwire, so the question isn't asked again.
 - **Revert** asks to confirm before discarding.
-- The Frets tab has no recovery file, and hiding the panel or closing Rhino doesn't ask, so Rhino's shutdown is never blocked. Unsaved changes to a fretwire are lost if Rhino closes before you save them.
+- Hiding the panel or closing Rhino doesn't ask, so Rhino's shutdown is never blocked; unsaved fretwire edits are kept in a recovery file instead (see Recovery).
+
+## Recovery
+
+- Unsaved edits to a fretwire are kept in one recovery file per library, outside the library. The file is written 2 s after an edit, and when the panel hides or Rhino closes.
+- When the tab loads, and after a library change, a recovered fretwire is offered with **Yes** or **No**: **Recover unsaved changes to the fretwire "…"?** for a saved fretwire, or **Recover the unsaved new fretwire?** for one not yet saved. If the saved fretwire has been deleted meanwhile, the offer is **Recover as a new fretwire?**. **Yes** restores the recovered content; **No** deletes the file.
+- If the recovered content equals the saved fretwire, the file is deleted without a prompt.
+- The file is deleted on Save, Save as, Revert, Delete and New, and when the offer is declined.
+- Not recovered: text typed in a box that doesn't parse, and the unit-weight display preference.
 
 ## Fretwire fields
 
@@ -83,7 +91,6 @@ Frets and slots are previewed and built in their component colors; see [Layers a
 ## Limitations
 
 - Tension, cost totals and the price's unit are not decided; the price is only stored.
-- Unsaved work on a fretwire has no crash recovery (see Unsaved changes).
 - Deleting a fretwire can't see designs that use it, only saved necks in the library (see Delete). Such a design shows none the next time it's opened.
 - A missing fretwire isn't offered a replacement yet.
 

@@ -67,6 +67,21 @@ namespace GuitarForm.Tests
         }
 
         [Test]
+        public void CorruptFileReadsAsCorruptAndALockedOneAsUnavailable()
+        {
+            _store.Write(Lib, "guitar-4", "x", "y");
+            string file = Directory.GetFiles(_folder)[0];
+            File.WriteAllText(file, "{ not json");
+            Assert.That(_store.TryRead(Lib, "guitar-4", out _), Is.EqualTo(RecoveryReadStatus.Corrupt));
+
+            _store.Write(Lib, "guitar-4", "x", "y");
+            using (new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.None))
+                Assert.That(_store.TryRead(Lib, "guitar-4", out var locked), Is.EqualTo(RecoveryReadStatus.Unavailable));
+            Assert.That(_store.Exists(Lib, "guitar-4"));
+            Assert.That(_store.TryRead(Lib, "guitar-4", out _), Is.EqualTo(RecoveryReadStatus.Ok));
+        }
+
+        [Test]
         public void DesignsAreKeptSeparately()
         {
             _store.Write(Lib, "guitar-1", "A", "one");

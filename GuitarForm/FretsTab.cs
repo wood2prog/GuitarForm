@@ -13,7 +13,8 @@ namespace GuitarForm
 {
     // The Frets tab: the library of fretwires, which can be edited with no design open. A picker of the saved
     // fretwires, New, Save, Save as…, Revert and Delete, and the FretwireEditor showing the working copy. Edits change
-    // only the working copy (_item); nothing reaches the library until Save. There are no recovery files for it.
+    // only the working copy (_item); nothing reaches the library until Save. Unsaved work goes to a recovery file shortly after the
+    // last edit (see FlushRecovery), and is offered back after a crash.
     sealed class FretsTab : Panel
     {
         const string Kind = "fretwire";
@@ -35,6 +36,13 @@ namespace GuitarForm
         Fretwire _item = new Fretwire();
         Fretwire _savedItem = new Fretwire();
         bool _showing;
+        bool _disposed;
+        // True from a Reload until its recovery offer has been settled: a file found then must not be deleted.
+        bool _recoveryHeld;
+        // Reload counts up; an offer started for an earlier count is out of date. Only one offer runs at a time.
+        int _generation;
+        bool _offering;
+        readonly UITimer _recoveryTimer = new UITimer { Interval = 2 };
 
         public FretsTab(Func<string> libraryPath)
         {
@@ -43,7 +51,15 @@ namespace GuitarForm
             {
                 _item = item;
                 UpdateUi();
+                if (IsDirty)
+                {
+                    _recoveryTimer.Stop();
+                    _recoveryTimer.Start();
+                }
+                else
+                    FlushRecovery();
             };
+            _recoveryTimer.Elapsed += (_, _) => FlushRecovery();
             _picker.SelectedIndexChanged += (_, _) => OnPicked();
             _save.Click += (_, _) => Run(() => Save());
             _saveAs.Click += (_, _) => Run(SaveAs);
@@ -140,19 +156,31 @@ namespace GuitarForm
         // caller asks ConfirmDiscard first.
         public void Reload()
         {
+            _recoveryHeld = true;
+            _generation++;
+            _recoveryTimer.Stop();
             var items = WithLibrary(library => library.ListLibraryItems<Fretwire>());
             if (items.Count == 0)
             {
                 FillPicker(items, null);
                 ShowItem(new Fretwire(), new Fretwire());
-                return;
             }
-            Open(items[0].Id, items);
+            else
+                Open(items[0].Id, items);
+            ScheduleRecoveryOffer();
         }
 
         // True when it's fine to replace the working copy: no unsaved changes, or the user saved or discarded them.
-        public bool ConfirmDiscard() =>
-            !IsDirty || LibraryItemUi.ConfirmDiscard(this, Kind, DisplayName(_item), Save);
+        public bool ConfirmDiscard()
+        {
+            if (!IsDirty)
+                return true;
+            if (!LibraryItemUi.ConfirmDiscard(this, Kind, DisplayName(_item), Save))
+                return false;
+            // "No" means the caller will discard the work (DiscardChanges, or showing another item, which clears
+            // the recovery file then); if the flow is cancelled instead, the dirty tab and its file stay as they are.
+            return true;
+        }
 
         // Drops unsaved changes by showing the saved fretwire again (no question: the caller has asked).
         public void DiscardChanges()
@@ -184,6 +212,173 @@ namespace GuitarForm
             _savedItem = saved;
             _editor.Show(item, _units);
             UpdateUi();
+            if (!IsDirty)
+            {
+                _recoveryTimer.Stop();
+                ClearRecovery();
+            }
+        }
+
+        // --- Recovery ---
+
+        LibraryItemRecovery Recovery => new LibraryItemRecovery(new RecoveryStore(RecoveryStore.DefaultFolder), _libraryPath());
+
+        // Writes the unsaved working copy to its recovery file now, or deletes the file when there is nothing unsaved.
+        // Also called when the panel hides or closes and when Rhino shuts down.
+        public void FlushRecovery()
+        {
+            try
+            {
+                _recoveryTimer.Stop();
+                if (IsDirty)
+                {
+                    _recoveryHeld = false;
+                    // Named by the saved item, or by the working name when it is new.
+                    Recovery.Write(_item, _item.Id, _item.Id != null && DisplayName(_savedItem).Length > 0 ? DisplayName(_savedItem) : DisplayName(_item));
+                }
+                else
+                    ClearRecovery();
+            }
+            catch (Exception e)
+            {
+                global::Rhino.RhinoApp.WriteLine($"GuitarForm: couldn't write the fretwire recovery file: {e.Message}");
+            }
+        }
+
+        void ClearRecovery()
+        {
+            if (_recoveryHeld)
+                return;
+            try
+            {
+                Recovery.ClearFretwire();
+            }
+            catch (Exception e)
+            {
+                global::Rhino.RhinoApp.WriteLine($"GuitarForm: couldn't delete the fretwire recovery file: {e.Message}");
+            }
+        }
+
+        // After a Reload: once the panel has settled, offers back unsaved edits left by a crash.
+        void ScheduleRecoveryOffer()
+        {
+            _recoveryHeld = true;
+            Application.Instance.AsyncInvoke(() =>
+            {
+                // A second offer would otherwise start inside the first one's prompt.
+                if (_disposed || _offering)
+                    return;
+                _offering = true;
+                int generation = _generation;
+                try
+                {
+                    OfferRecovery(generation);
+                }
+                catch (Exception e)
+                {
+                    global::Rhino.RhinoApp.WriteLine($"GuitarForm: couldn't recover the fretwire: {e.Message}");
+                    ReleaseRecovery(generation);
+                }
+                finally
+                {
+                    _offering = false;
+                }
+                // The library changed again during the prompt: offer for the new state.
+                if (generation != _generation && !_disposed)
+                    ScheduleRecoveryOffer();
+            });
+        }
+
+        // The recovery file stays protected until its offer is answered (or the tab is next edited).
+        void ReleaseRecovery(int generation)
+        {
+            if (generation == _generation)
+                _recoveryHeld = false;
+        }
+
+        void OfferRecovery(int generation)
+        {
+            var recovery = Recovery;
+            var status = recovery.TryReadFretwire(out var found);
+            if (status == RecoveryReadStatus.Unavailable)
+                return; // Leave the file alone; it stays held until the tab is edited.
+            if (status == RecoveryReadStatus.Missing)
+            {
+                ReleaseRecovery(generation);
+                return;
+            }
+            if (status == RecoveryReadStatus.Corrupt)
+            {
+                global::Rhino.RhinoApp.WriteLine("GuitarForm: the fretwire recovery file couldn't be read and was deleted.");
+                recovery.ClearFretwire();
+                ReleaseRecovery(generation);
+                return;
+            }
+            try
+            {
+                Offer(recovery, found, generation);
+            }
+            finally
+            {
+                ReleaseRecovery(generation);
+            }
+        }
+
+        void Offer(LibraryItemRecovery recovery, RecoveredItem<Fretwire> found, int generation)
+        {
+            if (IsDirty)
+                return;
+
+            var list = WithLibrary(library => library.ListLibraryItems<Fretwire>());
+            if (found.SavedId is long savedId)
+            {
+                if (list.Any(s => s.Id == savedId && string.Equals(s.Name, found.Name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    var saved = WithLibrary(library => library.LoadLibraryItem<Fretwire>(savedId));
+                    if (LibraryItemRecovery.SameContent(saved, found.Item))
+                    {
+                        recovery.ClearFretwire();
+                        return;
+                    }
+                    if (!LibraryItemUi.OfferRecovery(this, Kind, found.Name, false))
+                    {
+                        recovery.ClearFretwire();
+                        return;
+                    }
+                    if (generation != _generation || IsDirty)
+                        return;
+                    FillPicker(list, savedId);
+                    ShowItem(found.Item with { Id = savedId }, saved);
+                    _recoveryTimer.Start();
+                    return;
+                }
+                if (!LibraryItemUi.OfferRecoveryAsNew(this, Kind))
+                {
+                    recovery.ClearFretwire();
+                    return;
+                }
+            }
+            else if (!LibraryItemUi.OfferRecovery(this, Kind, found.Name, true))
+            {
+                recovery.ClearFretwire();
+                return;
+            }
+            if (generation != _generation || IsDirty)
+                return;
+            FillPicker(list, null);
+            ShowItem(found.Item with { Id = null }, new Fretwire());
+            _recoveryTimer.Start();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _disposed = true;
+                _recoveryTimer.Stop();
+                _recoveryTimer.Dispose();
+            }
+            base.Dispose(disposing);
         }
 
         void UpdateUi()
