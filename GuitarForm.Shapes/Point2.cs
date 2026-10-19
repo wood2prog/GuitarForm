@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 
 namespace GuitarForm.Shapes
 {
@@ -24,6 +25,11 @@ namespace GuitarForm.Shapes
     {
         public static readonly Vector2 XAxis = new Vector2(1, 0);
         public static readonly Vector2 YAxis = new Vector2(0, 1);
+
+        // Explicit, because the generated one prints Unit, Left and Right, which are Vector2 themselves, and recurses
+        // until the stack overflows. Prints only X and Y, in the invariant culture.
+        public override string ToString() =>
+            string.Format(CultureInfo.InvariantCulture, "Vector2 {{ X = {0}, Y = {1} }}", X, Y);
 
         public double Length => Math.Sqrt(X * X + Y * Y);
 

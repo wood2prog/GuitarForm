@@ -154,6 +154,98 @@ namespace GuitarForm.Tests
             Assert.That(_library.ListAssemblies<Bracing>(), Is.Empty);
         }
 
+        // A read-only look at the library file from a second connection.
+        long Scalar(string sql)
+        {
+            using var connection = new Microsoft.Data.Sqlite.SqliteConnection(
+                "Data Source=" + Path.Combine(_folder, "GuitarForm.db") + ";Mode=ReadOnly;Pooling=False");
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            return (long)command.ExecuteScalar();
+        }
+
+        [Test]
+        public void DeleteGuitar_CascadesToEveryPartsValues()
+        {
+            long keep = _library.CreateGuitar(TestGuitars.OM("Keeper"));
+            long keptValues = Scalar("SELECT count(*) FROM part_values");
+            long id = _library.CreateGuitar(TestGuitars.OM("Doomed"));
+            Assert.That(Scalar("SELECT count(*) FROM part_values"), Is.GreaterThan(keptValues));
+            Assert.That(Scalar("SELECT count(*) FROM parts WHERE kind IN ('neck', 'body', 'bracing')"), Is.EqualTo(6));
+
+            _library.DeleteGuitar(id);
+
+            // Only the kept guitar's rows are left, and none point at a part that is gone.
+            Assert.That(Scalar("SELECT count(*) FROM part_values"), Is.EqualTo(keptValues));
+            Assert.That(Scalar("SELECT count(*) FROM parts WHERE kind IN ('neck', 'body', 'bracing')"), Is.EqualTo(3));
+            Assert.That(Scalar("SELECT count(*) FROM part_values WHERE part_id NOT IN (SELECT id FROM parts)"), Is.Zero);
+            TestGuitars.AssertSameValues(_library.LoadGuitar(keep), TestGuitars.OM("Keeper"));
+        }
+
+        [Test]
+        public void DeleteAssembly_RemovesItsValuesAndLeavesTheOthers()
+        {
+            long named = _library.SaveAssembly("Slim C", NeckWith(43));
+            _library.SaveAssembly("Fat C", NeckWith(45));
+            Assert.That(Scalar($"SELECT count(*) FROM part_values WHERE part_id = {named}"), Is.GreaterThan(0));
+
+            _library.DeleteAssembly(named);
+
+            Assert.That(Scalar($"SELECT count(*) FROM part_values WHERE part_id = {named}"), Is.Zero);
+            Assert.That(Scalar("SELECT count(*) FROM part_values"), Is.GreaterThan(0));
+            Assert.That(_library.ListAssemblies<Neck>().Select(n => n.Name), Is.EqualTo(new[] { "Fat C" }));
+        }
+
+        [Test]
+        public void DeleteLibraryItem_RemovesItsValues()
+        {
+            long id = _library.SaveLibraryItem(TestGuitars.Fretwire);
+            Assert.That(Scalar($"SELECT count(*) FROM part_values WHERE part_id = {id}"), Is.GreaterThan(0));
+
+            _library.DeleteLibraryItem(id);
+
+            Assert.That(Scalar("SELECT count(*) FROM part_values"), Is.Zero);
+            Assert.That(Scalar("SELECT count(*) FROM parts"), Is.Zero);
+        }
+
+        [Test]
+        public void SaveGuitar_LeavesNoOrphanedValueRows()
+        {
+            long id = _library.CreateGuitar(TestGuitars.OM());
+
+            _library.SaveGuitar(id, TestGuitars.OM() with { Neck = NeckWith(43) });
+            _library.SaveGuitar(id, TestGuitars.OM());
+
+            Assert.That(Scalar("SELECT count(*) FROM part_values WHERE part_id NOT IN (SELECT id FROM parts)"), Is.Zero);
+        }
+
+        [Test]
+        public void SaveGuitar_RenamedToAnotherGuitarsName_Throws_AndChangesNothing()
+        {
+            _library.CreateGuitar(TestGuitars.OM("Parlor"));
+            long id = _library.CreateGuitar(TestGuitars.OM("OM"));
+
+            var error = Assert.Throws<InvalidOperationException>(() => _library.SaveGuitar(id, TestGuitars.OM("parlor")));
+
+            Assert.That(error.Message, Does.Contain("parlor"));
+            Assert.That(_library.ListGuitars().Select(g => g.Name), Is.EquivalentTo(new[] { "OM", "Parlor" }));
+            TestGuitars.AssertSameValues(_library.LoadGuitar(id), TestGuitars.OM("OM"));
+        }
+
+        [Test]
+        public void SaveLibraryItem_RenamedToATakenName_Throws()
+        {
+            var other = TestGuitars.Fretwire with { ProductCode = new(Fretwire.Definitions.ProductCode, "99999") };
+            _library.SaveLibraryItem(TestGuitars.Fretwire);
+            long id = _library.SaveLibraryItem(other);
+
+            Assert.Throws<InvalidOperationException>(() => _library.SaveLibraryItem(
+                TestGuitars.Fretwire with { Id = id }));
+
+            Assert.That(_library.ListLibraryItems<Fretwire>(), Has.Count.EqualTo(2));
+        }
+
         [Test]
         public void LoadGuitar_UnknownId_Throws()
         {

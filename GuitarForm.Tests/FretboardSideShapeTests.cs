@@ -240,6 +240,166 @@ namespace GuitarForm.Tests
             Assert.That(shape.Messages.Any(m => m.Level == MessageLevel.Warning && m.Text.Contains("no slot line")), Is.True);
         }
 
+        static Guitar WithFretboard(Guitar guitar, Func<Fretboard, Fretboard> change) =>
+            guitar with { Neck = guitar.Neck with { Fretboard = change(guitar.Neck.Fretboard) } };
+
+        static DotMarker Marker(int fret, int dots) => new DotMarker
+        {
+            Fret = new(DotMarker.Definitions.Fret, fret),
+            DotCount = new(DotMarker.Definitions.DotCount, dots),
+        };
+
+        [Test]
+        public void Solve_WithoutASideView_DrawsNothingAndSaysNothing()
+        {
+            var shape = FretboardSideShape.Solve(Make(), SideViewShape.Solve(new Body(), 240));
+
+            Assert.That(shape.Outline, Is.Null);
+            Assert.That(shape.Messages, Is.Empty);
+            Assert.That(shape.SideDots, Is.Empty);
+            Assert.That(shape.SlotLines, Is.Empty);
+        }
+
+        [Test]
+        public void Solve_MissingValues_RemarkNamingThem()
+        {
+            var guitar = Make();
+            guitar = guitar with { Neck = guitar.Neck with { Overstand = new(Neck.Definitions.Overstand) } };
+
+            var shape = Solve(guitar);
+
+            Assert.That(shape.Outline, Is.Null);
+            var message = shape.Messages.Single();
+            Assert.That(message.Level, Is.EqualTo(MessageLevel.Remark));
+            Assert.That(message.Text, Does.Contain(guitar.Neck.Overstand.Label));
+            Assert.That(message.Text, Does.EndWith("to draw the fretboard in the side view."));
+        }
+
+        [Test]
+        public void Solve_ZeroThicknessOrScaleLength_IsAnError()
+        {
+            var thin = WithFretboard(Make(), f => f with { ThicknessAtEnd = new(Fretboard.Definitions.ThicknessAtEnd, 0) });
+            var noScale = Make() with { ScaleLength = new(Guitar.Definitions.ScaleLength, 0) };
+            foreach (var guitar in new[] { thin, noScale })
+            {
+                var shape = Solve(guitar);
+
+                Assert.That(shape.Outline, Is.Null);
+                Assert.That(shape.Messages.Single().Level, Is.EqualTo(MessageLevel.Error));
+            }
+        }
+
+        [Test]
+        public void Outline_AtNeckAngleZero_IsSquareToAVerticalTop()
+        {
+            // With no skew the top is the vertical line x = 360 (left 240 + depth 120) and a neck angle of 0 leaves the
+            // fretboard parallel to it. The underside is the 2 overstand right of the top at the neck end (x = 362); the
+            // nut is the neck join distance (645 * (1 - 2^(-14/12)) = 357.685) above the neck end, y = 957.685. The
+            // thickness 7 at the nut and 6 at the end are measured square to the underside, toward +X.
+            var guitar = Make();
+            guitar = guitar with { Neck = guitar.Neck with { Angle = new(Neck.Definitions.Angle, 0) } };
+
+            var shape = Solve(guitar);
+
+            Assert.That(shape.NutUnder.X, Is.EqualTo(362).Within(1e-9));
+            Assert.That(shape.NutUnder.Y, Is.EqualTo(957.685).Within(0.001));
+            Assert.That(shape.NutTop.X, Is.EqualTo(369).Within(1e-9));
+            Assert.That(shape.EndUnder.X, Is.EqualTo(362).Within(1e-9));
+            Assert.That(shape.EndTop.X, Is.EqualTo(368).Within(1e-9));
+            // The end is the 20th fret's distance plus the 5 overhang from the nut.
+            Assert.That(shape.NutUnder.Y - shape.EndUnder.Y, Is.EqualTo(guitar.FretDistance(20).Value + 5).Within(1e-9));
+            Assert.That(shape.Outline.IsClosed, Is.True);
+            Assert.That(shape.Outline.Segments, Has.Count.EqualTo(4));
+        }
+
+        [Test]
+        public void PlayingSurfaceAt_RunsFromTheNutTopToTheEndTop()
+        {
+            var shape = Solve(Make());
+            double length = Math.Sqrt(Math.Pow(shape.EndUnder.X - shape.NutUnder.X, 2) + Math.Pow(shape.EndUnder.Y - shape.NutUnder.Y, 2));
+
+            Assert.That(shape.PlayingSurfaceAt(0), Is.EqualTo(shape.NutTop));
+            Assert.That(shape.PlayingSurfaceAt(length).X, Is.EqualTo(shape.EndTop.X).Within(1e-9));
+            Assert.That(shape.PlayingSurfaceAt(length).Y, Is.EqualTo(shape.EndTop.Y).Within(1e-9));
+        }
+
+        [Test]
+        public void SideDots_ADoubleMarkerWithoutSpacing_IsLeftOutWithARemark()
+        {
+            var guitar = WithFretboard(Make(), f => f with { SideDoubleDotSpacing = new(Fretboard.Definitions.SideDoubleDotSpacing) });
+
+            var shape = Solve(guitar);
+
+            // Only fret 3's single dot is drawn.
+            Assert.That(shape.SideDots, Has.Count.EqualTo(1));
+            Assert.That(shape.Messages.Single(m => m.Text.Contains("double side dots")).Level, Is.EqualTo(MessageLevel.Remark));
+        }
+
+        [Test]
+        public void SideDots_AnyCountButTwo_IsASingleDot()
+        {
+            var guitar = WithFretboard(Make(), f => f with { Markers = new[] { Marker(5, 1), Marker(7, 3), Marker(9, 0) } });
+
+            Assert.That(Solve(guitar).SideDots, Has.Count.EqualTo(3));
+        }
+
+        [Test]
+        public void SideDots_MarkersOutsideTheFretCount_AreIgnored()
+        {
+            var guitar = WithFretboard(Make(), f => f with { Markers = new[] { Marker(0, 1), Marker(21, 1), Marker(25, 2) } });
+
+            Assert.That(Solve(guitar).SideDots, Is.Empty);
+        }
+
+        [Test]
+        public void SideDots_WithoutARadius_NeverWarnAboutTheEdge()
+        {
+            var guitar = WithFretboard(Make(sideDotOffset: 4.5), f => f with { Radius = new(Fretboard.Definitions.Radius) });
+
+            var shape = Solve(guitar);
+
+            Assert.That(shape.SideDots, Has.Count.EqualTo(3));
+            Assert.That(shape.Messages.Any(m => m.Level == MessageLevel.Warning), Is.False);
+        }
+
+        [Test]
+        public void SideDots_ASmallRadius_DropsTheEdgeByTheWholeRadius()
+        {
+            // A radius of 10 is under the half width (22 or more), so the edge sags the whole 10: thinner than any dot's
+            // top (3 + 1) at both markers.
+            var guitar = WithFretboard(Make(), f => f with { Radius = new(Fretboard.Definitions.Radius, 10) });
+
+            var warnings = Solve(guitar).Messages.Where(m => m.Level == MessageLevel.Warning).ToList();
+
+            Assert.That(warnings, Has.Count.EqualTo(2));
+            Assert.That(warnings.Any(m => m.Text.Contains("fret 3")), Is.True);
+            Assert.That(warnings.Any(m => m.Text.Contains("fret 12")), Is.True);
+        }
+
+        [Test]
+        public void SlotLines_ANonPositiveSlotDepth_IsARemark()
+        {
+            foreach (double depth in new[] { 0.0, -1.0 })
+            {
+                var shape = Solve(Make(slotDepth: depth));
+
+                Assert.That(shape.SlotLines, Is.Empty, $"depth {depth}");
+                Assert.That(shape.Messages.Single(m => m.Text.Contains("fret slots")).Level, Is.EqualTo(MessageLevel.Remark));
+            }
+        }
+
+        [Test]
+        public void SlotLines_ABottomAboveEveryFret_DrawsNoneAndWarnsOfThem()
+        {
+            // A depth of 0.0001 puts the bottom at 6.9999, above the playing surface from fret 1 (about 6.92) on.
+            var shape = Solve(Make(slotDepth: 0.0001));
+
+            Assert.That(shape.SlotLines, Is.Empty);
+            var warning = shape.Messages.Single(m => m.Level == MessageLevel.Warning);
+            Assert.That(warning.Text, Does.Contain("fret 1,"));
+            Assert.That(warning.Text, Does.Contain("20"));
+        }
+
         [Test]
         public void Drawing_EmitsTheSideDotsAndSlotLinesInTheSideView()
         {

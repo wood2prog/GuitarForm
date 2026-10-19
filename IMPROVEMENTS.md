@@ -99,10 +99,10 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 - [ ] **(question)** The fretwire price's unit or currency, when job costing is built.
 - [ ] **(question)** Construction lines print at the outline weight. Confirm that is right.
 - [ ] The print colour path (a component's optional print colour to the layer's PlotColor) is untested.
-- [ ] Add a library upgrade test (a v1 library with data migrates to v2).
+- [x] Add a library upgrade test (a v1 library with data migrates to v2).
 - [ ] Back up the library before a schema migration.
-- [ ] Add non-invariant culture tests (de-DE).
-- [ ] Add tests for `Segment`, `FretboardSideShape`, `SideViewShape`, `SoundholeShape`, `ShapeCurves`, the Rhino-free parts of `NewFields`, and FK/cascade behaviour.
+- [x] Add non-invariant culture tests (de-DE).
+- [x] Add tests for `Segment`, `FretboardSideShape`, `SideViewShape`, `SoundholeShape`, `ShapeCurves` and FK/cascade behaviour (the Rhino-free parts of `NewFields` are still untested).
 - [ ] Centralise the csproj settings (`Directory.Build.props`).
 - [ ] Extract the duplicated UI helpers (Run, ActionButton, the discard prompt). Partly done: `LibraryItemUi` now holds the library-item helpers shared by the Strings and Frets tabs; `GuitarFormPanel` and `SettingsPage` still have their own.
 - [ ] Remove the `UiMetrics` bypasses and dead code (`ScreenScale`, the `Scale` no-op).
@@ -114,6 +114,19 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 - [ ] Add tests for `NeckSideShape` parallel-line/near-parallel guards and the `BracingShape` unsupported segment (currently unreachable via the public API); add `InternalsVisibleTo` or a public seam for `Library.IsNameConflict`.
 - [ ] Tidy: a failed plate makes the side view jump horizontally while editing.
 - [ ] Only an unset `Body.Length` is treated as unfinished (Remark); other missing plate values rely on the plate's own Remarks.
+
+### Follow-ups from the test work
+
+- [x] `Vector2.ToString` recursed forever (stack overflow): it now has an explicit, culture-invariant `ToString` that prints only X and Y (`Point2` was fine).
+- [ ] `ArcSegment` crossings return a tangent point twice.
+- [ ] Zero-length `LineSegment.TangentAt` returns NaN.
+- [ ] A closed path whose closing gap is 0.0005 mm returns an open curve.
+- [ ] `ShapeCurves` `JoinTolerance` fallback is effectively unreachable (Rhino snaps gaps up to 50 mm).
+- [ ] The public API can't tell whether the duplicate-name tests reach the SQLite unique-violation path.
+- [ ] `DisplayUnits` (internal to the plug-in) has no culture tests; the Rhino-free part needs moving to a testable assembly.
+- [ ] `Schema` is internal, so `LibraryUpgradeTests` repeats the `ApplicationId` and `LatestVersion` constants: bump them by hand on the next migration, or add `InternalsVisibleTo` to `GuitarForm.Data`.
+- [ ] **(decision)** `NumberParameter`/`CountParameter.TryParse` use the current culture, so `1.5` is rejected under de-DE. Accept both?
+- [ ] `Format`/`TryParse` with a null culture depend on the machine culture.
 
 ### Migration (needs product-owner sign-off and a senior-engineer plan first)
 

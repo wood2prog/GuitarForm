@@ -1,0 +1,3473 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Text;
+using GuitarForm.Model;
+using GuitarForm.Model.Parameters;
+using GuitarForm.Model.Parts;
+using GuitarForm.Shapes;
+using NUnit.Framework;
+using Body = GuitarForm.Model.Parts.Body;
+
+namespace GuitarForm.Tests
+{
+    // Characterization ("golden") tests: pin the whole GuitarDrawing output of a handful of guitars, so a refactor of
+    // GuitarForm.Shapes can show that nothing it draws or says has changed. The expected snapshots were captured from
+    // the code as it stood, not worked out by hand; only update them when a change to the drawing is intended.
+    //
+    // A snapshot has one line per drawn item (component and role), then one per segment or circle, with every
+    // coordinate rounded to 1e-6 mm: "L x1 y1 x2 y2" for a line, "A x1 y1 x2 y2 xm ym" for an arc (start, end, midpoint)
+    // and "C x y r" for a circle. Messages are listed per group with their level and text. Geometry must be identical
+    // in every culture; message text differs between cultures only in how numbers are written, so each culture has its
+    // own expected messages.
+    public class ShapeGoldenTests
+    {
+        const double Tolerance = 0.001;
+        const double Gap = 50;
+
+        CultureInfo _saved;
+
+        [SetUp]
+        public void SetUp() => _saved = CultureInfo.CurrentCulture;
+
+        [TearDown]
+        public void TearDown() => CultureInfo.CurrentCulture = _saved;
+
+        // A guitar with every value set: the bracing test's body and bracing, the neck profiles test's neck, and
+        // library fretwire, strings and markers.
+        static Guitar Full()
+        {
+            var bracing = BracingShapeTests.TestGuitar();
+            var neck = NeckProfilesShapeTests.TestGuitar().Neck;
+            return bracing with
+            {
+                ScaleLength = new(Guitar.Definitions.ScaleLength, 645),
+                NeckJoinFret = new(Guitar.Definitions.NeckJoinFret, 14),
+                Neck = neck with
+                {
+                    Fretwire = TestGuitars.Fretwire with { SlotDepth = new(Fretwire.Definitions.SlotDepth, 2) },
+                    StringSet = TestGuitars.StringSet,
+                    Fretboard = neck.Fretboard with
+                    {
+                        DoubleDotEdgeDistance = new(Fretboard.Definitions.DoubleDotEdgeDistance, 8),
+                        SideDoubleDotSpacing = new(Fretboard.Definitions.SideDoubleDotSpacing, 4),
+                        FaceDotDiameter = new(Fretboard.Definitions.FaceDotDiameter, 6),
+                        SideDotDiameter = new(Fretboard.Definitions.SideDotDiameter, 2),
+                        SideDotOffset = new(Fretboard.Definitions.SideDotOffset, 3),
+                        Markers = new[] { 3, 5, 12 }.Select(fret => new DotMarker
+                        {
+                            Fret = new(DotMarker.Definitions.Fret, fret),
+                            DotCount = new(DotMarker.Definitions.DotCount, fret == 12 ? 2 : 1),
+                        }).ToArray(),
+                    },
+                },
+                Body = bracing.Body with
+                {
+                    DepthAtTailEnd = new(Body.Definitions.DepthAtTailEnd, 120),
+                    DepthAtNeckEnd = new(Body.Definitions.DepthAtNeckEnd, 95),
+                },
+            };
+        }
+
+        static Guitar With(Guitar guitar, ParameterDefinition definition, double? value) =>
+            guitar with { Body = (Body)guitar.Body.With(new NumberParameter(definition, value)) };
+
+        static Guitar WithCutaway(CutawayType type, bool valleyAndPoint)
+        {
+            var guitar = Full();
+            guitar = guitar with { Body = guitar.Body with { CutawayType = new(Body.Definitions.CutawayType, type) } };
+            guitar = With(guitar, Body.Definitions.CutawayOffsetFromNeck, 8);
+            guitar = With(guitar, Body.Definitions.CutawayWidth, 90);
+            guitar = With(guitar, Body.Definitions.CutawayDepth, 20);
+            if (valleyAndPoint)
+            {
+                guitar = With(guitar, Body.Definitions.CutawayValleyRadius, 10);
+                guitar = With(guitar, Body.Definitions.CutawayPointRadius, 10);
+            }
+            return guitar;
+        }
+
+        static Guitar WithBracing(Guitar guitar, Func<Bracing, Bracing> change) =>
+            guitar with { Body = guitar.Body with { TopPlate = guitar.Body.TopPlate with { Bracing = change(guitar.Body.TopPlate.Bracing) } } };
+
+        static Bracing Set(Bracing bracing, ParameterDefinition definition, double value) =>
+            (Bracing)bracing.With(new NumberParameter(definition, value));
+
+        static Bracing Count(Bracing bracing, ParameterDefinition definition, int value) =>
+            (Bracing)bracing.With(new CountParameter(definition, value));
+
+        // The variants, by name.
+        internal static readonly (string Name, Func<Guitar> Make)[] Variants =
+        {
+            ("Full", Full),
+            ("Venetian", () => WithCutaway(CutawayType.Venetian, true)),
+            ("Florentine", () => WithCutaway(CutawayType.Florentine, false)),
+            ("BracingHeavy", () => WithBracing(Full(), bracing =>
+            {
+                bracing = Count(bracing, Bracing.Definitions.BassFingerBraceCount, 6);
+                bracing = Count(bracing, Bracing.Definitions.TrebleFingerBraceCount, 5);
+                bracing = Count(bracing, Bracing.Definitions.ToneBarCount, 5);
+                bracing = Set(bracing, Bracing.Definitions.BassFingerBraceSpacing, 30);
+                bracing = Set(bracing, Bracing.Definitions.TrebleFingerBraceSpacing, 30);
+                return Set(bracing, Bracing.Definitions.ToneBarSpacing, 40);
+            })),
+            ("SteepNeck", () =>
+            {
+                var guitar = Full();
+                return guitar with { Neck = guitar.Neck with { Angle = new(Neck.Definitions.Angle, 6) } };
+            }),
+            ("Unfinished", () => With(Full(), Body.Definitions.Length, null)),
+            // A cutaway whose offset line misses the neck end fails the plate; the rest is drawn without it.
+            ("Failing", () => With(WithCutaway(CutawayType.Florentine, false), Body.Definitions.CutawayOffsetFromNeck, 150)),
+        };
+
+        static string Fixed(double value)
+        {
+            string text = Math.Round(value, 6).ToString("F6", CultureInfo.InvariantCulture);
+            return text == "-0.000000" ? "0.000000" : text;
+        }
+
+        static string Fixed(Point2 point) => $"{Fixed(point.X)} {Fixed(point.Y)}";
+
+        // The drawn items, one line each and one per segment or circle.
+        internal static string Geometry(GuitarDrawing drawing)
+        {
+            var text = new StringBuilder();
+            for (int i = 0; i < drawing.Items.Count; i++)
+            {
+                var item = drawing.Items[i];
+                text.AppendLine($"item {i} {item.Component} {item.Role}" +
+                    (item.Path == null ? "" : item.Path.IsClosed ? " closed" : " open"));
+                if (item.Circle is Circle circle)
+                    text.AppendLine($"  C {Fixed(circle.Center)} {Fixed(circle.Radius)}");
+                if (item.Path == null)
+                    continue;
+                foreach (var segment in item.Path.Segments)
+                    text.AppendLine(segment is ArcSegment arc
+                        ? $"  A {Fixed(arc.Start)} {Fixed(arc.End)} {Fixed(arc.Mid)}"
+                        : $"  L {Fixed(segment.Start)} {Fixed(segment.End)}");
+            }
+            return text.ToString();
+        }
+
+        // Every message, by the group the drawing keeps it in.
+        internal static string Messages(GuitarDrawing drawing)
+        {
+            var text = new StringBuilder();
+            foreach (var (group, messages) in new[]
+                     {
+                         ("Body", drawing.BodyMessages), ("Bracing", drawing.BracingMessages),
+                         ("Fretboard", drawing.FretboardMessages), ("Neck", drawing.NeckMessages),
+                     })
+                foreach (var message in messages)
+                    text.AppendLine($"{group} {message.Level}: {message.Text}");
+            return text.ToString();
+        }
+
+        static GuitarDrawing Draw(string name, string culture)
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
+            return GuitarDrawing.Draw(Variants.Single(v => v.Name == name).Make(), Tolerance, Gap);
+        }
+
+        // Compares line by line, so a failure names the variant and the first line that differs.
+        static void AssertSame(string what, string expected, string actual)
+        {
+            var want = expected.Replace("\r\n", "\n").TrimEnd().Split('\n');
+            var got = actual.Replace("\r\n", "\n").TrimEnd().Split('\n');
+            for (int i = 0; i < Math.Max(want.Length, got.Length); i++)
+            {
+                string w = i < want.Length ? want[i] : "<missing>", g = i < got.Length ? got[i] : "<missing>";
+                if (w != g)
+                    Assert.Fail($"{what}: line {i + 1} differs.\n  expected: {w}\n  actual:   {g}");
+            }
+        }
+
+        public static IEnumerable<string> Names => Variants.Select(v => v.Name);
+
+        [TestCaseSource(nameof(Names))]
+        public void Geometry_MatchesTheSnapshot_InEnglish(string name) =>
+            AssertSame($"{name} geometry (en-US)", ExpectedGeometry[name], Geometry(Draw(name, "en-US")));
+
+        [TestCaseSource(nameof(Names))]
+        public void Geometry_MatchesTheSnapshot_InGerman(string name) =>
+            AssertSame($"{name} geometry (de-DE)", ExpectedGeometry[name], Geometry(Draw(name, "de-DE")));
+
+        [TestCaseSource(nameof(Names))]
+        public void Messages_MatchTheSnapshot_InEnglish(string name) =>
+            AssertSame($"{name} messages (en-US)", ExpectedMessagesEnglish[name], Messages(Draw(name, "en-US")));
+
+        [TestCaseSource(nameof(Names))]
+        public void Messages_MatchTheSnapshot_InGerman(string name) =>
+            AssertSame($"{name} messages (de-DE)", ExpectedMessagesGerman[name], Messages(Draw(name, "de-DE")));
+
+        static readonly Dictionary<string, string> ExpectedGeometry = new()
+        {
+            ["Full"] = """
+item 0 TopPlate Construction open
+  L 0.000000 0.000000 0.000000 600.000000
+item 1 TopPlate Construction open
+  L -140.000000 495.000000 140.000000 495.000000
+item 2 TopPlate Construction open
+  L -120.000000 300.000000 120.000000 300.000000
+item 3 TopPlate Construction open
+  L -190.000000 130.000000 190.000000 130.000000
+item 4 TopPlate Construction open
+  L 28.000000 597.000000 28.000000 603.000000
+item 5 TopPlate Construction open
+  L -28.000000 597.000000 -28.000000 603.000000
+item 6 TopPlate Construction
+  C 40.000000 495.000000 100.000000
+item 7 TopPlate Construction
+  C -40.000000 495.000000 100.000000
+item 8 TopPlate Construction
+  C 10.000000 495.000000 130.000000
+item 9 TopPlate Construction
+  C -10.000000 495.000000 130.000000
+item 10 TopPlate Construction
+  C 180.000000 300.000000 60.000000
+item 11 TopPlate Construction
+  C -180.000000 300.000000 60.000000
+item 12 TopPlate Construction
+  C 70.000000 130.000000 120.000000
+item 13 TopPlate Construction
+  C -70.000000 130.000000 120.000000
+item 14 TopPlate Construction
+  C 30.000000 130.000000 160.000000
+item 15 TopPlate Construction
+  C -30.000000 130.000000 160.000000
+item 16 TopPlate Outline closed
+  L 0.000000 600.000000 28.000000 600.000000
+  A 28.000000 600.000000 111.005917 565.414201 72.961538 591.007692
+  A 111.005917 565.414201 140.000000 495.000000 132.467810 533.074981
+  A 140.000000 495.000000 139.244858 481.008338 139.811077 487.993987
+  L 139.244858 481.008338 120.348527 306.457690
+  A 120.348527 306.457690 130.609397 265.932885 121.835504 285.272765
+  L 130.609397 265.932885 161.708275 220.845639
+  A 161.708275 220.845639 190.000000 130.000000 182.763419 177.574552
+  A 190.000000 130.000000 103.600000 14.800000 166.000000 58.000000
+  A 103.600000 14.800000 0.000000 0.000000 52.325902 3.718687
+  A 0.000000 0.000000 -103.600000 14.800000 -52.325902 3.718687
+  A -103.600000 14.800000 -190.000000 130.000000 -166.000000 58.000000
+  A -190.000000 130.000000 -161.708275 220.845639 -182.763419 177.574552
+  L -161.708275 220.845639 -130.609397 265.932885
+  A -130.609397 265.932885 -120.348527 306.457690 -121.835504 285.272765
+  L -120.348527 306.457690 -139.244858 481.008338
+  A -139.244858 481.008338 -140.000000 495.000000 -139.811077 487.993987
+  A -140.000000 495.000000 -111.005917 565.414201 -132.467810 533.074981
+  A -111.005917 565.414201 -28.000000 600.000000 -72.961538 591.007692
+  L -28.000000 600.000000 0.000000 600.000000
+item 17 Soundhole Outline
+  C 0.000000 380.000000 50.000000
+item 18 Bracing Construction open
+  L -430.000000 0.000000 -430.000000 600.000000
+item 19 Bracing Outline closed
+  L -430.000000 600.000000 -458.000000 600.000000
+  A -458.000000 600.000000 -541.005917 565.414201 -502.961538 591.007692
+  A -541.005917 565.414201 -570.000000 495.000000 -562.467810 533.074981
+  A -570.000000 495.000000 -569.244858 481.008338 -569.811077 487.993987
+  L -569.244858 481.008338 -550.348527 306.457690
+  A -550.348527 306.457690 -560.609397 265.932885 -551.835504 285.272765
+  L -560.609397 265.932885 -591.708275 220.845639
+  A -591.708275 220.845639 -620.000000 130.000000 -612.763419 177.574552
+  A -620.000000 130.000000 -533.600000 14.800000 -596.000000 58.000000
+  A -533.600000 14.800000 -430.000000 0.000000 -482.325902 3.718687
+  A -430.000000 0.000000 -326.400000 14.800000 -377.674098 3.718687
+  A -326.400000 14.800000 -240.000000 130.000000 -264.000000 58.000000
+  A -240.000000 130.000000 -268.291725 220.845639 -247.236581 177.574552
+  L -268.291725 220.845639 -299.390603 265.932885
+  A -299.390603 265.932885 -309.651473 306.457690 -308.164496 285.272765
+  L -309.651473 306.457690 -290.755142 481.008338
+  A -290.755142 481.008338 -290.000000 495.000000 -290.188923 487.993987
+  A -290.000000 495.000000 -318.994083 565.414201 -297.532190 533.074981
+  A -318.994083 565.414201 -402.000000 600.000000 -357.038462 591.007692
+  L -402.000000 600.000000 -430.000000 600.000000
+item 20 Bracing Outline
+  C -430.000000 380.000000 50.000000
+item 21 Headblock Outline closed
+  L -395.000000 580.000000 -395.000000 599.790231
+  A -395.000000 599.790231 -402.000000 600.000000 -398.498429 599.947546
+  L -402.000000 600.000000 -430.000000 600.000000
+  L -430.000000 600.000000 -458.000000 600.000000
+  A -458.000000 600.000000 -465.000000 599.790231 -461.501571 599.947546
+  L -465.000000 599.790231 -465.000000 580.000000
+  L -465.000000 580.000000 -395.000000 580.000000
+item 22 Tailblock Outline closed
+  L -475.000000 15.000000 -475.000000 2.746681
+  A -475.000000 2.746681 -430.000000 0.000000 -452.541874 0.687309
+  A -430.000000 0.000000 -385.000000 2.746681 -407.458126 0.687309
+  L -385.000000 2.746681 -385.000000 15.000000
+  L -385.000000 15.000000 -475.000000 15.000000
+item 23 Bracing Outline closed
+  L -293.958557 470.000000 -566.041443 470.000000
+  L -566.041443 470.000000 -563.876303 450.000000
+  L -563.876303 450.000000 -296.123697 450.000000
+  L -296.123697 450.000000 -293.958557 470.000000
+item 24 Bracing Outline closed
+  L -339.742470 570.000000 -520.257530 570.000000
+  A -520.257530 570.000000 -533.905325 558.372781 -527.325621 564.473020
+  A -533.905325 558.372781 -558.741197 510.000000 -550.063860 536.106913
+  L -558.741197 510.000000 -301.258803 510.000000
+  A -301.258803 510.000000 -326.094675 558.372781 -309.936140 536.106913
+  A -326.094675 558.372781 -339.742470 570.000000 -332.674379 564.473020
+item 25 Bracing Outline closed
+  L -246.458287 151.211846 -556.694202 411.530687
+  L -556.694202 411.530687 -555.450687 400.043996
+  L -555.450687 400.043996 -245.310462 139.805448
+  A -245.310462 139.805448 -246.458287 151.211846 -245.778884 145.519262
+item 26 Bracing Outline closed
+  L -423.777105 300.000000 -304.549313 400.043996
+  L -304.549313 400.043996 -303.305798 411.530687
+  L -303.305798 411.530687 -430.000000 305.221629
+  L -430.000000 305.221629 -423.777105 300.000000
+item 27 Bracing Outline closed
+  L -436.222895 300.000000 -613.541713 151.211846
+  A -613.541713 151.211846 -614.689538 139.805448 -614.221116 145.519262
+  L -614.689538 139.805448 -430.000000 294.778371
+  L -430.000000 294.778371 -436.222895 300.000000
+item 28 Bracing Outline closed
+  L -476.235684 266.425284 -552.886348 357.773988
+  L -552.886348 357.773988 -551.726157 347.056984
+  L -551.726157 347.056984 -480.831950 262.568558
+  L -480.831950 262.568558 -476.235684 266.425284
+item 29 Bracing Outline closed
+  L -522.198350 227.858027 -555.793851 267.895586
+  A -555.793851 267.895586 -558.139867 264.229530 -556.935190 266.042292
+  L -558.139867 264.229530 -559.227261 262.653022
+  L -559.227261 262.653022 -526.794617 224.001302
+  L -526.794617 224.001302 -522.198350 227.858027
+item 30 Bracing Outline closed
+  L -387.333339 269.420050 -300.372931 420.039894
+  L -300.372931 420.039894 -298.774046 434.809245
+  L -298.774046 434.809245 -392.000510 273.336271
+  L -392.000510 273.336271 -387.333339 269.420050
+item 31 Bracing Outline closed
+  L -349.031117 237.280669 -312.999236 299.689717
+  A -312.999236 299.689717 -312.634047 306.780575 -312.916615 303.240295
+  L -312.634047 306.780575 -311.895672 313.601146
+  L -311.895672 313.601146 -353.698288 241.196891
+  L -353.698288 241.196891 -349.031117 237.280669
+item 32 Bracing Outline closed
+  L -310.728895 205.141289 -288.117485 244.305398
+  L -288.117485 244.305398 -291.888872 249.773165
+  L -291.888872 249.773165 -315.396066 209.057510
+  L -315.396066 209.057510 -310.728895 205.141289
+item 33 Bracing Outline closed
+  L -492.680901 242.182850 -406.269729 4.770108
+  A -406.269729 4.770108 -399.018317 5.313648 -402.642673 5.023868
+  L -399.018317 5.313648 -486.974448 246.971132
+  L -486.974448 246.971132 -492.680901 242.182850
+item 34 Bracing Outline closed
+  L -553.964456 190.759841 -487.652503 8.569247
+  A -487.652503 8.569247 -479.777993 7.400839 -483.718425 7.963633
+  L -479.777993 7.400839 -548.258004 195.548123
+  L -548.258004 195.548123 -553.964456 190.759841
+item 35 Bracing Outline closed
+  L -404.045548 327.000000 -455.954452 327.000000
+  L -455.954452 327.000000 -448.803930 321.000000
+  L -448.803930 321.000000 -411.196070 321.000000
+  L -411.196070 321.000000 -404.045548 327.000000
+item 36 Bracing Outline closed
+  L -500.310305 364.218980 -450.784610 450.000000
+  L -450.784610 450.000000 -457.712813 450.000000
+  L -457.712813 450.000000 -504.977476 368.135202
+  L -504.977476 368.135202 -500.310305 364.218980
+item 37 Bracing Outline closed
+  L -409.215390 450.000000 -359.689695 364.218980
+  L -359.689695 364.218980 -355.022524 368.135202
+  L -355.022524 368.135202 -402.287187 450.000000
+  L -402.287187 450.000000 -409.215390 450.000000
+item 38 Sides Outline closed
+  L 240.000000 0.000000 360.000000 0.000000
+  L 360.000000 0.000000 360.000000 600.000000
+  L 360.000000 600.000000 265.000000 600.000000
+  L 265.000000 600.000000 240.000000 0.000000
+item 39 Frets Centerline open
+  L -22.477068 921.484095 22.477068 921.484095
+item 40 Frets Centerline open
+  L -22.927361 887.314837 22.927361 887.314837
+item 41 Frets Centerline open
+  L -23.352380 855.063351 23.352380 855.063351
+item 42 Frets Centerline open
+  L -23.753546 824.622003 23.753546 824.622003
+item 43 Frets Centerline open
+  L -24.132195 795.889196 24.132195 795.889196
+item 44 Frets Centerline open
+  L -24.489592 768.769037 24.489592 768.769037
+item 45 Frets Centerline open
+  L -24.826931 743.171016 24.826931 743.171016
+item 46 Frets Centerline open
+  L -25.145336 719.009702 25.145336 719.009702
+item 47 Frets Centerline open
+  L -25.445870 696.204458 25.445870 696.204458
+item 48 Frets Centerline open
+  L -25.729536 674.679174 25.729536 674.679174
+item 49 Frets Centerline open
+  L -25.997282 654.362011 25.997282 654.362011
+item 50 Frets Centerline open
+  L -26.250000 635.185163 26.250000 635.185163
+item 51 Frets Centerline open
+  L -26.488534 617.084629 26.488534 617.084629
+item 52 Frets Centerline open
+  L -26.713680 600.000000 26.713680 600.000000
+item 53 Frets Centerline open
+  L -26.926190 583.874257 26.926190 583.874257
+item 54 Frets Centerline open
+  L -27.126773 568.653583 27.126773 568.653583
+item 55 Frets Centerline open
+  L -27.316097 554.287180 27.316097 554.287180
+item 56 Frets Centerline open
+  L -27.494796 540.727100 27.494796 540.727100
+item 57 Frets Centerline open
+  L -27.663465 527.928090 27.663465 527.928090
+item 58 Frets Centerline open
+  L -27.822668 515.847433 27.822668 515.847433
+item 59 Frets Outline closed
+  L -22.458685 922.879095 22.458685 922.879095
+  L 22.458685 922.879095 22.495452 920.089095
+  L 22.495452 920.089095 -22.495452 920.089095
+  L -22.495452 920.089095 -22.458685 922.879095
+item 60 Frets Outline closed
+  L -22.908977 888.709837 22.908977 888.709837
+  L 22.908977 888.709837 22.945745 885.919837
+  L 22.945745 885.919837 -22.945745 885.919837
+  L -22.945745 885.919837 -22.908977 888.709837
+item 61 Frets Outline closed
+  L -23.333997 856.458351 23.333997 856.458351
+  L 23.333997 856.458351 23.370764 853.668351
+  L 23.370764 853.668351 -23.370764 853.668351
+  L -23.370764 853.668351 -23.333997 856.458351
+item 62 Frets Outline closed
+  L -23.735162 826.017003 23.735162 826.017003
+  L 23.735162 826.017003 23.771929 823.227003
+  L 23.771929 823.227003 -23.771929 823.227003
+  L -23.771929 823.227003 -23.735162 826.017003
+item 63 Frets Outline closed
+  L -24.113811 797.284196 24.113811 797.284196
+  L 24.113811 797.284196 24.150579 794.494196
+  L 24.150579 794.494196 -24.150579 794.494196
+  L -24.150579 794.494196 -24.113811 797.284196
+item 64 Frets Outline closed
+  L -24.471209 770.164037 24.471209 770.164037
+  L 24.471209 770.164037 24.507976 767.374037
+  L 24.507976 767.374037 -24.507976 767.374037
+  L -24.507976 767.374037 -24.471209 770.164037
+item 65 Frets Outline closed
+  L -24.808547 744.566016 24.808547 744.566016
+  L 24.808547 744.566016 24.845314 741.776016
+  L 24.845314 741.776016 -24.845314 741.776016
+  L -24.845314 741.776016 -24.808547 744.566016
+item 66 Frets Outline closed
+  L -25.126952 720.404702 25.126952 720.404702
+  L 25.126952 720.404702 25.163719 717.614702
+  L 25.163719 717.614702 -25.163719 717.614702
+  L -25.163719 717.614702 -25.126952 720.404702
+item 67 Frets Outline closed
+  L -25.427486 697.599458 25.427486 697.599458
+  L 25.427486 697.599458 25.464253 694.809458
+  L 25.464253 694.809458 -25.464253 694.809458
+  L -25.464253 694.809458 -25.427486 697.599458
+item 68 Frets Outline closed
+  L -25.711153 676.074174 25.711153 676.074174
+  L 25.711153 676.074174 25.747920 673.284174
+  L 25.747920 673.284174 -25.747920 673.284174
+  L -25.747920 673.284174 -25.711153 676.074174
+item 69 Frets Outline closed
+  L -25.978898 655.757011 25.978898 655.757011
+  L 25.978898 655.757011 26.015666 652.967011
+  L 26.015666 652.967011 -26.015666 652.967011
+  L -26.015666 652.967011 -25.978898 655.757011
+item 70 Frets Outline closed
+  L -26.231616 636.580163 26.231616 636.580163
+  L 26.231616 636.580163 26.268384 633.790163
+  L 26.268384 633.790163 -26.268384 633.790163
+  L -26.268384 633.790163 -26.231616 636.580163
+item 71 Frets Outline closed
+  L -26.470150 618.479629 26.470150 618.479629
+  L 26.470150 618.479629 26.506918 615.689629
+  L 26.506918 615.689629 -26.506918 615.689629
+  L -26.506918 615.689629 -26.470150 618.479629
+item 72 Frets Outline closed
+  L -26.695297 601.395000 26.695297 601.395000
+  L 26.695297 601.395000 26.732064 598.605000
+  L 26.732064 598.605000 -26.732064 598.605000
+  L -26.732064 598.605000 -26.695297 601.395000
+item 73 Frets Outline closed
+  L -26.907807 585.269257 26.907807 585.269257
+  L 26.907807 585.269257 26.944574 582.479257
+  L 26.944574 582.479257 -26.944574 582.479257
+  L -26.944574 582.479257 -26.907807 585.269257
+item 74 Frets Outline closed
+  L -27.108389 570.048583 27.108389 570.048583
+  L 27.108389 570.048583 27.145156 567.258583
+  L 27.145156 567.258583 -27.145156 567.258583
+  L -27.145156 567.258583 -27.108389 570.048583
+item 75 Frets Outline closed
+  L -27.297714 555.682180 27.297714 555.682180
+  L 27.297714 555.682180 27.334481 552.892180
+  L 27.334481 552.892180 -27.334481 552.892180
+  L -27.334481 552.892180 -27.297714 555.682180
+item 76 Frets Outline closed
+  L -27.476412 542.122100 27.476412 542.122100
+  L 27.476412 542.122100 27.513180 539.332100
+  L 27.513180 539.332100 -27.513180 539.332100
+  L -27.513180 539.332100 -27.476412 542.122100
+item 77 Frets Outline closed
+  L -27.645082 529.323090 27.645082 529.323090
+  L 27.645082 529.323090 27.681849 526.533090
+  L 27.681849 526.533090 -27.681849 526.533090
+  L -27.681849 526.533090 -27.645082 529.323090
+item 78 Frets Outline closed
+  L -27.804284 517.242433 27.804284 517.242433
+  L 27.804284 517.242433 27.841051 514.452433
+  L 27.841051 514.452433 -27.841051 514.452433
+  L -27.841051 514.452433 -27.804284 517.242433
+item 79 Strings Outline closed
+  L 18.347513 957.683154 18.652487 957.687173
+  L 18.652487 957.687173 27.152487 312.687173
+  L 27.152487 312.687173 26.847513 312.683154
+  L 26.847513 312.683154 18.347513 957.683154
+item 80 Strings Outline closed
+  L -19.172942 957.694032 -17.827058 957.676295
+  L -17.827058 957.676295 -26.327058 312.676295
+  L -26.327058 312.676295 -27.672942 312.694032
+  L -27.672942 312.694032 -19.172942 957.694032
+item 81 Fretboard Outline closed
+  L -22.000000 957.685163 22.000000 957.685163
+  L 22.000000 957.685163 27.888559 510.847433
+  L 27.888559 510.847433 -27.888559 510.847433
+  L -27.888559 510.847433 -22.000000 957.685163
+item 82 FretSlots Outline closed
+  L -22.473576 921.749095 22.473576 921.749095
+  L 22.473576 921.749095 22.480561 921.219095
+  L 22.480561 921.219095 -22.480561 921.219095
+  L -22.480561 921.219095 -22.473576 921.749095
+item 83 FretSlots Outline closed
+  L -22.923869 887.579837 22.923869 887.579837
+  L 22.923869 887.579837 22.930853 887.049837
+  L 22.930853 887.049837 -22.930853 887.049837
+  L -22.930853 887.049837 -22.923869 887.579837
+item 84 FretSlots Outline closed
+  L -23.348888 855.328351 23.348888 855.328351
+  L 23.348888 855.328351 23.355873 854.798351
+  L 23.355873 854.798351 -23.355873 854.798351
+  L -23.355873 854.798351 -23.348888 855.328351
+item 85 FretSlots Outline closed
+  L -23.750053 824.887003 23.750053 824.887003
+  L 23.750053 824.887003 23.757038 824.357003
+  L 23.757038 824.357003 -23.757038 824.357003
+  L -23.757038 824.357003 -23.750053 824.887003
+item 86 FretSlots Outline closed
+  L -24.128703 796.154196 24.128703 796.154196
+  L 24.128703 796.154196 24.135687 795.624196
+  L 24.135687 795.624196 -24.135687 795.624196
+  L -24.135687 795.624196 -24.128703 796.154196
+item 87 FretSlots Outline closed
+  L -24.486100 769.034037 24.486100 769.034037
+  L 24.486100 769.034037 24.493085 768.504037
+  L 24.493085 768.504037 -24.493085 768.504037
+  L -24.493085 768.504037 -24.486100 769.034037
+item 88 FretSlots Outline closed
+  L -24.823438 743.436016 24.823438 743.436016
+  L 24.823438 743.436016 24.830423 742.906016
+  L 24.830423 742.906016 -24.830423 742.906016
+  L -24.830423 742.906016 -24.823438 743.436016
+item 89 FretSlots Outline closed
+  L -25.141843 719.274702 25.141843 719.274702
+  L 25.141843 719.274702 25.148828 718.744702
+  L 25.148828 718.744702 -25.148828 718.744702
+  L -25.148828 718.744702 -25.141843 719.274702
+item 90 FretSlots Outline closed
+  L -25.442378 696.469458 25.442378 696.469458
+  L 25.442378 696.469458 25.449362 695.939458
+  L 25.449362 695.939458 -25.449362 695.939458
+  L -25.449362 695.939458 -25.442378 696.469458
+item 91 FretSlots Outline closed
+  L -25.726044 674.944174 25.726044 674.944174
+  L 25.726044 674.944174 25.733029 674.414174
+  L 25.733029 674.414174 -25.733029 674.414174
+  L -25.733029 674.414174 -25.726044 674.944174
+item 92 FretSlots Outline closed
+  L -25.993790 654.627011 25.993790 654.627011
+  L 25.993790 654.627011 26.000774 654.097011
+  L 26.000774 654.097011 -26.000774 654.097011
+  L -26.000774 654.097011 -25.993790 654.627011
+item 93 FretSlots Outline closed
+  L -26.246508 635.450163 26.246508 635.450163
+  L 26.246508 635.450163 26.253492 634.920163
+  L 26.253492 634.920163 -26.253492 634.920163
+  L -26.253492 634.920163 -26.246508 635.450163
+item 94 FretSlots Outline closed
+  L -26.485042 617.349629 26.485042 617.349629
+  L 26.485042 617.349629 26.492026 616.819629
+  L 26.492026 616.819629 -26.492026 616.819629
+  L -26.492026 616.819629 -26.485042 617.349629
+item 95 FretSlots Outline closed
+  L -26.710188 600.265000 26.710188 600.265000
+  L 26.710188 600.265000 26.717173 599.735000
+  L 26.717173 599.735000 -26.717173 599.735000
+  L -26.717173 599.735000 -26.710188 600.265000
+item 96 FretSlots Outline closed
+  L -26.922698 584.139257 26.922698 584.139257
+  L 26.922698 584.139257 26.929682 583.609257
+  L 26.929682 583.609257 -26.929682 583.609257
+  L -26.929682 583.609257 -26.922698 584.139257
+item 97 FretSlots Outline closed
+  L -27.123281 568.918583 27.123281 568.918583
+  L 27.123281 568.918583 27.130265 568.388583
+  L 27.130265 568.388583 -27.130265 568.388583
+  L -27.130265 568.388583 -27.123281 568.918583
+item 98 FretSlots Outline closed
+  L -27.312605 554.552180 27.312605 554.552180
+  L 27.312605 554.552180 27.319590 554.022180
+  L 27.319590 554.022180 -27.319590 554.022180
+  L -27.319590 554.022180 -27.312605 554.552180
+item 99 FretSlots Outline closed
+  L -27.491304 540.992100 27.491304 540.992100
+  L 27.491304 540.992100 27.498288 540.462100
+  L 27.498288 540.462100 -27.498288 540.462100
+  L -27.498288 540.462100 -27.491304 540.992100
+item 100 FretSlots Outline closed
+  L -27.659973 528.193090 27.659973 528.193090
+  L 27.659973 528.193090 27.666958 527.663090
+  L 27.666958 527.663090 -27.666958 527.663090
+  L -27.666958 527.663090 -27.659973 528.193090
+item 101 FretSlots Outline closed
+  L -27.819176 516.112433 27.819176 516.112433
+  L 27.819176 516.112433 27.826160 515.582433
+  L 27.826160 515.582433 -27.826160 515.582433
+  L -27.826160 515.582433 -27.819176 516.112433
+item 102 FaceDots Outline
+  C 0.000000 871.189094 3.000000
+item 103 FaceDots Outline
+  C 0.000000 810.255599 3.000000
+item 104 FaceDots Outline
+  C 15.123641 644.773587 3.000000
+item 105 FaceDots Outline
+  C -15.123641 644.773587 3.000000
+item 106 FretboardSide Outline closed
+  L 352.636894 957.562594 359.634495 957.745832
+  L 359.634495 957.745832 370.331686 511.035045
+  L 370.331686 511.035045 364.333742 510.877983
+  L 364.333742 510.877983 352.636894 957.562594
+item 107 FretSlots Outline open
+  L 360.501140 921.555048 358.582814 921.504815
+item 108 FretSlots Outline open
+  L 361.319144 887.395497 359.477261 887.347266
+item 109 FretSlots Outline open
+  L 362.091237 855.153174 360.321506 855.106832
+item 110 FretSlots Outline open
+  L 362.819996 824.720474 361.118368 824.675915
+item 111 FretSlots Outline open
+  L 363.507853 795.995830 361.870505 795.952954
+item 112 FretSlots Outline open
+  L 364.157103 768.883376 362.580428 768.842089
+item 113 FretSlots Outline open
+  L 364.769914 743.292627 363.250506 743.252840
+item 114 FretSlots Outline open
+  L 365.348330 719.138177 363.882976 719.099805
+item 115 FretSlots Outline open
+  L 365.894282 696.339412 364.479948 696.302376
+item 116 FretSlots Outline open
+  L 366.409592 674.820243 365.043414 674.784468
+item 117 FretSlots Outline open
+  L 366.895981 654.508852 365.575255 654.474268
+item 118 FretSlots Outline open
+  L 367.355070 635.337452 366.077246 635.303991
+item 119 FretSlots Outline open
+  L 367.788392 617.242060 366.551063 617.209660
+item 120 FretSlots Outline open
+  L 368.197394 600.162284 366.998287 600.130885
+item 121 FretSlots Outline open
+  L 368.583441 584.041123 367.420409 584.010668
+item 122 FretSlots Outline open
+  L 368.947820 568.824773 367.818840 568.795209
+item 123 FretSlots Outline open
+  L 369.291749 554.462451 368.194909 554.433729
+item 124 FretSlots Outline open
+  L 369.616374 540.906224 368.549870 540.878296
+item 125 FretSlots Outline open
+  L 369.922779 528.110849 368.884909 528.083672
+item 126 FretSlots Outline open
+  L 370.211987 516.033624 369.201144 516.007154
+item 127 SideDots Outline
+  C 357.900069 871.174695 1.000000
+item 128 SideDots Outline
+  C 359.495122 810.262081 1.000000
+item 129 SideDots Outline
+  C 363.774582 646.836090 1.000000
+item 130 SideDots Outline
+  C 363.879290 642.837461 1.000000
+item 131 NeckSide Construction open
+  L 360.501140 921.555048 339.507159 921.052315
+item 132 NeckSide Construction open
+  L 365.894282 696.339412 342.900874 695.788798
+item 133 NeckSide Construction open
+  L 303.000000 600.000000 303.000000 655.000000
+item 134 NeckSide Outline closed
+  L 352.479832 963.560538 362.000000 600.000000
+  L 362.000000 600.000000 344.343983 600.000000
+  L 344.343983 600.000000 343.070455 684.532546
+  L 343.070455 684.532546 338.871659 963.234669
+  L 338.871659 963.234669 352.479832 963.560538
+item 135 Heel Outline closed
+  L 344.343983 600.000000 273.000000 600.000000
+  L 273.000000 600.000000 273.000000 640.000000
+  L 273.000000 640.000000 334.780361 670.890181
+  A 334.780361 670.890181 343.070455 684.532546 340.890956 676.516954
+  L 343.070455 684.532546 344.343983 600.000000
+item 136 HeelCap Outline closed
+  L 268.000000 600.000000 273.000000 600.000000
+  L 273.000000 600.000000 273.000000 640.000000
+  L 273.000000 640.000000 268.000000 640.000000
+  L 268.000000 640.000000 268.000000 600.000000
+item 137 Nut Outline closed
+  L 352.636894 957.562594 362.133639 957.811275
+  L 362.133639 957.811275 361.976577 963.809219
+  L 361.976577 963.809219 352.479832 963.560538
+  L 352.479832 963.560538 352.636894 957.562594
+item 138 NeckProfiles Outline closed
+  A 423.300488 931.423026 468.254624 931.423026 445.777556 932.055048
+  L 468.254624 931.423026 468.254624 925.136065
+  L 468.254624 925.136065 445.777556 911.055048
+  L 445.777556 911.055048 423.300488 925.136065
+  L 423.300488 925.136065 423.300488 931.423026
+item 139 NeckProfiles Outline open
+  L 423.300488 925.136065 468.254624 925.136065
+item 140 NeckProfiles Outline closed
+  A 420.331686 707.029226 471.223426 707.029226 445.777556 707.839412
+  L 471.223426 707.029226 471.223426 701.424592
+  L 471.223426 701.424592 445.777556 684.839412
+  L 445.777556 684.839412 420.331686 701.424592
+  L 420.331686 701.424592 420.331686 707.029226
+item 141 NeckProfiles Outline open
+  L 420.331686 701.424592 471.223426 701.424592
+item 142 NeckProfiles Outline closed
+  L 521.223426 655.000000 579.007929 655.000000
+  L 579.007929 655.000000 579.007929 647.000000
+  L 579.007929 647.000000 550.115677 600.000000
+  L 550.115677 600.000000 521.223426 647.000000
+  L 521.223426 647.000000 521.223426 655.000000
+item 143 NeckProfiles Outline closed
+  L 629.007929 640.000000 689.007929 640.000000
+  L 689.007929 640.000000 689.007929 630.000000
+  L 689.007929 630.000000 659.007929 600.000000
+  L 659.007929 600.000000 629.007929 630.000000
+  L 629.007929 630.000000 629.007929 640.000000
+""",
+            ["Venetian"] = """
+item 0 TopPlate Construction open
+  L 0.000000 0.000000 0.000000 600.000000
+item 1 TopPlate Construction open
+  L -140.000000 495.000000 140.000000 495.000000
+item 2 TopPlate Construction open
+  L -120.000000 300.000000 120.000000 300.000000
+item 3 TopPlate Construction open
+  L -190.000000 130.000000 190.000000 130.000000
+item 4 TopPlate Construction open
+  L 28.000000 597.000000 28.000000 603.000000
+item 5 TopPlate Construction open
+  L -28.000000 597.000000 -28.000000 603.000000
+item 6 TopPlate Construction open
+  L 34.713680 600.000000 34.713680 580.000000
+item 7 TopPlate Construction open
+  L 124.713680 600.000000 124.713680 548.137485
+item 8 TopPlate Construction
+  C 40.000000 495.000000 100.000000
+item 9 TopPlate Construction
+  C -40.000000 495.000000 100.000000
+item 10 TopPlate Construction
+  C 10.000000 495.000000 130.000000
+item 11 TopPlate Construction
+  C -10.000000 495.000000 130.000000
+item 12 TopPlate Construction
+  C 180.000000 300.000000 60.000000
+item 13 TopPlate Construction
+  C -180.000000 300.000000 60.000000
+item 14 TopPlate Construction
+  C 70.000000 130.000000 120.000000
+item 15 TopPlate Construction
+  C -70.000000 130.000000 120.000000
+item 16 TopPlate Construction
+  C 30.000000 130.000000 160.000000
+item 17 TopPlate Construction
+  C -30.000000 130.000000 160.000000
+item 18 TopPlate Construction
+  C 44.713680 580.000000 10.000000
+item 19 TopPlate Construction
+  C 116.242312 542.823737 10.000000
+item 20 TopPlate Outline closed
+  L 0.000000 600.000000 28.000000 600.000000
+  A 28.000000 600.000000 34.713680 599.807054 31.358226 599.951754
+  L 34.713680 599.807054 34.713680 580.000000
+  A 34.713680 580.000000 42.447575 570.260145 36.882300 573.781522
+  L 42.447575 570.260145 118.508418 552.563591
+  A 118.508418 552.563591 124.713680 548.137485 122.049285 550.964932
+  A 124.713680 548.137485 140.000000 495.000000 136.102466 522.646265
+  A 140.000000 495.000000 139.244858 481.008338 139.811077 487.993987
+  L 139.244858 481.008338 120.348527 306.457690
+  A 120.348527 306.457690 130.609397 265.932885 121.835504 285.272765
+  L 130.609397 265.932885 161.708275 220.845639
+  A 161.708275 220.845639 190.000000 130.000000 182.763419 177.574552
+  A 190.000000 130.000000 103.600000 14.800000 166.000000 58.000000
+  A 103.600000 14.800000 0.000000 0.000000 52.325902 3.718687
+  A 0.000000 0.000000 -103.600000 14.800000 -52.325902 3.718687
+  A -103.600000 14.800000 -190.000000 130.000000 -166.000000 58.000000
+  A -190.000000 130.000000 -161.708275 220.845639 -182.763419 177.574552
+  L -161.708275 220.845639 -130.609397 265.932885
+  A -130.609397 265.932885 -120.348527 306.457690 -121.835504 285.272765
+  L -120.348527 306.457690 -139.244858 481.008338
+  A -139.244858 481.008338 -140.000000 495.000000 -139.811077 487.993987
+  A -140.000000 495.000000 -111.005917 565.414201 -132.467810 533.074981
+  A -111.005917 565.414201 -28.000000 600.000000 -72.961538 591.007692
+  L -28.000000 600.000000 0.000000 600.000000
+item 21 Soundhole Outline
+  C 0.000000 380.000000 50.000000
+item 22 Bracing Construction open
+  L -430.000000 0.000000 -430.000000 600.000000
+item 23 Bracing Outline closed
+  L -430.000000 600.000000 -458.000000 600.000000
+  A -458.000000 600.000000 -464.713680 599.807054 -461.358226 599.951754
+  L -464.713680 599.807054 -464.713680 580.000000
+  A -464.713680 580.000000 -472.447575 570.260145 -466.882300 573.781522
+  L -472.447575 570.260145 -548.508418 552.563591
+  A -548.508418 552.563591 -554.713680 548.137485 -552.049285 550.964932
+  A -554.713680 548.137485 -570.000000 495.000000 -566.102466 522.646265
+  A -570.000000 495.000000 -569.244858 481.008338 -569.811077 487.993987
+  L -569.244858 481.008338 -550.348527 306.457690
+  A -550.348527 306.457690 -560.609397 265.932885 -551.835504 285.272765
+  L -560.609397 265.932885 -591.708275 220.845639
+  A -591.708275 220.845639 -620.000000 130.000000 -612.763419 177.574552
+  A -620.000000 130.000000 -533.600000 14.800000 -596.000000 58.000000
+  A -533.600000 14.800000 -430.000000 0.000000 -482.325902 3.718687
+  A -430.000000 0.000000 -326.400000 14.800000 -377.674098 3.718687
+  A -326.400000 14.800000 -240.000000 130.000000 -264.000000 58.000000
+  A -240.000000 130.000000 -268.291725 220.845639 -247.236581 177.574552
+  L -268.291725 220.845639 -299.390603 265.932885
+  A -299.390603 265.932885 -309.651473 306.457690 -308.164496 285.272765
+  L -309.651473 306.457690 -290.755142 481.008338
+  A -290.755142 481.008338 -290.000000 495.000000 -290.188923 487.993987
+  A -290.000000 495.000000 -318.994083 565.414201 -297.532190 533.074981
+  A -318.994083 565.414201 -402.000000 600.000000 -357.038462 591.007692
+  L -402.000000 600.000000 -430.000000 600.000000
+item 24 Bracing Outline
+  C -430.000000 380.000000 50.000000
+item 25 Tailblock Outline closed
+  L -475.000000 15.000000 -475.000000 2.746681
+  A -475.000000 2.746681 -430.000000 0.000000 -452.541874 0.687309
+  A -430.000000 0.000000 -385.000000 2.746681 -407.458126 0.687309
+  L -385.000000 2.746681 -385.000000 15.000000
+  L -385.000000 15.000000 -475.000000 15.000000
+item 26 Bracing Outline closed
+  L -293.958557 470.000000 -566.041443 470.000000
+  L -566.041443 470.000000 -563.876303 450.000000
+  L -563.876303 450.000000 -296.123697 450.000000
+  L -296.123697 450.000000 -293.958557 470.000000
+item 27 Bracing Outline closed
+  L -339.742470 570.000000 -457.393172 570.000000
+  A -457.393172 570.000000 -470.181470 560.520291 -462.803536 563.933001
+  L -470.181470 560.520291 -546.242312 542.823737
+  A -546.242312 542.823737 -558.741197 510.000000 -554.108495 527.027504
+  L -558.741197 510.000000 -301.258803 510.000000
+  A -301.258803 510.000000 -326.094675 558.372781 -309.936140 536.106913
+  A -326.094675 558.372781 -339.742470 570.000000 -332.674379 564.473020
+item 28 Bracing Outline closed
+  L -246.458287 151.211846 -556.694202 411.530687
+  L -556.694202 411.530687 -555.450687 400.043996
+  L -555.450687 400.043996 -245.310462 139.805448
+  A -245.310462 139.805448 -246.458287 151.211846 -245.778884 145.519262
+item 29 Bracing Outline closed
+  L -423.777105 300.000000 -304.549313 400.043996
+  L -304.549313 400.043996 -303.305798 411.530687
+  L -303.305798 411.530687 -430.000000 305.221629
+  L -430.000000 305.221629 -423.777105 300.000000
+item 30 Bracing Outline closed
+  L -436.222895 300.000000 -613.541713 151.211846
+  A -613.541713 151.211846 -614.689538 139.805448 -614.221116 145.519262
+  L -614.689538 139.805448 -430.000000 294.778371
+  L -430.000000 294.778371 -436.222895 300.000000
+item 31 Bracing Outline closed
+  L -476.235684 266.425284 -552.886348 357.773988
+  L -552.886348 357.773988 -551.726157 347.056984
+  L -551.726157 347.056984 -480.831950 262.568558
+  L -480.831950 262.568558 -476.235684 266.425284
+item 32 Bracing Outline closed
+  L -522.198350 227.858027 -555.793851 267.895586
+  A -555.793851 267.895586 -558.139867 264.229530 -556.935190 266.042292
+  L -558.139867 264.229530 -559.227261 262.653022
+  L -559.227261 262.653022 -526.794617 224.001302
+  L -526.794617 224.001302 -522.198350 227.858027
+item 33 Bracing Outline closed
+  L -387.333339 269.420050 -300.372931 420.039894
+  L -300.372931 420.039894 -298.774046 434.809245
+  L -298.774046 434.809245 -392.000510 273.336271
+  L -392.000510 273.336271 -387.333339 269.420050
+item 34 Bracing Outline closed
+  L -349.031117 237.280669 -312.999236 299.689717
+  A -312.999236 299.689717 -312.634047 306.780575 -312.916615 303.240295
+  L -312.634047 306.780575 -311.895672 313.601146
+  L -311.895672 313.601146 -353.698288 241.196891
+  L -353.698288 241.196891 -349.031117 237.280669
+item 35 Bracing Outline closed
+  L -310.728895 205.141289 -288.117485 244.305398
+  L -288.117485 244.305398 -291.888872 249.773165
+  L -291.888872 249.773165 -315.396066 209.057510
+  L -315.396066 209.057510 -310.728895 205.141289
+item 36 Bracing Outline closed
+  L -492.680901 242.182850 -406.269729 4.770108
+  A -406.269729 4.770108 -399.018317 5.313648 -402.642673 5.023868
+  L -399.018317 5.313648 -486.974448 246.971132
+  L -486.974448 246.971132 -492.680901 242.182850
+item 37 Bracing Outline closed
+  L -553.964456 190.759841 -487.652503 8.569247
+  A -487.652503 8.569247 -479.777993 7.400839 -483.718425 7.963633
+  L -479.777993 7.400839 -548.258004 195.548123
+  L -548.258004 195.548123 -553.964456 190.759841
+item 38 Bracing Outline closed
+  L -404.045548 327.000000 -455.954452 327.000000
+  L -455.954452 327.000000 -448.803930 321.000000
+  L -448.803930 321.000000 -411.196070 321.000000
+  L -411.196070 321.000000 -404.045548 327.000000
+item 39 Bracing Outline closed
+  L -500.310305 364.218980 -450.784610 450.000000
+  L -450.784610 450.000000 -457.712813 450.000000
+  L -457.712813 450.000000 -504.977476 368.135202
+  L -504.977476 368.135202 -500.310305 364.218980
+item 40 Bracing Outline closed
+  L -409.215390 450.000000 -359.689695 364.218980
+  L -359.689695 364.218980 -355.022524 368.135202
+  L -355.022524 368.135202 -402.287187 450.000000
+  L -402.287187 450.000000 -409.215390 450.000000
+item 41 Sides Outline closed
+  L 240.000000 0.000000 360.000000 0.000000
+  L 360.000000 0.000000 360.000000 600.000000
+  L 360.000000 600.000000 265.000000 600.000000
+  L 265.000000 600.000000 240.000000 0.000000
+item 42 Frets Centerline open
+  L -22.477068 921.484095 22.477068 921.484095
+item 43 Frets Centerline open
+  L -22.927361 887.314837 22.927361 887.314837
+item 44 Frets Centerline open
+  L -23.352380 855.063351 23.352380 855.063351
+item 45 Frets Centerline open
+  L -23.753546 824.622003 23.753546 824.622003
+item 46 Frets Centerline open
+  L -24.132195 795.889196 24.132195 795.889196
+item 47 Frets Centerline open
+  L -24.489592 768.769037 24.489592 768.769037
+item 48 Frets Centerline open
+  L -24.826931 743.171016 24.826931 743.171016
+item 49 Frets Centerline open
+  L -25.145336 719.009702 25.145336 719.009702
+item 50 Frets Centerline open
+  L -25.445870 696.204458 25.445870 696.204458
+item 51 Frets Centerline open
+  L -25.729536 674.679174 25.729536 674.679174
+item 52 Frets Centerline open
+  L -25.997282 654.362011 25.997282 654.362011
+item 53 Frets Centerline open
+  L -26.250000 635.185163 26.250000 635.185163
+item 54 Frets Centerline open
+  L -26.488534 617.084629 26.488534 617.084629
+item 55 Frets Centerline open
+  L -26.713680 600.000000 26.713680 600.000000
+item 56 Frets Centerline open
+  L -26.926190 583.874257 26.926190 583.874257
+item 57 Frets Centerline open
+  L -27.126773 568.653583 27.126773 568.653583
+item 58 Frets Centerline open
+  L -27.316097 554.287180 27.316097 554.287180
+item 59 Frets Centerline open
+  L -27.494796 540.727100 27.494796 540.727100
+item 60 Frets Centerline open
+  L -27.663465 527.928090 27.663465 527.928090
+item 61 Frets Centerline open
+  L -27.822668 515.847433 27.822668 515.847433
+item 62 Frets Outline closed
+  L -22.458685 922.879095 22.458685 922.879095
+  L 22.458685 922.879095 22.495452 920.089095
+  L 22.495452 920.089095 -22.495452 920.089095
+  L -22.495452 920.089095 -22.458685 922.879095
+item 63 Frets Outline closed
+  L -22.908977 888.709837 22.908977 888.709837
+  L 22.908977 888.709837 22.945745 885.919837
+  L 22.945745 885.919837 -22.945745 885.919837
+  L -22.945745 885.919837 -22.908977 888.709837
+item 64 Frets Outline closed
+  L -23.333997 856.458351 23.333997 856.458351
+  L 23.333997 856.458351 23.370764 853.668351
+  L 23.370764 853.668351 -23.370764 853.668351
+  L -23.370764 853.668351 -23.333997 856.458351
+item 65 Frets Outline closed
+  L -23.735162 826.017003 23.735162 826.017003
+  L 23.735162 826.017003 23.771929 823.227003
+  L 23.771929 823.227003 -23.771929 823.227003
+  L -23.771929 823.227003 -23.735162 826.017003
+item 66 Frets Outline closed
+  L -24.113811 797.284196 24.113811 797.284196
+  L 24.113811 797.284196 24.150579 794.494196
+  L 24.150579 794.494196 -24.150579 794.494196
+  L -24.150579 794.494196 -24.113811 797.284196
+item 67 Frets Outline closed
+  L -24.471209 770.164037 24.471209 770.164037
+  L 24.471209 770.164037 24.507976 767.374037
+  L 24.507976 767.374037 -24.507976 767.374037
+  L -24.507976 767.374037 -24.471209 770.164037
+item 68 Frets Outline closed
+  L -24.808547 744.566016 24.808547 744.566016
+  L 24.808547 744.566016 24.845314 741.776016
+  L 24.845314 741.776016 -24.845314 741.776016
+  L -24.845314 741.776016 -24.808547 744.566016
+item 69 Frets Outline closed
+  L -25.126952 720.404702 25.126952 720.404702
+  L 25.126952 720.404702 25.163719 717.614702
+  L 25.163719 717.614702 -25.163719 717.614702
+  L -25.163719 717.614702 -25.126952 720.404702
+item 70 Frets Outline closed
+  L -25.427486 697.599458 25.427486 697.599458
+  L 25.427486 697.599458 25.464253 694.809458
+  L 25.464253 694.809458 -25.464253 694.809458
+  L -25.464253 694.809458 -25.427486 697.599458
+item 71 Frets Outline closed
+  L -25.711153 676.074174 25.711153 676.074174
+  L 25.711153 676.074174 25.747920 673.284174
+  L 25.747920 673.284174 -25.747920 673.284174
+  L -25.747920 673.284174 -25.711153 676.074174
+item 72 Frets Outline closed
+  L -25.978898 655.757011 25.978898 655.757011
+  L 25.978898 655.757011 26.015666 652.967011
+  L 26.015666 652.967011 -26.015666 652.967011
+  L -26.015666 652.967011 -25.978898 655.757011
+item 73 Frets Outline closed
+  L -26.231616 636.580163 26.231616 636.580163
+  L 26.231616 636.580163 26.268384 633.790163
+  L 26.268384 633.790163 -26.268384 633.790163
+  L -26.268384 633.790163 -26.231616 636.580163
+item 74 Frets Outline closed
+  L -26.470150 618.479629 26.470150 618.479629
+  L 26.470150 618.479629 26.506918 615.689629
+  L 26.506918 615.689629 -26.506918 615.689629
+  L -26.506918 615.689629 -26.470150 618.479629
+item 75 Frets Outline closed
+  L -26.695297 601.395000 26.695297 601.395000
+  L 26.695297 601.395000 26.732064 598.605000
+  L 26.732064 598.605000 -26.732064 598.605000
+  L -26.732064 598.605000 -26.695297 601.395000
+item 76 Frets Outline closed
+  L -26.907807 585.269257 26.907807 585.269257
+  L 26.907807 585.269257 26.944574 582.479257
+  L 26.944574 582.479257 -26.944574 582.479257
+  L -26.944574 582.479257 -26.907807 585.269257
+item 77 Frets Outline closed
+  L -27.108389 570.048583 27.108389 570.048583
+  L 27.108389 570.048583 27.145156 567.258583
+  L 27.145156 567.258583 -27.145156 567.258583
+  L -27.145156 567.258583 -27.108389 570.048583
+item 78 Frets Outline closed
+  L -27.297714 555.682180 27.297714 555.682180
+  L 27.297714 555.682180 27.334481 552.892180
+  L 27.334481 552.892180 -27.334481 552.892180
+  L -27.334481 552.892180 -27.297714 555.682180
+item 79 Frets Outline closed
+  L -27.476412 542.122100 27.476412 542.122100
+  L 27.476412 542.122100 27.513180 539.332100
+  L 27.513180 539.332100 -27.513180 539.332100
+  L -27.513180 539.332100 -27.476412 542.122100
+item 80 Frets Outline closed
+  L -27.645082 529.323090 27.645082 529.323090
+  L 27.645082 529.323090 27.681849 526.533090
+  L 27.681849 526.533090 -27.681849 526.533090
+  L -27.681849 526.533090 -27.645082 529.323090
+item 81 Frets Outline closed
+  L -27.804284 517.242433 27.804284 517.242433
+  L 27.804284 517.242433 27.841051 514.452433
+  L 27.841051 514.452433 -27.841051 514.452433
+  L -27.841051 514.452433 -27.804284 517.242433
+item 82 Strings Outline closed
+  L 18.347513 957.683154 18.652487 957.687173
+  L 18.652487 957.687173 27.152487 312.687173
+  L 27.152487 312.687173 26.847513 312.683154
+  L 26.847513 312.683154 18.347513 957.683154
+item 83 Strings Outline closed
+  L -19.172942 957.694032 -17.827058 957.676295
+  L -17.827058 957.676295 -26.327058 312.676295
+  L -26.327058 312.676295 -27.672942 312.694032
+  L -27.672942 312.694032 -19.172942 957.694032
+item 84 Fretboard Outline closed
+  L -22.000000 957.685163 22.000000 957.685163
+  L 22.000000 957.685163 27.888559 510.847433
+  L 27.888559 510.847433 -27.888559 510.847433
+  L -27.888559 510.847433 -22.000000 957.685163
+item 85 FretSlots Outline closed
+  L -22.473576 921.749095 22.473576 921.749095
+  L 22.473576 921.749095 22.480561 921.219095
+  L 22.480561 921.219095 -22.480561 921.219095
+  L -22.480561 921.219095 -22.473576 921.749095
+item 86 FretSlots Outline closed
+  L -22.923869 887.579837 22.923869 887.579837
+  L 22.923869 887.579837 22.930853 887.049837
+  L 22.930853 887.049837 -22.930853 887.049837
+  L -22.930853 887.049837 -22.923869 887.579837
+item 87 FretSlots Outline closed
+  L -23.348888 855.328351 23.348888 855.328351
+  L 23.348888 855.328351 23.355873 854.798351
+  L 23.355873 854.798351 -23.355873 854.798351
+  L -23.355873 854.798351 -23.348888 855.328351
+item 88 FretSlots Outline closed
+  L -23.750053 824.887003 23.750053 824.887003
+  L 23.750053 824.887003 23.757038 824.357003
+  L 23.757038 824.357003 -23.757038 824.357003
+  L -23.757038 824.357003 -23.750053 824.887003
+item 89 FretSlots Outline closed
+  L -24.128703 796.154196 24.128703 796.154196
+  L 24.128703 796.154196 24.135687 795.624196
+  L 24.135687 795.624196 -24.135687 795.624196
+  L -24.135687 795.624196 -24.128703 796.154196
+item 90 FretSlots Outline closed
+  L -24.486100 769.034037 24.486100 769.034037
+  L 24.486100 769.034037 24.493085 768.504037
+  L 24.493085 768.504037 -24.493085 768.504037
+  L -24.493085 768.504037 -24.486100 769.034037
+item 91 FretSlots Outline closed
+  L -24.823438 743.436016 24.823438 743.436016
+  L 24.823438 743.436016 24.830423 742.906016
+  L 24.830423 742.906016 -24.830423 742.906016
+  L -24.830423 742.906016 -24.823438 743.436016
+item 92 FretSlots Outline closed
+  L -25.141843 719.274702 25.141843 719.274702
+  L 25.141843 719.274702 25.148828 718.744702
+  L 25.148828 718.744702 -25.148828 718.744702
+  L -25.148828 718.744702 -25.141843 719.274702
+item 93 FretSlots Outline closed
+  L -25.442378 696.469458 25.442378 696.469458
+  L 25.442378 696.469458 25.449362 695.939458
+  L 25.449362 695.939458 -25.449362 695.939458
+  L -25.449362 695.939458 -25.442378 696.469458
+item 94 FretSlots Outline closed
+  L -25.726044 674.944174 25.726044 674.944174
+  L 25.726044 674.944174 25.733029 674.414174
+  L 25.733029 674.414174 -25.733029 674.414174
+  L -25.733029 674.414174 -25.726044 674.944174
+item 95 FretSlots Outline closed
+  L -25.993790 654.627011 25.993790 654.627011
+  L 25.993790 654.627011 26.000774 654.097011
+  L 26.000774 654.097011 -26.000774 654.097011
+  L -26.000774 654.097011 -25.993790 654.627011
+item 96 FretSlots Outline closed
+  L -26.246508 635.450163 26.246508 635.450163
+  L 26.246508 635.450163 26.253492 634.920163
+  L 26.253492 634.920163 -26.253492 634.920163
+  L -26.253492 634.920163 -26.246508 635.450163
+item 97 FretSlots Outline closed
+  L -26.485042 617.349629 26.485042 617.349629
+  L 26.485042 617.349629 26.492026 616.819629
+  L 26.492026 616.819629 -26.492026 616.819629
+  L -26.492026 616.819629 -26.485042 617.349629
+item 98 FretSlots Outline closed
+  L -26.710188 600.265000 26.710188 600.265000
+  L 26.710188 600.265000 26.717173 599.735000
+  L 26.717173 599.735000 -26.717173 599.735000
+  L -26.717173 599.735000 -26.710188 600.265000
+item 99 FretSlots Outline closed
+  L -26.922698 584.139257 26.922698 584.139257
+  L 26.922698 584.139257 26.929682 583.609257
+  L 26.929682 583.609257 -26.929682 583.609257
+  L -26.929682 583.609257 -26.922698 584.139257
+item 100 FretSlots Outline closed
+  L -27.123281 568.918583 27.123281 568.918583
+  L 27.123281 568.918583 27.130265 568.388583
+  L 27.130265 568.388583 -27.130265 568.388583
+  L -27.130265 568.388583 -27.123281 568.918583
+item 101 FretSlots Outline closed
+  L -27.312605 554.552180 27.312605 554.552180
+  L 27.312605 554.552180 27.319590 554.022180
+  L 27.319590 554.022180 -27.319590 554.022180
+  L -27.319590 554.022180 -27.312605 554.552180
+item 102 FretSlots Outline closed
+  L -27.491304 540.992100 27.491304 540.992100
+  L 27.491304 540.992100 27.498288 540.462100
+  L 27.498288 540.462100 -27.498288 540.462100
+  L -27.498288 540.462100 -27.491304 540.992100
+item 103 FretSlots Outline closed
+  L -27.659973 528.193090 27.659973 528.193090
+  L 27.659973 528.193090 27.666958 527.663090
+  L 27.666958 527.663090 -27.666958 527.663090
+  L -27.666958 527.663090 -27.659973 528.193090
+item 104 FretSlots Outline closed
+  L -27.819176 516.112433 27.819176 516.112433
+  L 27.819176 516.112433 27.826160 515.582433
+  L 27.826160 515.582433 -27.826160 515.582433
+  L -27.826160 515.582433 -27.819176 516.112433
+item 105 FaceDots Outline
+  C 0.000000 871.189094 3.000000
+item 106 FaceDots Outline
+  C 0.000000 810.255599 3.000000
+item 107 FaceDots Outline
+  C 15.123641 644.773587 3.000000
+item 108 FaceDots Outline
+  C -15.123641 644.773587 3.000000
+item 109 FretboardSide Outline closed
+  L 352.636894 957.562594 359.634495 957.745832
+  L 359.634495 957.745832 370.331686 511.035045
+  L 370.331686 511.035045 364.333742 510.877983
+  L 364.333742 510.877983 352.636894 957.562594
+item 110 FretSlots Outline open
+  L 360.501140 921.555048 358.582814 921.504815
+item 111 FretSlots Outline open
+  L 361.319144 887.395497 359.477261 887.347266
+item 112 FretSlots Outline open
+  L 362.091237 855.153174 360.321506 855.106832
+item 113 FretSlots Outline open
+  L 362.819996 824.720474 361.118368 824.675915
+item 114 FretSlots Outline open
+  L 363.507853 795.995830 361.870505 795.952954
+item 115 FretSlots Outline open
+  L 364.157103 768.883376 362.580428 768.842089
+item 116 FretSlots Outline open
+  L 364.769914 743.292627 363.250506 743.252840
+item 117 FretSlots Outline open
+  L 365.348330 719.138177 363.882976 719.099805
+item 118 FretSlots Outline open
+  L 365.894282 696.339412 364.479948 696.302376
+item 119 FretSlots Outline open
+  L 366.409592 674.820243 365.043414 674.784468
+item 120 FretSlots Outline open
+  L 366.895981 654.508852 365.575255 654.474268
+item 121 FretSlots Outline open
+  L 367.355070 635.337452 366.077246 635.303991
+item 122 FretSlots Outline open
+  L 367.788392 617.242060 366.551063 617.209660
+item 123 FretSlots Outline open
+  L 368.197394 600.162284 366.998287 600.130885
+item 124 FretSlots Outline open
+  L 368.583441 584.041123 367.420409 584.010668
+item 125 FretSlots Outline open
+  L 368.947820 568.824773 367.818840 568.795209
+item 126 FretSlots Outline open
+  L 369.291749 554.462451 368.194909 554.433729
+item 127 FretSlots Outline open
+  L 369.616374 540.906224 368.549870 540.878296
+item 128 FretSlots Outline open
+  L 369.922779 528.110849 368.884909 528.083672
+item 129 FretSlots Outline open
+  L 370.211987 516.033624 369.201144 516.007154
+item 130 SideDots Outline
+  C 357.900069 871.174695 1.000000
+item 131 SideDots Outline
+  C 359.495122 810.262081 1.000000
+item 132 SideDots Outline
+  C 363.774582 646.836090 1.000000
+item 133 SideDots Outline
+  C 363.879290 642.837461 1.000000
+item 134 NeckSide Construction open
+  L 360.501140 921.555048 339.507159 921.052315
+item 135 NeckSide Construction open
+  L 365.894282 696.339412 342.900874 695.788798
+item 136 NeckSide Construction open
+  L 303.000000 600.000000 303.000000 655.000000
+item 137 NeckSide Outline closed
+  L 352.479832 963.560538 362.000000 600.000000
+  L 362.000000 600.000000 344.343983 600.000000
+  L 344.343983 600.000000 343.070455 684.532546
+  L 343.070455 684.532546 338.871659 963.234669
+  L 338.871659 963.234669 352.479832 963.560538
+item 138 Heel Outline closed
+  L 344.343983 600.000000 273.000000 600.000000
+  L 273.000000 600.000000 273.000000 640.000000
+  L 273.000000 640.000000 334.780361 670.890181
+  A 334.780361 670.890181 343.070455 684.532546 340.890956 676.516954
+  L 343.070455 684.532546 344.343983 600.000000
+item 139 HeelCap Outline closed
+  L 268.000000 600.000000 273.000000 600.000000
+  L 273.000000 600.000000 273.000000 640.000000
+  L 273.000000 640.000000 268.000000 640.000000
+  L 268.000000 640.000000 268.000000 600.000000
+item 140 Nut Outline closed
+  L 352.636894 957.562594 362.133639 957.811275
+  L 362.133639 957.811275 361.976577 963.809219
+  L 361.976577 963.809219 352.479832 963.560538
+  L 352.479832 963.560538 352.636894 957.562594
+item 141 NeckProfiles Outline closed
+  A 423.300488 931.423026 468.254624 931.423026 445.777556 932.055048
+  L 468.254624 931.423026 468.254624 925.136065
+  L 468.254624 925.136065 445.777556 911.055048
+  L 445.777556 911.055048 423.300488 925.136065
+  L 423.300488 925.136065 423.300488 931.423026
+item 142 NeckProfiles Outline open
+  L 423.300488 925.136065 468.254624 925.136065
+item 143 NeckProfiles Outline closed
+  A 420.331686 707.029226 471.223426 707.029226 445.777556 707.839412
+  L 471.223426 707.029226 471.223426 701.424592
+  L 471.223426 701.424592 445.777556 684.839412
+  L 445.777556 684.839412 420.331686 701.424592
+  L 420.331686 701.424592 420.331686 707.029226
+item 144 NeckProfiles Outline open
+  L 420.331686 701.424592 471.223426 701.424592
+item 145 NeckProfiles Outline closed
+  L 521.223426 655.000000 579.007929 655.000000
+  L 579.007929 655.000000 579.007929 647.000000
+  L 579.007929 647.000000 550.115677 600.000000
+  L 550.115677 600.000000 521.223426 647.000000
+  L 521.223426 647.000000 521.223426 655.000000
+item 146 NeckProfiles Outline closed
+  L 629.007929 640.000000 689.007929 640.000000
+  L 689.007929 640.000000 689.007929 630.000000
+  L 689.007929 630.000000 659.007929 600.000000
+  L 659.007929 600.000000 629.007929 630.000000
+  L 629.007929 630.000000 629.007929 640.000000
+""",
+            ["Florentine"] = """
+item 0 TopPlate Construction open
+  L 0.000000 0.000000 0.000000 600.000000
+item 1 TopPlate Construction open
+  L -140.000000 495.000000 140.000000 495.000000
+item 2 TopPlate Construction open
+  L -120.000000 300.000000 120.000000 300.000000
+item 3 TopPlate Construction open
+  L -190.000000 130.000000 190.000000 130.000000
+item 4 TopPlate Construction open
+  L 28.000000 597.000000 28.000000 603.000000
+item 5 TopPlate Construction open
+  L -28.000000 597.000000 -28.000000 603.000000
+item 6 TopPlate Construction open
+  L 34.713680 600.000000 34.713680 580.000000
+item 7 TopPlate Construction open
+  L 124.713680 600.000000 124.713680 548.137485
+item 8 TopPlate Construction
+  C 40.000000 495.000000 100.000000
+item 9 TopPlate Construction
+  C -40.000000 495.000000 100.000000
+item 10 TopPlate Construction
+  C 10.000000 495.000000 130.000000
+item 11 TopPlate Construction
+  C -10.000000 495.000000 130.000000
+item 12 TopPlate Construction
+  C 180.000000 300.000000 60.000000
+item 13 TopPlate Construction
+  C -180.000000 300.000000 60.000000
+item 14 TopPlate Construction
+  C 70.000000 130.000000 120.000000
+item 15 TopPlate Construction
+  C -70.000000 130.000000 120.000000
+item 16 TopPlate Construction
+  C 30.000000 130.000000 160.000000
+item 17 TopPlate Construction
+  C -30.000000 130.000000 160.000000
+item 18 TopPlate Construction
+  C 85.353791 580.000000 50.640110
+item 19 TopPlate Outline closed
+  L 0.000000 600.000000 28.000000 600.000000
+  A 28.000000 600.000000 34.713680 599.807054 31.358226 599.951754
+  L 34.713680 599.807054 34.713680 580.000000
+  A 34.713680 580.000000 124.713680 548.137485 68.453619 532.263170
+  A 124.713680 548.137485 140.000000 495.000000 136.102466 522.646265
+  A 140.000000 495.000000 139.244858 481.008338 139.811077 487.993987
+  L 139.244858 481.008338 120.348527 306.457690
+  A 120.348527 306.457690 130.609397 265.932885 121.835504 285.272765
+  L 130.609397 265.932885 161.708275 220.845639
+  A 161.708275 220.845639 190.000000 130.000000 182.763419 177.574552
+  A 190.000000 130.000000 103.600000 14.800000 166.000000 58.000000
+  A 103.600000 14.800000 0.000000 0.000000 52.325902 3.718687
+  A 0.000000 0.000000 -103.600000 14.800000 -52.325902 3.718687
+  A -103.600000 14.800000 -190.000000 130.000000 -166.000000 58.000000
+  A -190.000000 130.000000 -161.708275 220.845639 -182.763419 177.574552
+  L -161.708275 220.845639 -130.609397 265.932885
+  A -130.609397 265.932885 -120.348527 306.457690 -121.835504 285.272765
+  L -120.348527 306.457690 -139.244858 481.008338
+  A -139.244858 481.008338 -140.000000 495.000000 -139.811077 487.993987
+  A -140.000000 495.000000 -111.005917 565.414201 -132.467810 533.074981
+  A -111.005917 565.414201 -28.000000 600.000000 -72.961538 591.007692
+  L -28.000000 600.000000 0.000000 600.000000
+item 20 Soundhole Outline
+  C 0.000000 380.000000 50.000000
+item 21 Bracing Construction open
+  L -430.000000 0.000000 -430.000000 600.000000
+item 22 Bracing Outline closed
+  L -430.000000 600.000000 -458.000000 600.000000
+  A -458.000000 600.000000 -464.713680 599.807054 -461.358226 599.951754
+  L -464.713680 599.807054 -464.713680 580.000000
+  A -464.713680 580.000000 -554.713680 548.137485 -498.453619 532.263170
+  A -554.713680 548.137485 -570.000000 495.000000 -566.102466 522.646265
+  A -570.000000 495.000000 -569.244858 481.008338 -569.811077 487.993987
+  L -569.244858 481.008338 -550.348527 306.457690
+  A -550.348527 306.457690 -560.609397 265.932885 -551.835504 285.272765
+  L -560.609397 265.932885 -591.708275 220.845639
+  A -591.708275 220.845639 -620.000000 130.000000 -612.763419 177.574552
+  A -620.000000 130.000000 -533.600000 14.800000 -596.000000 58.000000
+  A -533.600000 14.800000 -430.000000 0.000000 -482.325902 3.718687
+  A -430.000000 0.000000 -326.400000 14.800000 -377.674098 3.718687
+  A -326.400000 14.800000 -240.000000 130.000000 -264.000000 58.000000
+  A -240.000000 130.000000 -268.291725 220.845639 -247.236581 177.574552
+  L -268.291725 220.845639 -299.390603 265.932885
+  A -299.390603 265.932885 -309.651473 306.457690 -308.164496 285.272765
+  L -309.651473 306.457690 -290.755142 481.008338
+  A -290.755142 481.008338 -290.000000 495.000000 -290.188923 487.993987
+  A -290.000000 495.000000 -318.994083 565.414201 -297.532190 533.074981
+  A -318.994083 565.414201 -402.000000 600.000000 -357.038462 591.007692
+  L -402.000000 600.000000 -430.000000 600.000000
+item 23 Bracing Outline
+  C -430.000000 380.000000 50.000000
+item 24 Tailblock Outline closed
+  L -475.000000 15.000000 -475.000000 2.746681
+  A -475.000000 2.746681 -430.000000 0.000000 -452.541874 0.687309
+  A -430.000000 0.000000 -385.000000 2.746681 -407.458126 0.687309
+  L -385.000000 2.746681 -385.000000 15.000000
+  L -385.000000 15.000000 -475.000000 15.000000
+item 25 Bracing Outline closed
+  L -293.958557 470.000000 -566.041443 470.000000
+  L -566.041443 470.000000 -563.876303 450.000000
+  L -563.876303 450.000000 -296.123697 450.000000
+  L -296.123697 450.000000 -293.958557 470.000000
+item 26 Bracing Outline closed
+  L -339.742470 570.000000 -455.543900 570.000000
+  A -455.543900 570.000000 -562.486154 541.845533 -499.915254 521.358082
+  L -562.486154 541.845533 -546.242312 542.823737
+  A -546.242312 542.823737 -558.741197 510.000000 -554.108495 527.027504
+  L -558.741197 510.000000 -301.258803 510.000000
+  A -301.258803 510.000000 -326.094675 558.372781 -309.936140 536.106913
+  A -326.094675 558.372781 -339.742470 570.000000 -332.674379 564.473020
+item 27 Bracing Outline closed
+  L -246.458287 151.211846 -556.694202 411.530687
+  L -556.694202 411.530687 -555.450687 400.043996
+  L -555.450687 400.043996 -245.310462 139.805448
+  A -245.310462 139.805448 -246.458287 151.211846 -245.778884 145.519262
+item 28 Bracing Outline closed
+  L -423.777105 300.000000 -304.549313 400.043996
+  L -304.549313 400.043996 -303.305798 411.530687
+  L -303.305798 411.530687 -430.000000 305.221629
+  L -430.000000 305.221629 -423.777105 300.000000
+item 29 Bracing Outline closed
+  L -436.222895 300.000000 -613.541713 151.211846
+  A -613.541713 151.211846 -614.689538 139.805448 -614.221116 145.519262
+  L -614.689538 139.805448 -430.000000 294.778371
+  L -430.000000 294.778371 -436.222895 300.000000
+item 30 Bracing Outline closed
+  L -476.235684 266.425284 -552.886348 357.773988
+  L -552.886348 357.773988 -551.726157 347.056984
+  L -551.726157 347.056984 -480.831950 262.568558
+  L -480.831950 262.568558 -476.235684 266.425284
+item 31 Bracing Outline closed
+  L -522.198350 227.858027 -555.793851 267.895586
+  A -555.793851 267.895586 -558.139867 264.229530 -556.935190 266.042292
+  L -558.139867 264.229530 -559.227261 262.653022
+  L -559.227261 262.653022 -526.794617 224.001302
+  L -526.794617 224.001302 -522.198350 227.858027
+item 32 Bracing Outline closed
+  L -387.333339 269.420050 -300.372931 420.039894
+  L -300.372931 420.039894 -298.774046 434.809245
+  L -298.774046 434.809245 -392.000510 273.336271
+  L -392.000510 273.336271 -387.333339 269.420050
+item 33 Bracing Outline closed
+  L -349.031117 237.280669 -312.999236 299.689717
+  A -312.999236 299.689717 -312.634047 306.780575 -312.916615 303.240295
+  L -312.634047 306.780575 -311.895672 313.601146
+  L -311.895672 313.601146 -353.698288 241.196891
+  L -353.698288 241.196891 -349.031117 237.280669
+item 34 Bracing Outline closed
+  L -310.728895 205.141289 -288.117485 244.305398
+  L -288.117485 244.305398 -291.888872 249.773165
+  L -291.888872 249.773165 -315.396066 209.057510
+  L -315.396066 209.057510 -310.728895 205.141289
+item 35 Bracing Outline closed
+  L -492.680901 242.182850 -406.269729 4.770108
+  A -406.269729 4.770108 -399.018317 5.313648 -402.642673 5.023868
+  L -399.018317 5.313648 -486.974448 246.971132
+  L -486.974448 246.971132 -492.680901 242.182850
+item 36 Bracing Outline closed
+  L -553.964456 190.759841 -487.652503 8.569247
+  A -487.652503 8.569247 -479.777993 7.400839 -483.718425 7.963633
+  L -479.777993 7.400839 -548.258004 195.548123
+  L -548.258004 195.548123 -553.964456 190.759841
+item 37 Bracing Outline closed
+  L -404.045548 327.000000 -455.954452 327.000000
+  L -455.954452 327.000000 -448.803930 321.000000
+  L -448.803930 321.000000 -411.196070 321.000000
+  L -411.196070 321.000000 -404.045548 327.000000
+item 38 Bracing Outline closed
+  L -500.310305 364.218980 -450.784610 450.000000
+  L -450.784610 450.000000 -457.712813 450.000000
+  L -457.712813 450.000000 -504.977476 368.135202
+  L -504.977476 368.135202 -500.310305 364.218980
+item 39 Bracing Outline closed
+  L -409.215390 450.000000 -359.689695 364.218980
+  L -359.689695 364.218980 -355.022524 368.135202
+  L -355.022524 368.135202 -402.287187 450.000000
+  L -402.287187 450.000000 -409.215390 450.000000
+item 40 Sides Outline closed
+  L 240.000000 0.000000 360.000000 0.000000
+  L 360.000000 0.000000 360.000000 600.000000
+  L 360.000000 600.000000 265.000000 600.000000
+  L 265.000000 600.000000 240.000000 0.000000
+item 41 Frets Centerline open
+  L -22.477068 921.484095 22.477068 921.484095
+item 42 Frets Centerline open
+  L -22.927361 887.314837 22.927361 887.314837
+item 43 Frets Centerline open
+  L -23.352380 855.063351 23.352380 855.063351
+item 44 Frets Centerline open
+  L -23.753546 824.622003 23.753546 824.622003
+item 45 Frets Centerline open
+  L -24.132195 795.889196 24.132195 795.889196
+item 46 Frets Centerline open
+  L -24.489592 768.769037 24.489592 768.769037
+item 47 Frets Centerline open
+  L -24.826931 743.171016 24.826931 743.171016
+item 48 Frets Centerline open
+  L -25.145336 719.009702 25.145336 719.009702
+item 49 Frets Centerline open
+  L -25.445870 696.204458 25.445870 696.204458
+item 50 Frets Centerline open
+  L -25.729536 674.679174 25.729536 674.679174
+item 51 Frets Centerline open
+  L -25.997282 654.362011 25.997282 654.362011
+item 52 Frets Centerline open
+  L -26.250000 635.185163 26.250000 635.185163
+item 53 Frets Centerline open
+  L -26.488534 617.084629 26.488534 617.084629
+item 54 Frets Centerline open
+  L -26.713680 600.000000 26.713680 600.000000
+item 55 Frets Centerline open
+  L -26.926190 583.874257 26.926190 583.874257
+item 56 Frets Centerline open
+  L -27.126773 568.653583 27.126773 568.653583
+item 57 Frets Centerline open
+  L -27.316097 554.287180 27.316097 554.287180
+item 58 Frets Centerline open
+  L -27.494796 540.727100 27.494796 540.727100
+item 59 Frets Centerline open
+  L -27.663465 527.928090 27.663465 527.928090
+item 60 Frets Centerline open
+  L -27.822668 515.847433 27.822668 515.847433
+item 61 Frets Outline closed
+  L -22.458685 922.879095 22.458685 922.879095
+  L 22.458685 922.879095 22.495452 920.089095
+  L 22.495452 920.089095 -22.495452 920.089095
+  L -22.495452 920.089095 -22.458685 922.879095
+item 62 Frets Outline closed
+  L -22.908977 888.709837 22.908977 888.709837
+  L 22.908977 888.709837 22.945745 885.919837
+  L 22.945745 885.919837 -22.945745 885.919837
+  L -22.945745 885.919837 -22.908977 888.709837
+item 63 Frets Outline closed
+  L -23.333997 856.458351 23.333997 856.458351
+  L 23.333997 856.458351 23.370764 853.668351
+  L 23.370764 853.668351 -23.370764 853.668351
+  L -23.370764 853.668351 -23.333997 856.458351
+item 64 Frets Outline closed
+  L -23.735162 826.017003 23.735162 826.017003
+  L 23.735162 826.017003 23.771929 823.227003
+  L 23.771929 823.227003 -23.771929 823.227003
+  L -23.771929 823.227003 -23.735162 826.017003
+item 65 Frets Outline closed
+  L -24.113811 797.284196 24.113811 797.284196
+  L 24.113811 797.284196 24.150579 794.494196
+  L 24.150579 794.494196 -24.150579 794.494196
+  L -24.150579 794.494196 -24.113811 797.284196
+item 66 Frets Outline closed
+  L -24.471209 770.164037 24.471209 770.164037
+  L 24.471209 770.164037 24.507976 767.374037
+  L 24.507976 767.374037 -24.507976 767.374037
+  L -24.507976 767.374037 -24.471209 770.164037
+item 67 Frets Outline closed
+  L -24.808547 744.566016 24.808547 744.566016
+  L 24.808547 744.566016 24.845314 741.776016
+  L 24.845314 741.776016 -24.845314 741.776016
+  L -24.845314 741.776016 -24.808547 744.566016
+item 68 Frets Outline closed
+  L -25.126952 720.404702 25.126952 720.404702
+  L 25.126952 720.404702 25.163719 717.614702
+  L 25.163719 717.614702 -25.163719 717.614702
+  L -25.163719 717.614702 -25.126952 720.404702
+item 69 Frets Outline closed
+  L -25.427486 697.599458 25.427486 697.599458
+  L 25.427486 697.599458 25.464253 694.809458
+  L 25.464253 694.809458 -25.464253 694.809458
+  L -25.464253 694.809458 -25.427486 697.599458
+item 70 Frets Outline closed
+  L -25.711153 676.074174 25.711153 676.074174
+  L 25.711153 676.074174 25.747920 673.284174
+  L 25.747920 673.284174 -25.747920 673.284174
+  L -25.747920 673.284174 -25.711153 676.074174
+item 71 Frets Outline closed
+  L -25.978898 655.757011 25.978898 655.757011
+  L 25.978898 655.757011 26.015666 652.967011
+  L 26.015666 652.967011 -26.015666 652.967011
+  L -26.015666 652.967011 -25.978898 655.757011
+item 72 Frets Outline closed
+  L -26.231616 636.580163 26.231616 636.580163
+  L 26.231616 636.580163 26.268384 633.790163
+  L 26.268384 633.790163 -26.268384 633.790163
+  L -26.268384 633.790163 -26.231616 636.580163
+item 73 Frets Outline closed
+  L -26.470150 618.479629 26.470150 618.479629
+  L 26.470150 618.479629 26.506918 615.689629
+  L 26.506918 615.689629 -26.506918 615.689629
+  L -26.506918 615.689629 -26.470150 618.479629
+item 74 Frets Outline closed
+  L -26.695297 601.395000 26.695297 601.395000
+  L 26.695297 601.395000 26.732064 598.605000
+  L 26.732064 598.605000 -26.732064 598.605000
+  L -26.732064 598.605000 -26.695297 601.395000
+item 75 Frets Outline closed
+  L -26.907807 585.269257 26.907807 585.269257
+  L 26.907807 585.269257 26.944574 582.479257
+  L 26.944574 582.479257 -26.944574 582.479257
+  L -26.944574 582.479257 -26.907807 585.269257
+item 76 Frets Outline closed
+  L -27.108389 570.048583 27.108389 570.048583
+  L 27.108389 570.048583 27.145156 567.258583
+  L 27.145156 567.258583 -27.145156 567.258583
+  L -27.145156 567.258583 -27.108389 570.048583
+item 77 Frets Outline closed
+  L -27.297714 555.682180 27.297714 555.682180
+  L 27.297714 555.682180 27.334481 552.892180
+  L 27.334481 552.892180 -27.334481 552.892180
+  L -27.334481 552.892180 -27.297714 555.682180
+item 78 Frets Outline closed
+  L -27.476412 542.122100 27.476412 542.122100
+  L 27.476412 542.122100 27.513180 539.332100
+  L 27.513180 539.332100 -27.513180 539.332100
+  L -27.513180 539.332100 -27.476412 542.122100
+item 79 Frets Outline closed
+  L -27.645082 529.323090 27.645082 529.323090
+  L 27.645082 529.323090 27.681849 526.533090
+  L 27.681849 526.533090 -27.681849 526.533090
+  L -27.681849 526.533090 -27.645082 529.323090
+item 80 Frets Outline closed
+  L -27.804284 517.242433 27.804284 517.242433
+  L 27.804284 517.242433 27.841051 514.452433
+  L 27.841051 514.452433 -27.841051 514.452433
+  L -27.841051 514.452433 -27.804284 517.242433
+item 81 Strings Outline closed
+  L 18.347513 957.683154 18.652487 957.687173
+  L 18.652487 957.687173 27.152487 312.687173
+  L 27.152487 312.687173 26.847513 312.683154
+  L 26.847513 312.683154 18.347513 957.683154
+item 82 Strings Outline closed
+  L -19.172942 957.694032 -17.827058 957.676295
+  L -17.827058 957.676295 -26.327058 312.676295
+  L -26.327058 312.676295 -27.672942 312.694032
+  L -27.672942 312.694032 -19.172942 957.694032
+item 83 Fretboard Outline closed
+  L -22.000000 957.685163 22.000000 957.685163
+  L 22.000000 957.685163 27.888559 510.847433
+  L 27.888559 510.847433 -27.888559 510.847433
+  L -27.888559 510.847433 -22.000000 957.685163
+item 84 FretSlots Outline closed
+  L -22.473576 921.749095 22.473576 921.749095
+  L 22.473576 921.749095 22.480561 921.219095
+  L 22.480561 921.219095 -22.480561 921.219095
+  L -22.480561 921.219095 -22.473576 921.749095
+item 85 FretSlots Outline closed
+  L -22.923869 887.579837 22.923869 887.579837
+  L 22.923869 887.579837 22.930853 887.049837
+  L 22.930853 887.049837 -22.930853 887.049837
+  L -22.930853 887.049837 -22.923869 887.579837
+item 86 FretSlots Outline closed
+  L -23.348888 855.328351 23.348888 855.328351
+  L 23.348888 855.328351 23.355873 854.798351
+  L 23.355873 854.798351 -23.355873 854.798351
+  L -23.355873 854.798351 -23.348888 855.328351
+item 87 FretSlots Outline closed
+  L -23.750053 824.887003 23.750053 824.887003
+  L 23.750053 824.887003 23.757038 824.357003
+  L 23.757038 824.357003 -23.757038 824.357003
+  L -23.757038 824.357003 -23.750053 824.887003
+item 88 FretSlots Outline closed
+  L -24.128703 796.154196 24.128703 796.154196
+  L 24.128703 796.154196 24.135687 795.624196
+  L 24.135687 795.624196 -24.135687 795.624196
+  L -24.135687 795.624196 -24.128703 796.154196
+item 89 FretSlots Outline closed
+  L -24.486100 769.034037 24.486100 769.034037
+  L 24.486100 769.034037 24.493085 768.504037
+  L 24.493085 768.504037 -24.493085 768.504037
+  L -24.493085 768.504037 -24.486100 769.034037
+item 90 FretSlots Outline closed
+  L -24.823438 743.436016 24.823438 743.436016
+  L 24.823438 743.436016 24.830423 742.906016
+  L 24.830423 742.906016 -24.830423 742.906016
+  L -24.830423 742.906016 -24.823438 743.436016
+item 91 FretSlots Outline closed
+  L -25.141843 719.274702 25.141843 719.274702
+  L 25.141843 719.274702 25.148828 718.744702
+  L 25.148828 718.744702 -25.148828 718.744702
+  L -25.148828 718.744702 -25.141843 719.274702
+item 92 FretSlots Outline closed
+  L -25.442378 696.469458 25.442378 696.469458
+  L 25.442378 696.469458 25.449362 695.939458
+  L 25.449362 695.939458 -25.449362 695.939458
+  L -25.449362 695.939458 -25.442378 696.469458
+item 93 FretSlots Outline closed
+  L -25.726044 674.944174 25.726044 674.944174
+  L 25.726044 674.944174 25.733029 674.414174
+  L 25.733029 674.414174 -25.733029 674.414174
+  L -25.733029 674.414174 -25.726044 674.944174
+item 94 FretSlots Outline closed
+  L -25.993790 654.627011 25.993790 654.627011
+  L 25.993790 654.627011 26.000774 654.097011
+  L 26.000774 654.097011 -26.000774 654.097011
+  L -26.000774 654.097011 -25.993790 654.627011
+item 95 FretSlots Outline closed
+  L -26.246508 635.450163 26.246508 635.450163
+  L 26.246508 635.450163 26.253492 634.920163
+  L 26.253492 634.920163 -26.253492 634.920163
+  L -26.253492 634.920163 -26.246508 635.450163
+item 96 FretSlots Outline closed
+  L -26.485042 617.349629 26.485042 617.349629
+  L 26.485042 617.349629 26.492026 616.819629
+  L 26.492026 616.819629 -26.492026 616.819629
+  L -26.492026 616.819629 -26.485042 617.349629
+item 97 FretSlots Outline closed
+  L -26.710188 600.265000 26.710188 600.265000
+  L 26.710188 600.265000 26.717173 599.735000
+  L 26.717173 599.735000 -26.717173 599.735000
+  L -26.717173 599.735000 -26.710188 600.265000
+item 98 FretSlots Outline closed
+  L -26.922698 584.139257 26.922698 584.139257
+  L 26.922698 584.139257 26.929682 583.609257
+  L 26.929682 583.609257 -26.929682 583.609257
+  L -26.929682 583.609257 -26.922698 584.139257
+item 99 FretSlots Outline closed
+  L -27.123281 568.918583 27.123281 568.918583
+  L 27.123281 568.918583 27.130265 568.388583
+  L 27.130265 568.388583 -27.130265 568.388583
+  L -27.130265 568.388583 -27.123281 568.918583
+item 100 FretSlots Outline closed
+  L -27.312605 554.552180 27.312605 554.552180
+  L 27.312605 554.552180 27.319590 554.022180
+  L 27.319590 554.022180 -27.319590 554.022180
+  L -27.319590 554.022180 -27.312605 554.552180
+item 101 FretSlots Outline closed
+  L -27.491304 540.992100 27.491304 540.992100
+  L 27.491304 540.992100 27.498288 540.462100
+  L 27.498288 540.462100 -27.498288 540.462100
+  L -27.498288 540.462100 -27.491304 540.992100
+item 102 FretSlots Outline closed
+  L -27.659973 528.193090 27.659973 528.193090
+  L 27.659973 528.193090 27.666958 527.663090
+  L 27.666958 527.663090 -27.666958 527.663090
+  L -27.666958 527.663090 -27.659973 528.193090
+item 103 FretSlots Outline closed
+  L -27.819176 516.112433 27.819176 516.112433
+  L 27.819176 516.112433 27.826160 515.582433
+  L 27.826160 515.582433 -27.826160 515.582433
+  L -27.826160 515.582433 -27.819176 516.112433
+item 104 FaceDots Outline
+  C 0.000000 871.189094 3.000000
+item 105 FaceDots Outline
+  C 0.000000 810.255599 3.000000
+item 106 FaceDots Outline
+  C 15.123641 644.773587 3.000000
+item 107 FaceDots Outline
+  C -15.123641 644.773587 3.000000
+item 108 FretboardSide Outline closed
+  L 352.636894 957.562594 359.634495 957.745832
+  L 359.634495 957.745832 370.331686 511.035045
+  L 370.331686 511.035045 364.333742 510.877983
+  L 364.333742 510.877983 352.636894 957.562594
+item 109 FretSlots Outline open
+  L 360.501140 921.555048 358.582814 921.504815
+item 110 FretSlots Outline open
+  L 361.319144 887.395497 359.477261 887.347266
+item 111 FretSlots Outline open
+  L 362.091237 855.153174 360.321506 855.106832
+item 112 FretSlots Outline open
+  L 362.819996 824.720474 361.118368 824.675915
+item 113 FretSlots Outline open
+  L 363.507853 795.995830 361.870505 795.952954
+item 114 FretSlots Outline open
+  L 364.157103 768.883376 362.580428 768.842089
+item 115 FretSlots Outline open
+  L 364.769914 743.292627 363.250506 743.252840
+item 116 FretSlots Outline open
+  L 365.348330 719.138177 363.882976 719.099805
+item 117 FretSlots Outline open
+  L 365.894282 696.339412 364.479948 696.302376
+item 118 FretSlots Outline open
+  L 366.409592 674.820243 365.043414 674.784468
+item 119 FretSlots Outline open
+  L 366.895981 654.508852 365.575255 654.474268
+item 120 FretSlots Outline open
+  L 367.355070 635.337452 366.077246 635.303991
+item 121 FretSlots Outline open
+  L 367.788392 617.242060 366.551063 617.209660
+item 122 FretSlots Outline open
+  L 368.197394 600.162284 366.998287 600.130885
+item 123 FretSlots Outline open
+  L 368.583441 584.041123 367.420409 584.010668
+item 124 FretSlots Outline open
+  L 368.947820 568.824773 367.818840 568.795209
+item 125 FretSlots Outline open
+  L 369.291749 554.462451 368.194909 554.433729
+item 126 FretSlots Outline open
+  L 369.616374 540.906224 368.549870 540.878296
+item 127 FretSlots Outline open
+  L 369.922779 528.110849 368.884909 528.083672
+item 128 FretSlots Outline open
+  L 370.211987 516.033624 369.201144 516.007154
+item 129 SideDots Outline
+  C 357.900069 871.174695 1.000000
+item 130 SideDots Outline
+  C 359.495122 810.262081 1.000000
+item 131 SideDots Outline
+  C 363.774582 646.836090 1.000000
+item 132 SideDots Outline
+  C 363.879290 642.837461 1.000000
+item 133 NeckSide Construction open
+  L 360.501140 921.555048 339.507159 921.052315
+item 134 NeckSide Construction open
+  L 365.894282 696.339412 342.900874 695.788798
+item 135 NeckSide Construction open
+  L 303.000000 600.000000 303.000000 655.000000
+item 136 NeckSide Outline closed
+  L 352.479832 963.560538 362.000000 600.000000
+  L 362.000000 600.000000 344.343983 600.000000
+  L 344.343983 600.000000 343.070455 684.532546
+  L 343.070455 684.532546 338.871659 963.234669
+  L 338.871659 963.234669 352.479832 963.560538
+item 137 Heel Outline closed
+  L 344.343983 600.000000 273.000000 600.000000
+  L 273.000000 600.000000 273.000000 640.000000
+  L 273.000000 640.000000 334.780361 670.890181
+  A 334.780361 670.890181 343.070455 684.532546 340.890956 676.516954
+  L 343.070455 684.532546 344.343983 600.000000
+item 138 HeelCap Outline closed
+  L 268.000000 600.000000 273.000000 600.000000
+  L 273.000000 600.000000 273.000000 640.000000
+  L 273.000000 640.000000 268.000000 640.000000
+  L 268.000000 640.000000 268.000000 600.000000
+item 139 Nut Outline closed
+  L 352.636894 957.562594 362.133639 957.811275
+  L 362.133639 957.811275 361.976577 963.809219
+  L 361.976577 963.809219 352.479832 963.560538
+  L 352.479832 963.560538 352.636894 957.562594
+item 140 NeckProfiles Outline closed
+  A 423.300488 931.423026 468.254624 931.423026 445.777556 932.055048
+  L 468.254624 931.423026 468.254624 925.136065
+  L 468.254624 925.136065 445.777556 911.055048
+  L 445.777556 911.055048 423.300488 925.136065
+  L 423.300488 925.136065 423.300488 931.423026
+item 141 NeckProfiles Outline open
+  L 423.300488 925.136065 468.254624 925.136065
+item 142 NeckProfiles Outline closed
+  A 420.331686 707.029226 471.223426 707.029226 445.777556 707.839412
+  L 471.223426 707.029226 471.223426 701.424592
+  L 471.223426 701.424592 445.777556 684.839412
+  L 445.777556 684.839412 420.331686 701.424592
+  L 420.331686 701.424592 420.331686 707.029226
+item 143 NeckProfiles Outline open
+  L 420.331686 701.424592 471.223426 701.424592
+item 144 NeckProfiles Outline closed
+  L 521.223426 655.000000 579.007929 655.000000
+  L 579.007929 655.000000 579.007929 647.000000
+  L 579.007929 647.000000 550.115677 600.000000
+  L 550.115677 600.000000 521.223426 647.000000
+  L 521.223426 647.000000 521.223426 655.000000
+item 145 NeckProfiles Outline closed
+  L 629.007929 640.000000 689.007929 640.000000
+  L 689.007929 640.000000 689.007929 630.000000
+  L 689.007929 630.000000 659.007929 600.000000
+  L 659.007929 600.000000 629.007929 630.000000
+  L 629.007929 630.000000 629.007929 640.000000
+""",
+            ["BracingHeavy"] = """
+item 0 TopPlate Construction open
+  L 0.000000 0.000000 0.000000 600.000000
+item 1 TopPlate Construction open
+  L -140.000000 495.000000 140.000000 495.000000
+item 2 TopPlate Construction open
+  L -120.000000 300.000000 120.000000 300.000000
+item 3 TopPlate Construction open
+  L -190.000000 130.000000 190.000000 130.000000
+item 4 TopPlate Construction open
+  L 28.000000 597.000000 28.000000 603.000000
+item 5 TopPlate Construction open
+  L -28.000000 597.000000 -28.000000 603.000000
+item 6 TopPlate Construction
+  C 40.000000 495.000000 100.000000
+item 7 TopPlate Construction
+  C -40.000000 495.000000 100.000000
+item 8 TopPlate Construction
+  C 10.000000 495.000000 130.000000
+item 9 TopPlate Construction
+  C -10.000000 495.000000 130.000000
+item 10 TopPlate Construction
+  C 180.000000 300.000000 60.000000
+item 11 TopPlate Construction
+  C -180.000000 300.000000 60.000000
+item 12 TopPlate Construction
+  C 70.000000 130.000000 120.000000
+item 13 TopPlate Construction
+  C -70.000000 130.000000 120.000000
+item 14 TopPlate Construction
+  C 30.000000 130.000000 160.000000
+item 15 TopPlate Construction
+  C -30.000000 130.000000 160.000000
+item 16 TopPlate Outline closed
+  L 0.000000 600.000000 28.000000 600.000000
+  A 28.000000 600.000000 111.005917 565.414201 72.961538 591.007692
+  A 111.005917 565.414201 140.000000 495.000000 132.467810 533.074981
+  A 140.000000 495.000000 139.244858 481.008338 139.811077 487.993987
+  L 139.244858 481.008338 120.348527 306.457690
+  A 120.348527 306.457690 130.609397 265.932885 121.835504 285.272765
+  L 130.609397 265.932885 161.708275 220.845639
+  A 161.708275 220.845639 190.000000 130.000000 182.763419 177.574552
+  A 190.000000 130.000000 103.600000 14.800000 166.000000 58.000000
+  A 103.600000 14.800000 0.000000 0.000000 52.325902 3.718687
+  A 0.000000 0.000000 -103.600000 14.800000 -52.325902 3.718687
+  A -103.600000 14.800000 -190.000000 130.000000 -166.000000 58.000000
+  A -190.000000 130.000000 -161.708275 220.845639 -182.763419 177.574552
+  L -161.708275 220.845639 -130.609397 265.932885
+  A -130.609397 265.932885 -120.348527 306.457690 -121.835504 285.272765
+  L -120.348527 306.457690 -139.244858 481.008338
+  A -139.244858 481.008338 -140.000000 495.000000 -139.811077 487.993987
+  A -140.000000 495.000000 -111.005917 565.414201 -132.467810 533.074981
+  A -111.005917 565.414201 -28.000000 600.000000 -72.961538 591.007692
+  L -28.000000 600.000000 0.000000 600.000000
+item 17 Soundhole Outline
+  C 0.000000 380.000000 50.000000
+item 18 Bracing Construction open
+  L -430.000000 0.000000 -430.000000 600.000000
+item 19 Bracing Outline closed
+  L -430.000000 600.000000 -458.000000 600.000000
+  A -458.000000 600.000000 -541.005917 565.414201 -502.961538 591.007692
+  A -541.005917 565.414201 -570.000000 495.000000 -562.467810 533.074981
+  A -570.000000 495.000000 -569.244858 481.008338 -569.811077 487.993987
+  L -569.244858 481.008338 -550.348527 306.457690
+  A -550.348527 306.457690 -560.609397 265.932885 -551.835504 285.272765
+  L -560.609397 265.932885 -591.708275 220.845639
+  A -591.708275 220.845639 -620.000000 130.000000 -612.763419 177.574552
+  A -620.000000 130.000000 -533.600000 14.800000 -596.000000 58.000000
+  A -533.600000 14.800000 -430.000000 0.000000 -482.325902 3.718687
+  A -430.000000 0.000000 -326.400000 14.800000 -377.674098 3.718687
+  A -326.400000 14.800000 -240.000000 130.000000 -264.000000 58.000000
+  A -240.000000 130.000000 -268.291725 220.845639 -247.236581 177.574552
+  L -268.291725 220.845639 -299.390603 265.932885
+  A -299.390603 265.932885 -309.651473 306.457690 -308.164496 285.272765
+  L -309.651473 306.457690 -290.755142 481.008338
+  A -290.755142 481.008338 -290.000000 495.000000 -290.188923 487.993987
+  A -290.000000 495.000000 -318.994083 565.414201 -297.532190 533.074981
+  A -318.994083 565.414201 -402.000000 600.000000 -357.038462 591.007692
+  L -402.000000 600.000000 -430.000000 600.000000
+item 20 Bracing Outline
+  C -430.000000 380.000000 50.000000
+item 21 Headblock Outline closed
+  L -395.000000 580.000000 -395.000000 599.790231
+  A -395.000000 599.790231 -402.000000 600.000000 -398.498429 599.947546
+  L -402.000000 600.000000 -430.000000 600.000000
+  L -430.000000 600.000000 -458.000000 600.000000
+  A -458.000000 600.000000 -465.000000 599.790231 -461.501571 599.947546
+  L -465.000000 599.790231 -465.000000 580.000000
+  L -465.000000 580.000000 -395.000000 580.000000
+item 22 Tailblock Outline closed
+  L -475.000000 15.000000 -475.000000 2.746681
+  A -475.000000 2.746681 -430.000000 0.000000 -452.541874 0.687309
+  A -430.000000 0.000000 -385.000000 2.746681 -407.458126 0.687309
+  L -385.000000 2.746681 -385.000000 15.000000
+  L -385.000000 15.000000 -475.000000 15.000000
+item 23 Bracing Outline closed
+  L -293.958557 470.000000 -566.041443 470.000000
+  L -566.041443 470.000000 -563.876303 450.000000
+  L -563.876303 450.000000 -296.123697 450.000000
+  L -296.123697 450.000000 -293.958557 470.000000
+item 24 Bracing Outline closed
+  L -339.742470 570.000000 -520.257530 570.000000
+  A -520.257530 570.000000 -533.905325 558.372781 -527.325621 564.473020
+  A -533.905325 558.372781 -558.741197 510.000000 -550.063860 536.106913
+  L -558.741197 510.000000 -301.258803 510.000000
+  A -301.258803 510.000000 -326.094675 558.372781 -309.936140 536.106913
+  A -326.094675 558.372781 -339.742470 570.000000 -332.674379 564.473020
+item 25 Bracing Outline closed
+  L -246.458287 151.211846 -556.694202 411.530687
+  L -556.694202 411.530687 -555.450687 400.043996
+  L -555.450687 400.043996 -245.310462 139.805448
+  A -245.310462 139.805448 -246.458287 151.211846 -245.778884 145.519262
+item 26 Bracing Outline closed
+  L -423.777105 300.000000 -304.549313 400.043996
+  L -304.549313 400.043996 -303.305798 411.530687
+  L -303.305798 411.530687 -430.000000 305.221629
+  L -430.000000 305.221629 -423.777105 300.000000
+item 27 Bracing Outline closed
+  L -436.222895 300.000000 -613.541713 151.211846
+  A -613.541713 151.211846 -614.689538 139.805448 -614.221116 145.519262
+  L -614.689538 139.805448 -430.000000 294.778371
+  L -430.000000 294.778371 -436.222895 300.000000
+item 28 Bracing Outline closed
+  L -453.254350 285.708912 -558.687302 411.359011
+  L -558.687302 411.359011 -557.527111 400.642007
+  L -557.527111 400.642007 -457.850617 281.852187
+  L -457.850617 281.852187 -453.254350 285.708912
+item 29 Bracing Outline closed
+  L -476.235684 266.425284 -552.886348 357.773988
+  L -552.886348 357.773988 -551.726157 347.056984
+  L -551.726157 347.056984 -480.831950 262.568558
+  L -480.831950 262.568558 -476.235684 266.425284
+item 30 Bracing Outline closed
+  L -499.217017 247.141656 -547.144123 304.258956
+  A -547.144123 304.258956 -547.199477 294.990582 -547.001124 299.623750
+  L -547.199477 294.990582 -503.813284 243.284930
+  L -503.813284 243.284930 -499.217017 247.141656
+item 31 Bracing Outline closed
+  L -522.198350 227.858027 -555.793851 267.895586
+  A -555.793851 267.895586 -558.139867 264.229530 -556.935190 266.042292
+  L -558.139867 264.229530 -559.227261 262.653022
+  L -559.227261 262.653022 -526.794617 224.001302
+  L -526.794617 224.001302 -522.198350 227.858027
+item 32 Bracing Outline closed
+  L -545.179684 208.574399 -573.361871 242.160622
+  L -573.361871 242.160622 -576.895524 237.037523
+  L -576.895524 237.037523 -549.775950 204.717673
+  L -549.775950 204.717673 -545.179684 208.574399
+item 33 Bracing Outline closed
+  L -402.654228 282.275802 -295.124281 468.523133
+  L -295.124281 468.523133 -293.737715 481.331223
+  A -293.737715 481.331223 -293.543724 483.260738 -293.637037 482.295610
+  L -293.543724 483.260738 -407.321399 286.192024
+  L -407.321399 286.192024 -402.654228 282.275802
+item 34 Bracing Outline closed
+  L -379.672894 262.992173 -302.997257 395.798274
+  L -302.997257 395.798274 -301.398371 410.567625
+  L -301.398371 410.567625 -384.340066 266.908395
+  L -384.340066 266.908395 -379.672894 262.992173
+item 35 Bracing Outline closed
+  L -356.691561 243.708545 -310.870233 323.073414
+  L -310.870233 323.073414 -309.271347 337.842766
+  L -309.271347 337.842766 -361.358733 247.624767
+  L -361.358733 247.624767 -356.691561 243.708545
+item 36 Bracing Outline closed
+  L -333.710228 224.424917 -306.346384 271.820485
+  A -306.346384 271.820485 -309.294900 278.713505 -307.923269 275.223096
+  L -309.294900 278.713505 -338.377399 228.341139
+  L -338.377399 228.341139 -333.710228 224.424917
+item 37 Bracing Outline closed
+  L -310.728895 205.141289 -288.117485 244.305398
+  L -288.117485 244.305398 -291.888872 249.773165
+  L -291.888872 249.773165 -315.396066 209.057510
+  L -315.396066 209.057510 -310.728895 205.141289
+item 38 Bracing Outline closed
+  L -287.747561 185.857660 -269.555147 217.367845
+  A -269.555147 217.367845 -270.761255 219.142284 -270.155170 218.257125
+  L -270.761255 219.142284 -273.318419 222.849668
+  L -273.318419 222.849668 -292.414733 189.773882
+  L -292.414733 189.773882 -287.747561 185.857660
+item 39 Bracing Outline closed
+  L -462.039123 267.894355 -367.919712 9.303399
+  A -367.919712 9.303399 -360.933549 10.575703 -364.423545 9.922608
+  L -360.933549 10.575703 -456.332671 272.682637
+  L -456.332671 272.682637 -462.039123 267.894355
+item 40 Bracing Outline closed
+  L -492.680901 242.182850 -406.269729 4.770108
+  A -406.269729 4.770108 -399.018317 5.313648 -402.642673 5.023868
+  L -399.018317 5.313648 -486.974448 246.971132
+  L -486.974448 246.971132 -492.680901 242.182850
+item 41 Bracing Outline closed
+  L -523.322678 216.471346 -446.118681 4.355107
+  A -446.118681 4.355107 -438.576770 4.100507 -442.348382 4.208369
+  L -438.576770 4.100507 -517.616226 221.259628
+  L -517.616226 221.259628 -523.322678 216.471346
+item 42 Bracing Outline closed
+  L -553.964456 190.759841 -487.652503 8.569247
+  A -487.652503 8.569247 -479.777993 7.400839 -483.718425 7.963633
+  L -479.777993 7.400839 -548.258004 195.548123
+  L -548.258004 195.548123 -553.964456 190.759841
+item 43 Bracing Outline closed
+  L -584.606234 165.048337 -531.181006 18.263729
+  A -531.181006 18.263729 -522.903208 15.987297 -527.048782 17.101241
+  L -522.903208 15.987297 -578.899782 169.836619
+  L -578.899782 169.836619 -584.606234 165.048337
+item 44 Bracing Outline closed
+  L -404.045548 327.000000 -455.954452 327.000000
+  L -455.954452 327.000000 -448.803930 321.000000
+  L -448.803930 321.000000 -411.196070 321.000000
+  L -411.196070 321.000000 -404.045548 327.000000
+item 45 Bracing Outline closed
+  L -500.310305 364.218980 -450.784610 450.000000
+  L -450.784610 450.000000 -457.712813 450.000000
+  L -457.712813 450.000000 -504.977476 368.135202
+  L -504.977476 368.135202 -500.310305 364.218980
+item 46 Bracing Outline closed
+  L -409.215390 450.000000 -360.981105 366.455767
+  L -360.981105 366.455767 -357.517004 372.455767
+  L -357.517004 372.455767 -402.287187 450.000000
+  L -402.287187 450.000000 -409.215390 450.000000
+item 47 Sides Outline closed
+  L 240.000000 0.000000 360.000000 0.000000
+  L 360.000000 0.000000 360.000000 600.000000
+  L 360.000000 600.000000 265.000000 600.000000
+  L 265.000000 600.000000 240.000000 0.000000
+item 48 Frets Centerline open
+  L -22.477068 921.484095 22.477068 921.484095
+item 49 Frets Centerline open
+  L -22.927361 887.314837 22.927361 887.314837
+item 50 Frets Centerline open
+  L -23.352380 855.063351 23.352380 855.063351
+item 51 Frets Centerline open
+  L -23.753546 824.622003 23.753546 824.622003
+item 52 Frets Centerline open
+  L -24.132195 795.889196 24.132195 795.889196
+item 53 Frets Centerline open
+  L -24.489592 768.769037 24.489592 768.769037
+item 54 Frets Centerline open
+  L -24.826931 743.171016 24.826931 743.171016
+item 55 Frets Centerline open
+  L -25.145336 719.009702 25.145336 719.009702
+item 56 Frets Centerline open
+  L -25.445870 696.204458 25.445870 696.204458
+item 57 Frets Centerline open
+  L -25.729536 674.679174 25.729536 674.679174
+item 58 Frets Centerline open
+  L -25.997282 654.362011 25.997282 654.362011
+item 59 Frets Centerline open
+  L -26.250000 635.185163 26.250000 635.185163
+item 60 Frets Centerline open
+  L -26.488534 617.084629 26.488534 617.084629
+item 61 Frets Centerline open
+  L -26.713680 600.000000 26.713680 600.000000
+item 62 Frets Centerline open
+  L -26.926190 583.874257 26.926190 583.874257
+item 63 Frets Centerline open
+  L -27.126773 568.653583 27.126773 568.653583
+item 64 Frets Centerline open
+  L -27.316097 554.287180 27.316097 554.287180
+item 65 Frets Centerline open
+  L -27.494796 540.727100 27.494796 540.727100
+item 66 Frets Centerline open
+  L -27.663465 527.928090 27.663465 527.928090
+item 67 Frets Centerline open
+  L -27.822668 515.847433 27.822668 515.847433
+item 68 Frets Outline closed
+  L -22.458685 922.879095 22.458685 922.879095
+  L 22.458685 922.879095 22.495452 920.089095
+  L 22.495452 920.089095 -22.495452 920.089095
+  L -22.495452 920.089095 -22.458685 922.879095
+item 69 Frets Outline closed
+  L -22.908977 888.709837 22.908977 888.709837
+  L 22.908977 888.709837 22.945745 885.919837
+  L 22.945745 885.919837 -22.945745 885.919837
+  L -22.945745 885.919837 -22.908977 888.709837
+item 70 Frets Outline closed
+  L -23.333997 856.458351 23.333997 856.458351
+  L 23.333997 856.458351 23.370764 853.668351
+  L 23.370764 853.668351 -23.370764 853.668351
+  L -23.370764 853.668351 -23.333997 856.458351
+item 71 Frets Outline closed
+  L -23.735162 826.017003 23.735162 826.017003
+  L 23.735162 826.017003 23.771929 823.227003
+  L 23.771929 823.227003 -23.771929 823.227003
+  L -23.771929 823.227003 -23.735162 826.017003
+item 72 Frets Outline closed
+  L -24.113811 797.284196 24.113811 797.284196
+  L 24.113811 797.284196 24.150579 794.494196
+  L 24.150579 794.494196 -24.150579 794.494196
+  L -24.150579 794.494196 -24.113811 797.284196
+item 73 Frets Outline closed
+  L -24.471209 770.164037 24.471209 770.164037
+  L 24.471209 770.164037 24.507976 767.374037
+  L 24.507976 767.374037 -24.507976 767.374037
+  L -24.507976 767.374037 -24.471209 770.164037
+item 74 Frets Outline closed
+  L -24.808547 744.566016 24.808547 744.566016
+  L 24.808547 744.566016 24.845314 741.776016
+  L 24.845314 741.776016 -24.845314 741.776016
+  L -24.845314 741.776016 -24.808547 744.566016
+item 75 Frets Outline closed
+  L -25.126952 720.404702 25.126952 720.404702
+  L 25.126952 720.404702 25.163719 717.614702
+  L 25.163719 717.614702 -25.163719 717.614702
+  L -25.163719 717.614702 -25.126952 720.404702
+item 76 Frets Outline closed
+  L -25.427486 697.599458 25.427486 697.599458
+  L 25.427486 697.599458 25.464253 694.809458
+  L 25.464253 694.809458 -25.464253 694.809458
+  L -25.464253 694.809458 -25.427486 697.599458
+item 77 Frets Outline closed
+  L -25.711153 676.074174 25.711153 676.074174
+  L 25.711153 676.074174 25.747920 673.284174
+  L 25.747920 673.284174 -25.747920 673.284174
+  L -25.747920 673.284174 -25.711153 676.074174
+item 78 Frets Outline closed
+  L -25.978898 655.757011 25.978898 655.757011
+  L 25.978898 655.757011 26.015666 652.967011
+  L 26.015666 652.967011 -26.015666 652.967011
+  L -26.015666 652.967011 -25.978898 655.757011
+item 79 Frets Outline closed
+  L -26.231616 636.580163 26.231616 636.580163
+  L 26.231616 636.580163 26.268384 633.790163
+  L 26.268384 633.790163 -26.268384 633.790163
+  L -26.268384 633.790163 -26.231616 636.580163
+item 80 Frets Outline closed
+  L -26.470150 618.479629 26.470150 618.479629
+  L 26.470150 618.479629 26.506918 615.689629
+  L 26.506918 615.689629 -26.506918 615.689629
+  L -26.506918 615.689629 -26.470150 618.479629
+item 81 Frets Outline closed
+  L -26.695297 601.395000 26.695297 601.395000
+  L 26.695297 601.395000 26.732064 598.605000
+  L 26.732064 598.605000 -26.732064 598.605000
+  L -26.732064 598.605000 -26.695297 601.395000
+item 82 Frets Outline closed
+  L -26.907807 585.269257 26.907807 585.269257
+  L 26.907807 585.269257 26.944574 582.479257
+  L 26.944574 582.479257 -26.944574 582.479257
+  L -26.944574 582.479257 -26.907807 585.269257
+item 83 Frets Outline closed
+  L -27.108389 570.048583 27.108389 570.048583
+  L 27.108389 570.048583 27.145156 567.258583
+  L 27.145156 567.258583 -27.145156 567.258583
+  L -27.145156 567.258583 -27.108389 570.048583
+item 84 Frets Outline closed
+  L -27.297714 555.682180 27.297714 555.682180
+  L 27.297714 555.682180 27.334481 552.892180
+  L 27.334481 552.892180 -27.334481 552.892180
+  L -27.334481 552.892180 -27.297714 555.682180
+item 85 Frets Outline closed
+  L -27.476412 542.122100 27.476412 542.122100
+  L 27.476412 542.122100 27.513180 539.332100
+  L 27.513180 539.332100 -27.513180 539.332100
+  L -27.513180 539.332100 -27.476412 542.122100
+item 86 Frets Outline closed
+  L -27.645082 529.323090 27.645082 529.323090
+  L 27.645082 529.323090 27.681849 526.533090
+  L 27.681849 526.533090 -27.681849 526.533090
+  L -27.681849 526.533090 -27.645082 529.323090
+item 87 Frets Outline closed
+  L -27.804284 517.242433 27.804284 517.242433
+  L 27.804284 517.242433 27.841051 514.452433
+  L 27.841051 514.452433 -27.841051 514.452433
+  L -27.841051 514.452433 -27.804284 517.242433
+item 88 Strings Outline closed
+  L 18.347513 957.683154 18.652487 957.687173
+  L 18.652487 957.687173 27.152487 312.687173
+  L 27.152487 312.687173 26.847513 312.683154
+  L 26.847513 312.683154 18.347513 957.683154
+item 89 Strings Outline closed
+  L -19.172942 957.694032 -17.827058 957.676295
+  L -17.827058 957.676295 -26.327058 312.676295
+  L -26.327058 312.676295 -27.672942 312.694032
+  L -27.672942 312.694032 -19.172942 957.694032
+item 90 Fretboard Outline closed
+  L -22.000000 957.685163 22.000000 957.685163
+  L 22.000000 957.685163 27.888559 510.847433
+  L 27.888559 510.847433 -27.888559 510.847433
+  L -27.888559 510.847433 -22.000000 957.685163
+item 91 FretSlots Outline closed
+  L -22.473576 921.749095 22.473576 921.749095
+  L 22.473576 921.749095 22.480561 921.219095
+  L 22.480561 921.219095 -22.480561 921.219095
+  L -22.480561 921.219095 -22.473576 921.749095
+item 92 FretSlots Outline closed
+  L -22.923869 887.579837 22.923869 887.579837
+  L 22.923869 887.579837 22.930853 887.049837
+  L 22.930853 887.049837 -22.930853 887.049837
+  L -22.930853 887.049837 -22.923869 887.579837
+item 93 FretSlots Outline closed
+  L -23.348888 855.328351 23.348888 855.328351
+  L 23.348888 855.328351 23.355873 854.798351
+  L 23.355873 854.798351 -23.355873 854.798351
+  L -23.355873 854.798351 -23.348888 855.328351
+item 94 FretSlots Outline closed
+  L -23.750053 824.887003 23.750053 824.887003
+  L 23.750053 824.887003 23.757038 824.357003
+  L 23.757038 824.357003 -23.757038 824.357003
+  L -23.757038 824.357003 -23.750053 824.887003
+item 95 FretSlots Outline closed
+  L -24.128703 796.154196 24.128703 796.154196
+  L 24.128703 796.154196 24.135687 795.624196
+  L 24.135687 795.624196 -24.135687 795.624196
+  L -24.135687 795.624196 -24.128703 796.154196
+item 96 FretSlots Outline closed
+  L -24.486100 769.034037 24.486100 769.034037
+  L 24.486100 769.034037 24.493085 768.504037
+  L 24.493085 768.504037 -24.493085 768.504037
+  L -24.493085 768.504037 -24.486100 769.034037
+item 97 FretSlots Outline closed
+  L -24.823438 743.436016 24.823438 743.436016
+  L 24.823438 743.436016 24.830423 742.906016
+  L 24.830423 742.906016 -24.830423 742.906016
+  L -24.830423 742.906016 -24.823438 743.436016
+item 98 FretSlots Outline closed
+  L -25.141843 719.274702 25.141843 719.274702
+  L 25.141843 719.274702 25.148828 718.744702
+  L 25.148828 718.744702 -25.148828 718.744702
+  L -25.148828 718.744702 -25.141843 719.274702
+item 99 FretSlots Outline closed
+  L -25.442378 696.469458 25.442378 696.469458
+  L 25.442378 696.469458 25.449362 695.939458
+  L 25.449362 695.939458 -25.449362 695.939458
+  L -25.449362 695.939458 -25.442378 696.469458
+item 100 FretSlots Outline closed
+  L -25.726044 674.944174 25.726044 674.944174
+  L 25.726044 674.944174 25.733029 674.414174
+  L 25.733029 674.414174 -25.733029 674.414174
+  L -25.733029 674.414174 -25.726044 674.944174
+item 101 FretSlots Outline closed
+  L -25.993790 654.627011 25.993790 654.627011
+  L 25.993790 654.627011 26.000774 654.097011
+  L 26.000774 654.097011 -26.000774 654.097011
+  L -26.000774 654.097011 -25.993790 654.627011
+item 102 FretSlots Outline closed
+  L -26.246508 635.450163 26.246508 635.450163
+  L 26.246508 635.450163 26.253492 634.920163
+  L 26.253492 634.920163 -26.253492 634.920163
+  L -26.253492 634.920163 -26.246508 635.450163
+item 103 FretSlots Outline closed
+  L -26.485042 617.349629 26.485042 617.349629
+  L 26.485042 617.349629 26.492026 616.819629
+  L 26.492026 616.819629 -26.492026 616.819629
+  L -26.492026 616.819629 -26.485042 617.349629
+item 104 FretSlots Outline closed
+  L -26.710188 600.265000 26.710188 600.265000
+  L 26.710188 600.265000 26.717173 599.735000
+  L 26.717173 599.735000 -26.717173 599.735000
+  L -26.717173 599.735000 -26.710188 600.265000
+item 105 FretSlots Outline closed
+  L -26.922698 584.139257 26.922698 584.139257
+  L 26.922698 584.139257 26.929682 583.609257
+  L 26.929682 583.609257 -26.929682 583.609257
+  L -26.929682 583.609257 -26.922698 584.139257
+item 106 FretSlots Outline closed
+  L -27.123281 568.918583 27.123281 568.918583
+  L 27.123281 568.918583 27.130265 568.388583
+  L 27.130265 568.388583 -27.130265 568.388583
+  L -27.130265 568.388583 -27.123281 568.918583
+item 107 FretSlots Outline closed
+  L -27.312605 554.552180 27.312605 554.552180
+  L 27.312605 554.552180 27.319590 554.022180
+  L 27.319590 554.022180 -27.319590 554.022180
+  L -27.319590 554.022180 -27.312605 554.552180
+item 108 FretSlots Outline closed
+  L -27.491304 540.992100 27.491304 540.992100
+  L 27.491304 540.992100 27.498288 540.462100
+  L 27.498288 540.462100 -27.498288 540.462100
+  L -27.498288 540.462100 -27.491304 540.992100
+item 109 FretSlots Outline closed
+  L -27.659973 528.193090 27.659973 528.193090
+  L 27.659973 528.193090 27.666958 527.663090
+  L 27.666958 527.663090 -27.666958 527.663090
+  L -27.666958 527.663090 -27.659973 528.193090
+item 110 FretSlots Outline closed
+  L -27.819176 516.112433 27.819176 516.112433
+  L 27.819176 516.112433 27.826160 515.582433
+  L 27.826160 515.582433 -27.826160 515.582433
+  L -27.826160 515.582433 -27.819176 516.112433
+item 111 FaceDots Outline
+  C 0.000000 871.189094 3.000000
+item 112 FaceDots Outline
+  C 0.000000 810.255599 3.000000
+item 113 FaceDots Outline
+  C 15.123641 644.773587 3.000000
+item 114 FaceDots Outline
+  C -15.123641 644.773587 3.000000
+item 115 FretboardSide Outline closed
+  L 352.636894 957.562594 359.634495 957.745832
+  L 359.634495 957.745832 370.331686 511.035045
+  L 370.331686 511.035045 364.333742 510.877983
+  L 364.333742 510.877983 352.636894 957.562594
+item 116 FretSlots Outline open
+  L 360.501140 921.555048 358.582814 921.504815
+item 117 FretSlots Outline open
+  L 361.319144 887.395497 359.477261 887.347266
+item 118 FretSlots Outline open
+  L 362.091237 855.153174 360.321506 855.106832
+item 119 FretSlots Outline open
+  L 362.819996 824.720474 361.118368 824.675915
+item 120 FretSlots Outline open
+  L 363.507853 795.995830 361.870505 795.952954
+item 121 FretSlots Outline open
+  L 364.157103 768.883376 362.580428 768.842089
+item 122 FretSlots Outline open
+  L 364.769914 743.292627 363.250506 743.252840
+item 123 FretSlots Outline open
+  L 365.348330 719.138177 363.882976 719.099805
+item 124 FretSlots Outline open
+  L 365.894282 696.339412 364.479948 696.302376
+item 125 FretSlots Outline open
+  L 366.409592 674.820243 365.043414 674.784468
+item 126 FretSlots Outline open
+  L 366.895981 654.508852 365.575255 654.474268
+item 127 FretSlots Outline open
+  L 367.355070 635.337452 366.077246 635.303991
+item 128 FretSlots Outline open
+  L 367.788392 617.242060 366.551063 617.209660
+item 129 FretSlots Outline open
+  L 368.197394 600.162284 366.998287 600.130885
+item 130 FretSlots Outline open
+  L 368.583441 584.041123 367.420409 584.010668
+item 131 FretSlots Outline open
+  L 368.947820 568.824773 367.818840 568.795209
+item 132 FretSlots Outline open
+  L 369.291749 554.462451 368.194909 554.433729
+item 133 FretSlots Outline open
+  L 369.616374 540.906224 368.549870 540.878296
+item 134 FretSlots Outline open
+  L 369.922779 528.110849 368.884909 528.083672
+item 135 FretSlots Outline open
+  L 370.211987 516.033624 369.201144 516.007154
+item 136 SideDots Outline
+  C 357.900069 871.174695 1.000000
+item 137 SideDots Outline
+  C 359.495122 810.262081 1.000000
+item 138 SideDots Outline
+  C 363.774582 646.836090 1.000000
+item 139 SideDots Outline
+  C 363.879290 642.837461 1.000000
+item 140 NeckSide Construction open
+  L 360.501140 921.555048 339.507159 921.052315
+item 141 NeckSide Construction open
+  L 365.894282 696.339412 342.900874 695.788798
+item 142 NeckSide Construction open
+  L 303.000000 600.000000 303.000000 655.000000
+item 143 NeckSide Outline closed
+  L 352.479832 963.560538 362.000000 600.000000
+  L 362.000000 600.000000 344.343983 600.000000
+  L 344.343983 600.000000 343.070455 684.532546
+  L 343.070455 684.532546 338.871659 963.234669
+  L 338.871659 963.234669 352.479832 963.560538
+item 144 Heel Outline closed
+  L 344.343983 600.000000 273.000000 600.000000
+  L 273.000000 600.000000 273.000000 640.000000
+  L 273.000000 640.000000 334.780361 670.890181
+  A 334.780361 670.890181 343.070455 684.532546 340.890956 676.516954
+  L 343.070455 684.532546 344.343983 600.000000
+item 145 HeelCap Outline closed
+  L 268.000000 600.000000 273.000000 600.000000
+  L 273.000000 600.000000 273.000000 640.000000
+  L 273.000000 640.000000 268.000000 640.000000
+  L 268.000000 640.000000 268.000000 600.000000
+item 146 Nut Outline closed
+  L 352.636894 957.562594 362.133639 957.811275
+  L 362.133639 957.811275 361.976577 963.809219
+  L 361.976577 963.809219 352.479832 963.560538
+  L 352.479832 963.560538 352.636894 957.562594
+item 147 NeckProfiles Outline closed
+  A 423.300488 931.423026 468.254624 931.423026 445.777556 932.055048
+  L 468.254624 931.423026 468.254624 925.136065
+  L 468.254624 925.136065 445.777556 911.055048
+  L 445.777556 911.055048 423.300488 925.136065
+  L 423.300488 925.136065 423.300488 931.423026
+item 148 NeckProfiles Outline open
+  L 423.300488 925.136065 468.254624 925.136065
+item 149 NeckProfiles Outline closed
+  A 420.331686 707.029226 471.223426 707.029226 445.777556 707.839412
+  L 471.223426 707.029226 471.223426 701.424592
+  L 471.223426 701.424592 445.777556 684.839412
+  L 445.777556 684.839412 420.331686 701.424592
+  L 420.331686 701.424592 420.331686 707.029226
+item 150 NeckProfiles Outline open
+  L 420.331686 701.424592 471.223426 701.424592
+item 151 NeckProfiles Outline closed
+  L 521.223426 655.000000 579.007929 655.000000
+  L 579.007929 655.000000 579.007929 647.000000
+  L 579.007929 647.000000 550.115677 600.000000
+  L 550.115677 600.000000 521.223426 647.000000
+  L 521.223426 647.000000 521.223426 655.000000
+item 152 NeckProfiles Outline closed
+  L 629.007929 640.000000 689.007929 640.000000
+  L 689.007929 640.000000 689.007929 630.000000
+  L 689.007929 630.000000 659.007929 600.000000
+  L 659.007929 600.000000 629.007929 630.000000
+  L 629.007929 630.000000 629.007929 640.000000
+""",
+            ["SteepNeck"] = """
+item 0 TopPlate Construction open
+  L 0.000000 0.000000 0.000000 600.000000
+item 1 TopPlate Construction open
+  L -140.000000 495.000000 140.000000 495.000000
+item 2 TopPlate Construction open
+  L -120.000000 300.000000 120.000000 300.000000
+item 3 TopPlate Construction open
+  L -190.000000 130.000000 190.000000 130.000000
+item 4 TopPlate Construction open
+  L 28.000000 597.000000 28.000000 603.000000
+item 5 TopPlate Construction open
+  L -28.000000 597.000000 -28.000000 603.000000
+item 6 TopPlate Construction
+  C 40.000000 495.000000 100.000000
+item 7 TopPlate Construction
+  C -40.000000 495.000000 100.000000
+item 8 TopPlate Construction
+  C 10.000000 495.000000 130.000000
+item 9 TopPlate Construction
+  C -10.000000 495.000000 130.000000
+item 10 TopPlate Construction
+  C 180.000000 300.000000 60.000000
+item 11 TopPlate Construction
+  C -180.000000 300.000000 60.000000
+item 12 TopPlate Construction
+  C 70.000000 130.000000 120.000000
+item 13 TopPlate Construction
+  C -70.000000 130.000000 120.000000
+item 14 TopPlate Construction
+  C 30.000000 130.000000 160.000000
+item 15 TopPlate Construction
+  C -30.000000 130.000000 160.000000
+item 16 TopPlate Outline closed
+  L 0.000000 600.000000 28.000000 600.000000
+  A 28.000000 600.000000 111.005917 565.414201 72.961538 591.007692
+  A 111.005917 565.414201 140.000000 495.000000 132.467810 533.074981
+  A 140.000000 495.000000 139.244858 481.008338 139.811077 487.993987
+  L 139.244858 481.008338 120.348527 306.457690
+  A 120.348527 306.457690 130.609397 265.932885 121.835504 285.272765
+  L 130.609397 265.932885 161.708275 220.845639
+  A 161.708275 220.845639 190.000000 130.000000 182.763419 177.574552
+  A 190.000000 130.000000 103.600000 14.800000 166.000000 58.000000
+  A 103.600000 14.800000 0.000000 0.000000 52.325902 3.718687
+  A 0.000000 0.000000 -103.600000 14.800000 -52.325902 3.718687
+  A -103.600000 14.800000 -190.000000 130.000000 -166.000000 58.000000
+  A -190.000000 130.000000 -161.708275 220.845639 -182.763419 177.574552
+  L -161.708275 220.845639 -130.609397 265.932885
+  A -130.609397 265.932885 -120.348527 306.457690 -121.835504 285.272765
+  L -120.348527 306.457690 -139.244858 481.008338
+  A -139.244858 481.008338 -140.000000 495.000000 -139.811077 487.993987
+  A -140.000000 495.000000 -111.005917 565.414201 -132.467810 533.074981
+  A -111.005917 565.414201 -28.000000 600.000000 -72.961538 591.007692
+  L -28.000000 600.000000 0.000000 600.000000
+item 17 Soundhole Outline
+  C 0.000000 380.000000 50.000000
+item 18 Bracing Construction open
+  L -430.000000 0.000000 -430.000000 600.000000
+item 19 Bracing Outline closed
+  L -430.000000 600.000000 -458.000000 600.000000
+  A -458.000000 600.000000 -541.005917 565.414201 -502.961538 591.007692
+  A -541.005917 565.414201 -570.000000 495.000000 -562.467810 533.074981
+  A -570.000000 495.000000 -569.244858 481.008338 -569.811077 487.993987
+  L -569.244858 481.008338 -550.348527 306.457690
+  A -550.348527 306.457690 -560.609397 265.932885 -551.835504 285.272765
+  L -560.609397 265.932885 -591.708275 220.845639
+  A -591.708275 220.845639 -620.000000 130.000000 -612.763419 177.574552
+  A -620.000000 130.000000 -533.600000 14.800000 -596.000000 58.000000
+  A -533.600000 14.800000 -430.000000 0.000000 -482.325902 3.718687
+  A -430.000000 0.000000 -326.400000 14.800000 -377.674098 3.718687
+  A -326.400000 14.800000 -240.000000 130.000000 -264.000000 58.000000
+  A -240.000000 130.000000 -268.291725 220.845639 -247.236581 177.574552
+  L -268.291725 220.845639 -299.390603 265.932885
+  A -299.390603 265.932885 -309.651473 306.457690 -308.164496 285.272765
+  L -309.651473 306.457690 -290.755142 481.008338
+  A -290.755142 481.008338 -290.000000 495.000000 -290.188923 487.993987
+  A -290.000000 495.000000 -318.994083 565.414201 -297.532190 533.074981
+  A -318.994083 565.414201 -402.000000 600.000000 -357.038462 591.007692
+  L -402.000000 600.000000 -430.000000 600.000000
+item 20 Bracing Outline
+  C -430.000000 380.000000 50.000000
+item 21 Headblock Outline closed
+  L -395.000000 580.000000 -395.000000 599.790231
+  A -395.000000 599.790231 -402.000000 600.000000 -398.498429 599.947546
+  L -402.000000 600.000000 -430.000000 600.000000
+  L -430.000000 600.000000 -458.000000 600.000000
+  A -458.000000 600.000000 -465.000000 599.790231 -461.501571 599.947546
+  L -465.000000 599.790231 -465.000000 580.000000
+  L -465.000000 580.000000 -395.000000 580.000000
+item 22 Tailblock Outline closed
+  L -475.000000 15.000000 -475.000000 2.746681
+  A -475.000000 2.746681 -430.000000 0.000000 -452.541874 0.687309
+  A -430.000000 0.000000 -385.000000 2.746681 -407.458126 0.687309
+  L -385.000000 2.746681 -385.000000 15.000000
+  L -385.000000 15.000000 -475.000000 15.000000
+item 23 Bracing Outline closed
+  L -293.958557 470.000000 -566.041443 470.000000
+  L -566.041443 470.000000 -563.876303 450.000000
+  L -563.876303 450.000000 -296.123697 450.000000
+  L -296.123697 450.000000 -293.958557 470.000000
+item 24 Bracing Outline closed
+  L -339.742470 570.000000 -520.257530 570.000000
+  A -520.257530 570.000000 -533.905325 558.372781 -527.325621 564.473020
+  A -533.905325 558.372781 -558.741197 510.000000 -550.063860 536.106913
+  L -558.741197 510.000000 -301.258803 510.000000
+  A -301.258803 510.000000 -326.094675 558.372781 -309.936140 536.106913
+  A -326.094675 558.372781 -339.742470 570.000000 -332.674379 564.473020
+item 25 Bracing Outline closed
+  L -246.458287 151.211846 -556.694202 411.530687
+  L -556.694202 411.530687 -555.450687 400.043996
+  L -555.450687 400.043996 -245.310462 139.805448
+  A -245.310462 139.805448 -246.458287 151.211846 -245.778884 145.519262
+item 26 Bracing Outline closed
+  L -423.777105 300.000000 -304.549313 400.043996
+  L -304.549313 400.043996 -303.305798 411.530687
+  L -303.305798 411.530687 -430.000000 305.221629
+  L -430.000000 305.221629 -423.777105 300.000000
+item 27 Bracing Outline closed
+  L -436.222895 300.000000 -613.541713 151.211846
+  A -613.541713 151.211846 -614.689538 139.805448 -614.221116 145.519262
+  L -614.689538 139.805448 -430.000000 294.778371
+  L -430.000000 294.778371 -436.222895 300.000000
+item 28 Bracing Outline closed
+  L -476.235684 266.425284 -552.886348 357.773988
+  L -552.886348 357.773988 -551.726157 347.056984
+  L -551.726157 347.056984 -480.831950 262.568558
+  L -480.831950 262.568558 -476.235684 266.425284
+item 29 Bracing Outline closed
+  L -522.198350 227.858027 -555.793851 267.895586
+  A -555.793851 267.895586 -558.139867 264.229530 -556.935190 266.042292
+  L -558.139867 264.229530 -559.227261 262.653022
+  L -559.227261 262.653022 -526.794617 224.001302
+  L -526.794617 224.001302 -522.198350 227.858027
+item 30 Bracing Outline closed
+  L -387.333339 269.420050 -300.372931 420.039894
+  L -300.372931 420.039894 -298.774046 434.809245
+  L -298.774046 434.809245 -392.000510 273.336271
+  L -392.000510 273.336271 -387.333339 269.420050
+item 31 Bracing Outline closed
+  L -349.031117 237.280669 -312.999236 299.689717
+  A -312.999236 299.689717 -312.634047 306.780575 -312.916615 303.240295
+  L -312.634047 306.780575 -311.895672 313.601146
+  L -311.895672 313.601146 -353.698288 241.196891
+  L -353.698288 241.196891 -349.031117 237.280669
+item 32 Bracing Outline closed
+  L -310.728895 205.141289 -288.117485 244.305398
+  L -288.117485 244.305398 -291.888872 249.773165
+  L -291.888872 249.773165 -315.396066 209.057510
+  L -315.396066 209.057510 -310.728895 205.141289
+item 33 Bracing Outline closed
+  L -492.680901 242.182850 -406.269729 4.770108
+  A -406.269729 4.770108 -399.018317 5.313648 -402.642673 5.023868
+  L -399.018317 5.313648 -486.974448 246.971132
+  L -486.974448 246.971132 -492.680901 242.182850
+item 34 Bracing Outline closed
+  L -553.964456 190.759841 -487.652503 8.569247
+  A -487.652503 8.569247 -479.777993 7.400839 -483.718425 7.963633
+  L -479.777993 7.400839 -548.258004 195.548123
+  L -548.258004 195.548123 -553.964456 190.759841
+item 35 Bracing Outline closed
+  L -404.045548 327.000000 -455.954452 327.000000
+  L -455.954452 327.000000 -448.803930 321.000000
+  L -448.803930 321.000000 -411.196070 321.000000
+  L -411.196070 321.000000 -404.045548 327.000000
+item 36 Bracing Outline closed
+  L -500.310305 364.218980 -450.784610 450.000000
+  L -450.784610 450.000000 -457.712813 450.000000
+  L -457.712813 450.000000 -504.977476 368.135202
+  L -504.977476 368.135202 -500.310305 364.218980
+item 37 Bracing Outline closed
+  L -409.215390 450.000000 -359.689695 364.218980
+  L -359.689695 364.218980 -355.022524 368.135202
+  L -355.022524 368.135202 -402.287187 450.000000
+  L -402.287187 450.000000 -409.215390 450.000000
+item 38 Sides Outline closed
+  L 240.000000 0.000000 360.000000 0.000000
+  L 360.000000 0.000000 360.000000 600.000000
+  L 360.000000 600.000000 265.000000 600.000000
+  L 265.000000 600.000000 240.000000 0.000000
+item 39 Frets Centerline open
+  L -22.477068 921.484095 22.477068 921.484095
+item 40 Frets Centerline open
+  L -22.927361 887.314837 22.927361 887.314837
+item 41 Frets Centerline open
+  L -23.352380 855.063351 23.352380 855.063351
+item 42 Frets Centerline open
+  L -23.753546 824.622003 23.753546 824.622003
+item 43 Frets Centerline open
+  L -24.132195 795.889196 24.132195 795.889196
+item 44 Frets Centerline open
+  L -24.489592 768.769037 24.489592 768.769037
+item 45 Frets Centerline open
+  L -24.826931 743.171016 24.826931 743.171016
+item 46 Frets Centerline open
+  L -25.145336 719.009702 25.145336 719.009702
+item 47 Frets Centerline open
+  L -25.445870 696.204458 25.445870 696.204458
+item 48 Frets Centerline open
+  L -25.729536 674.679174 25.729536 674.679174
+item 49 Frets Centerline open
+  L -25.997282 654.362011 25.997282 654.362011
+item 50 Frets Centerline open
+  L -26.250000 635.185163 26.250000 635.185163
+item 51 Frets Centerline open
+  L -26.488534 617.084629 26.488534 617.084629
+item 52 Frets Centerline open
+  L -26.713680 600.000000 26.713680 600.000000
+item 53 Frets Centerline open
+  L -26.926190 583.874257 26.926190 583.874257
+item 54 Frets Centerline open
+  L -27.126773 568.653583 27.126773 568.653583
+item 55 Frets Centerline open
+  L -27.316097 554.287180 27.316097 554.287180
+item 56 Frets Centerline open
+  L -27.494796 540.727100 27.494796 540.727100
+item 57 Frets Centerline open
+  L -27.663465 527.928090 27.663465 527.928090
+item 58 Frets Centerline open
+  L -27.822668 515.847433 27.822668 515.847433
+item 59 Frets Outline closed
+  L -22.458685 922.879095 22.458685 922.879095
+  L 22.458685 922.879095 22.495452 920.089095
+  L 22.495452 920.089095 -22.495452 920.089095
+  L -22.495452 920.089095 -22.458685 922.879095
+item 60 Frets Outline closed
+  L -22.908977 888.709837 22.908977 888.709837
+  L 22.908977 888.709837 22.945745 885.919837
+  L 22.945745 885.919837 -22.945745 885.919837
+  L -22.945745 885.919837 -22.908977 888.709837
+item 61 Frets Outline closed
+  L -23.333997 856.458351 23.333997 856.458351
+  L 23.333997 856.458351 23.370764 853.668351
+  L 23.370764 853.668351 -23.370764 853.668351
+  L -23.370764 853.668351 -23.333997 856.458351
+item 62 Frets Outline closed
+  L -23.735162 826.017003 23.735162 826.017003
+  L 23.735162 826.017003 23.771929 823.227003
+  L 23.771929 823.227003 -23.771929 823.227003
+  L -23.771929 823.227003 -23.735162 826.017003
+item 63 Frets Outline closed
+  L -24.113811 797.284196 24.113811 797.284196
+  L 24.113811 797.284196 24.150579 794.494196
+  L 24.150579 794.494196 -24.150579 794.494196
+  L -24.150579 794.494196 -24.113811 797.284196
+item 64 Frets Outline closed
+  L -24.471209 770.164037 24.471209 770.164037
+  L 24.471209 770.164037 24.507976 767.374037
+  L 24.507976 767.374037 -24.507976 767.374037
+  L -24.507976 767.374037 -24.471209 770.164037
+item 65 Frets Outline closed
+  L -24.808547 744.566016 24.808547 744.566016
+  L 24.808547 744.566016 24.845314 741.776016
+  L 24.845314 741.776016 -24.845314 741.776016
+  L -24.845314 741.776016 -24.808547 744.566016
+item 66 Frets Outline closed
+  L -25.126952 720.404702 25.126952 720.404702
+  L 25.126952 720.404702 25.163719 717.614702
+  L 25.163719 717.614702 -25.163719 717.614702
+  L -25.163719 717.614702 -25.126952 720.404702
+item 67 Frets Outline closed
+  L -25.427486 697.599458 25.427486 697.599458
+  L 25.427486 697.599458 25.464253 694.809458
+  L 25.464253 694.809458 -25.464253 694.809458
+  L -25.464253 694.809458 -25.427486 697.599458
+item 68 Frets Outline closed
+  L -25.711153 676.074174 25.711153 676.074174
+  L 25.711153 676.074174 25.747920 673.284174
+  L 25.747920 673.284174 -25.747920 673.284174
+  L -25.747920 673.284174 -25.711153 676.074174
+item 69 Frets Outline closed
+  L -25.978898 655.757011 25.978898 655.757011
+  L 25.978898 655.757011 26.015666 652.967011
+  L 26.015666 652.967011 -26.015666 652.967011
+  L -26.015666 652.967011 -25.978898 655.757011
+item 70 Frets Outline closed
+  L -26.231616 636.580163 26.231616 636.580163
+  L 26.231616 636.580163 26.268384 633.790163
+  L 26.268384 633.790163 -26.268384 633.790163
+  L -26.268384 633.790163 -26.231616 636.580163
+item 71 Frets Outline closed
+  L -26.470150 618.479629 26.470150 618.479629
+  L 26.470150 618.479629 26.506918 615.689629
+  L 26.506918 615.689629 -26.506918 615.689629
+  L -26.506918 615.689629 -26.470150 618.479629
+item 72 Frets Outline closed
+  L -26.695297 601.395000 26.695297 601.395000
+  L 26.695297 601.395000 26.732064 598.605000
+  L 26.732064 598.605000 -26.732064 598.605000
+  L -26.732064 598.605000 -26.695297 601.395000
+item 73 Frets Outline closed
+  L -26.907807 585.269257 26.907807 585.269257
+  L 26.907807 585.269257 26.944574 582.479257
+  L 26.944574 582.479257 -26.944574 582.479257
+  L -26.944574 582.479257 -26.907807 585.269257
+item 74 Frets Outline closed
+  L -27.108389 570.048583 27.108389 570.048583
+  L 27.108389 570.048583 27.145156 567.258583
+  L 27.145156 567.258583 -27.145156 567.258583
+  L -27.145156 567.258583 -27.108389 570.048583
+item 75 Frets Outline closed
+  L -27.297714 555.682180 27.297714 555.682180
+  L 27.297714 555.682180 27.334481 552.892180
+  L 27.334481 552.892180 -27.334481 552.892180
+  L -27.334481 552.892180 -27.297714 555.682180
+item 76 Frets Outline closed
+  L -27.476412 542.122100 27.476412 542.122100
+  L 27.476412 542.122100 27.513180 539.332100
+  L 27.513180 539.332100 -27.513180 539.332100
+  L -27.513180 539.332100 -27.476412 542.122100
+item 77 Frets Outline closed
+  L -27.645082 529.323090 27.645082 529.323090
+  L 27.645082 529.323090 27.681849 526.533090
+  L 27.681849 526.533090 -27.681849 526.533090
+  L -27.681849 526.533090 -27.645082 529.323090
+item 78 Frets Outline closed
+  L -27.804284 517.242433 27.804284 517.242433
+  L 27.804284 517.242433 27.841051 514.452433
+  L 27.841051 514.452433 -27.841051 514.452433
+  L -27.841051 514.452433 -27.804284 517.242433
+item 79 Strings Outline closed
+  L 18.347513 957.683154 18.652487 957.687173
+  L 18.652487 957.687173 27.152487 312.687173
+  L 27.152487 312.687173 26.847513 312.683154
+  L 26.847513 312.683154 18.347513 957.683154
+item 80 Strings Outline closed
+  L -19.172942 957.694032 -17.827058 957.676295
+  L -17.827058 957.676295 -26.327058 312.676295
+  L -26.327058 312.676295 -27.672942 312.694032
+  L -27.672942 312.694032 -19.172942 957.694032
+item 81 Fretboard Outline closed
+  L -22.000000 957.685163 22.000000 957.685163
+  L 22.000000 957.685163 27.888559 510.847433
+  L 27.888559 510.847433 -27.888559 510.847433
+  L -27.888559 510.847433 -22.000000 957.685163
+item 82 FretSlots Outline closed
+  L -22.473576 921.749095 22.473576 921.749095
+  L 22.473576 921.749095 22.480561 921.219095
+  L 22.480561 921.219095 -22.480561 921.219095
+  L -22.480561 921.219095 -22.473576 921.749095
+item 83 FretSlots Outline closed
+  L -22.923869 887.579837 22.923869 887.579837
+  L 22.923869 887.579837 22.930853 887.049837
+  L 22.930853 887.049837 -22.930853 887.049837
+  L -22.930853 887.049837 -22.923869 887.579837
+item 84 FretSlots Outline closed
+  L -23.348888 855.328351 23.348888 855.328351
+  L 23.348888 855.328351 23.355873 854.798351
+  L 23.355873 854.798351 -23.355873 854.798351
+  L -23.355873 854.798351 -23.348888 855.328351
+item 85 FretSlots Outline closed
+  L -23.750053 824.887003 23.750053 824.887003
+  L 23.750053 824.887003 23.757038 824.357003
+  L 23.757038 824.357003 -23.757038 824.357003
+  L -23.757038 824.357003 -23.750053 824.887003
+item 86 FretSlots Outline closed
+  L -24.128703 796.154196 24.128703 796.154196
+  L 24.128703 796.154196 24.135687 795.624196
+  L 24.135687 795.624196 -24.135687 795.624196
+  L -24.135687 795.624196 -24.128703 796.154196
+item 87 FretSlots Outline closed
+  L -24.486100 769.034037 24.486100 769.034037
+  L 24.486100 769.034037 24.493085 768.504037
+  L 24.493085 768.504037 -24.493085 768.504037
+  L -24.493085 768.504037 -24.486100 769.034037
+item 88 FretSlots Outline closed
+  L -24.823438 743.436016 24.823438 743.436016
+  L 24.823438 743.436016 24.830423 742.906016
+  L 24.830423 742.906016 -24.830423 742.906016
+  L -24.830423 742.906016 -24.823438 743.436016
+item 89 FretSlots Outline closed
+  L -25.141843 719.274702 25.141843 719.274702
+  L 25.141843 719.274702 25.148828 718.744702
+  L 25.148828 718.744702 -25.148828 718.744702
+  L -25.148828 718.744702 -25.141843 719.274702
+item 90 FretSlots Outline closed
+  L -25.442378 696.469458 25.442378 696.469458
+  L 25.442378 696.469458 25.449362 695.939458
+  L 25.449362 695.939458 -25.449362 695.939458
+  L -25.449362 695.939458 -25.442378 696.469458
+item 91 FretSlots Outline closed
+  L -25.726044 674.944174 25.726044 674.944174
+  L 25.726044 674.944174 25.733029 674.414174
+  L 25.733029 674.414174 -25.733029 674.414174
+  L -25.733029 674.414174 -25.726044 674.944174
+item 92 FretSlots Outline closed
+  L -25.993790 654.627011 25.993790 654.627011
+  L 25.993790 654.627011 26.000774 654.097011
+  L 26.000774 654.097011 -26.000774 654.097011
+  L -26.000774 654.097011 -25.993790 654.627011
+item 93 FretSlots Outline closed
+  L -26.246508 635.450163 26.246508 635.450163
+  L 26.246508 635.450163 26.253492 634.920163
+  L 26.253492 634.920163 -26.253492 634.920163
+  L -26.253492 634.920163 -26.246508 635.450163
+item 94 FretSlots Outline closed
+  L -26.485042 617.349629 26.485042 617.349629
+  L 26.485042 617.349629 26.492026 616.819629
+  L 26.492026 616.819629 -26.492026 616.819629
+  L -26.492026 616.819629 -26.485042 617.349629
+item 95 FretSlots Outline closed
+  L -26.710188 600.265000 26.710188 600.265000
+  L 26.710188 600.265000 26.717173 599.735000
+  L 26.717173 599.735000 -26.717173 599.735000
+  L -26.717173 599.735000 -26.710188 600.265000
+item 96 FretSlots Outline closed
+  L -26.922698 584.139257 26.922698 584.139257
+  L 26.922698 584.139257 26.929682 583.609257
+  L 26.929682 583.609257 -26.929682 583.609257
+  L -26.929682 583.609257 -26.922698 584.139257
+item 97 FretSlots Outline closed
+  L -27.123281 568.918583 27.123281 568.918583
+  L 27.123281 568.918583 27.130265 568.388583
+  L 27.130265 568.388583 -27.130265 568.388583
+  L -27.130265 568.388583 -27.123281 568.918583
+item 98 FretSlots Outline closed
+  L -27.312605 554.552180 27.312605 554.552180
+  L 27.312605 554.552180 27.319590 554.022180
+  L 27.319590 554.022180 -27.319590 554.022180
+  L -27.319590 554.022180 -27.312605 554.552180
+item 99 FretSlots Outline closed
+  L -27.491304 540.992100 27.491304 540.992100
+  L 27.491304 540.992100 27.498288 540.462100
+  L 27.498288 540.462100 -27.498288 540.462100
+  L -27.498288 540.462100 -27.491304 540.992100
+item 100 FretSlots Outline closed
+  L -27.659973 528.193090 27.659973 528.193090
+  L 27.659973 528.193090 27.666958 527.663090
+  L 27.666958 527.663090 -27.666958 527.663090
+  L -27.666958 527.663090 -27.659973 528.193090
+item 101 FretSlots Outline closed
+  L -27.819176 516.112433 27.819176 516.112433
+  L 27.819176 516.112433 27.826160 515.582433
+  L 27.826160 515.582433 -27.826160 515.582433
+  L -27.826160 515.582433 -27.819176 516.112433
+item 102 FaceDots Outline
+  C 0.000000 871.189094 3.000000
+item 103 FaceDots Outline
+  C 0.000000 810.255599 3.000000
+item 104 FaceDots Outline
+  C 15.123641 644.773587 3.000000
+item 105 FaceDots Outline
+  C -15.123641 644.773587 3.000000
+item 106 FretboardSide Outline closed
+  L 324.611720 955.725727 331.573373 956.457426
+  L 331.573373 956.457426 377.286112 511.962991
+  L 377.286112 511.962991 371.318981 511.335820
+  L 371.318981 511.335820 324.611720 955.725727
+item 107 FretSlots Outline open
+  L 335.276843 920.446202 333.368371 920.245614
+item 108 FretSlots Outline open
+  L 338.772452 886.456133 336.940031 886.263538
+item 109 FretSlots Outline open
+  L 342.071869 854.373781 340.311229 854.188730
+item 110 FretSlots Outline open
+  L 345.186103 824.092072 343.493217 823.914142
+item 111 FretSlots Outline open
+  L 348.125549 795.509945 346.496613 795.338736
+item 112 FretSlots Outline open
+  L 350.900017 768.532009 349.331441 768.367145
+item 113 FretSlots Outline open
+  L 353.518765 743.068229 352.007163 742.909353
+item 114 FretSlots Outline open
+  L 355.990535 719.033620 354.532708 718.880397
+item 115 FretSlots Outline open
+  L 358.323574 696.347971 356.916505 696.200082
+item 116 FretSlots Outline open
+  L 360.525671 674.935569 359.166510 674.792716
+item 117 FretSlots Outline open
+  L 362.604173 654.724954 361.290232 654.586853
+item 118 FretSlots Outline open
+  L 364.566017 635.648672 363.294758 635.515058
+item 119 FretSlots Outline open
+  L 366.417752 617.643061 365.186779 617.513680
+item 120 FretSlots Outline open
+  L 368.165557 600.648026 366.972609 600.522642
+item 121 FretSlots Outline open
+  L 369.815265 584.606850 368.658209 584.485238
+item 122 FretSlots Outline open
+  L 371.372383 569.465995 370.249202 569.347944
+item 123 FretSlots Outline open
+  L 372.842106 555.174932 371.750900 555.060241
+item 124 FretSlots Outline open
+  L 374.229339 541.685964 373.168315 541.574446
+item 125 FretSlots Outline open
+  L 375.538714 528.954074 374.506175 528.845550
+item 126 FretSlots Outline open
+  L 376.774598 516.936770 375.768948 516.831072
+item 127 SideDots Outline
+  C 336.636586 870.017077 1.000000
+item 128 SideDots Outline
+  C 343.005871 809.417382 1.000000
+item 129 SideDots Outline
+  C 360.094394 646.830942 1.000000
+item 130 SideDots Outline
+  C 360.512508 642.852855 1.000000
+item 131 NeckSide Construction open
+  L 335.276843 920.446202 314.387023 918.297849
+item 132 NeckSide Construction open
+  L 358.323574 696.347971 335.444248 693.995013
+item 133 NeckSide Construction open
+  L 303.000000 600.000000 303.000000 655.000000
+item 134 NeckSide Outline closed
+  L 323.984549 961.692858 362.000000 600.000000
+  L 362.000000 600.000000 344.268363 600.000000
+  L 344.268363 600.000000 336.526338 682.468525
+  L 336.526338 682.468525 310.443893 960.300309
+  L 310.443893 960.300309 323.984549 961.692858
+item 135 Heel Outline closed
+  L 344.268363 600.000000 273.000000 600.000000
+  L 273.000000 600.000000 273.000000 640.000000
+  L 273.000000 640.000000 328.300207 667.650103
+  A 328.300207 667.650103 336.526338 682.468525 334.706738 673.786146
+  L 336.526338 682.468525 344.268363 600.000000
+item 136 HeelCap Outline closed
+  L 268.000000 600.000000 273.000000 600.000000
+  L 273.000000 600.000000 273.000000 640.000000
+  L 273.000000 640.000000 268.000000 640.000000
+  L 268.000000 640.000000 268.000000 600.000000
+item 137 Nut Outline closed
+  L 324.611720 955.725727 334.059678 956.718747
+  L 334.059678 956.718747 333.432507 962.685878
+  L 333.432507 962.685878 323.984549 961.692858
+  L 323.984549 961.692858 324.611720 955.725727
+item 138 NeckProfiles Outline closed
+  A 430.254914 930.314180 475.209050 930.314180 452.731982 930.946202
+  L 475.209050 930.314180 475.209050 924.027218
+  L 475.209050 924.027218 452.731982 909.946202
+  L 452.731982 909.946202 430.254914 924.027218
+  L 430.254914 924.027218 430.254914 930.314180
+item 139 NeckProfiles Outline open
+  L 430.254914 924.027218 475.209050 924.027218
+item 140 NeckProfiles Outline closed
+  A 427.286112 707.037785 478.177852 707.037785 452.731982 707.847971
+  L 478.177852 707.037785 478.177852 701.433152
+  L 478.177852 701.433152 452.731982 684.847971
+  L 452.731982 684.847971 427.286112 701.433152
+  L 427.286112 701.433152 427.286112 707.037785
+item 141 NeckProfiles Outline open
+  L 427.286112 701.433152 478.177852 701.433152
+item 142 NeckProfiles Outline closed
+  L 528.177852 655.000000 585.962355 655.000000
+  L 585.962355 655.000000 585.962355 647.000000
+  L 585.962355 647.000000 557.070104 600.000000
+  L 557.070104 600.000000 528.177852 647.000000
+  L 528.177852 647.000000 528.177852 655.000000
+item 143 NeckProfiles Outline closed
+  L 635.962355 640.000000 695.962355 640.000000
+  L 695.962355 640.000000 695.962355 630.000000
+  L 695.962355 630.000000 665.962355 600.000000
+  L 665.962355 600.000000 635.962355 630.000000
+  L 635.962355 630.000000 635.962355 640.000000
+""",
+            ["Unfinished"] = """
+item 0 Soundhole Outline
+  C 0.000000 380.000000 50.000000
+item 1 NeckProfiles Outline closed
+  L 100.000000 40.000000 160.000000 40.000000
+  L 160.000000 40.000000 160.000000 30.000000
+  L 160.000000 30.000000 130.000000 0.000000
+  L 130.000000 0.000000 100.000000 30.000000
+  L 100.000000 30.000000 100.000000 40.000000
+""",
+            ["Failing"] = """
+item 0 Soundhole Outline
+  C 0.000000 380.000000 50.000000
+item 1 Sides Outline closed
+  L 50.000000 0.000000 170.000000 0.000000
+  L 170.000000 0.000000 170.000000 600.000000
+  L 170.000000 600.000000 75.000000 600.000000
+  L 75.000000 600.000000 50.000000 0.000000
+item 2 Frets Centerline open
+  L -22.477068 921.484095 22.477068 921.484095
+item 3 Frets Centerline open
+  L -22.927361 887.314837 22.927361 887.314837
+item 4 Frets Centerline open
+  L -23.352380 855.063351 23.352380 855.063351
+item 5 Frets Centerline open
+  L -23.753546 824.622003 23.753546 824.622003
+item 6 Frets Centerline open
+  L -24.132195 795.889196 24.132195 795.889196
+item 7 Frets Centerline open
+  L -24.489592 768.769037 24.489592 768.769037
+item 8 Frets Centerline open
+  L -24.826931 743.171016 24.826931 743.171016
+item 9 Frets Centerline open
+  L -25.145336 719.009702 25.145336 719.009702
+item 10 Frets Centerline open
+  L -25.445870 696.204458 25.445870 696.204458
+item 11 Frets Centerline open
+  L -25.729536 674.679174 25.729536 674.679174
+item 12 Frets Centerline open
+  L -25.997282 654.362011 25.997282 654.362011
+item 13 Frets Centerline open
+  L -26.250000 635.185163 26.250000 635.185163
+item 14 Frets Centerline open
+  L -26.488534 617.084629 26.488534 617.084629
+item 15 Frets Centerline open
+  L -26.713680 600.000000 26.713680 600.000000
+item 16 Frets Centerline open
+  L -26.926190 583.874257 26.926190 583.874257
+item 17 Frets Centerline open
+  L -27.126773 568.653583 27.126773 568.653583
+item 18 Frets Centerline open
+  L -27.316097 554.287180 27.316097 554.287180
+item 19 Frets Centerline open
+  L -27.494796 540.727100 27.494796 540.727100
+item 20 Frets Centerline open
+  L -27.663465 527.928090 27.663465 527.928090
+item 21 Frets Centerline open
+  L -27.822668 515.847433 27.822668 515.847433
+item 22 Frets Outline closed
+  L -22.458685 922.879095 22.458685 922.879095
+  L 22.458685 922.879095 22.495452 920.089095
+  L 22.495452 920.089095 -22.495452 920.089095
+  L -22.495452 920.089095 -22.458685 922.879095
+item 23 Frets Outline closed
+  L -22.908977 888.709837 22.908977 888.709837
+  L 22.908977 888.709837 22.945745 885.919837
+  L 22.945745 885.919837 -22.945745 885.919837
+  L -22.945745 885.919837 -22.908977 888.709837
+item 24 Frets Outline closed
+  L -23.333997 856.458351 23.333997 856.458351
+  L 23.333997 856.458351 23.370764 853.668351
+  L 23.370764 853.668351 -23.370764 853.668351
+  L -23.370764 853.668351 -23.333997 856.458351
+item 25 Frets Outline closed
+  L -23.735162 826.017003 23.735162 826.017003
+  L 23.735162 826.017003 23.771929 823.227003
+  L 23.771929 823.227003 -23.771929 823.227003
+  L -23.771929 823.227003 -23.735162 826.017003
+item 26 Frets Outline closed
+  L -24.113811 797.284196 24.113811 797.284196
+  L 24.113811 797.284196 24.150579 794.494196
+  L 24.150579 794.494196 -24.150579 794.494196
+  L -24.150579 794.494196 -24.113811 797.284196
+item 27 Frets Outline closed
+  L -24.471209 770.164037 24.471209 770.164037
+  L 24.471209 770.164037 24.507976 767.374037
+  L 24.507976 767.374037 -24.507976 767.374037
+  L -24.507976 767.374037 -24.471209 770.164037
+item 28 Frets Outline closed
+  L -24.808547 744.566016 24.808547 744.566016
+  L 24.808547 744.566016 24.845314 741.776016
+  L 24.845314 741.776016 -24.845314 741.776016
+  L -24.845314 741.776016 -24.808547 744.566016
+item 29 Frets Outline closed
+  L -25.126952 720.404702 25.126952 720.404702
+  L 25.126952 720.404702 25.163719 717.614702
+  L 25.163719 717.614702 -25.163719 717.614702
+  L -25.163719 717.614702 -25.126952 720.404702
+item 30 Frets Outline closed
+  L -25.427486 697.599458 25.427486 697.599458
+  L 25.427486 697.599458 25.464253 694.809458
+  L 25.464253 694.809458 -25.464253 694.809458
+  L -25.464253 694.809458 -25.427486 697.599458
+item 31 Frets Outline closed
+  L -25.711153 676.074174 25.711153 676.074174
+  L 25.711153 676.074174 25.747920 673.284174
+  L 25.747920 673.284174 -25.747920 673.284174
+  L -25.747920 673.284174 -25.711153 676.074174
+item 32 Frets Outline closed
+  L -25.978898 655.757011 25.978898 655.757011
+  L 25.978898 655.757011 26.015666 652.967011
+  L 26.015666 652.967011 -26.015666 652.967011
+  L -26.015666 652.967011 -25.978898 655.757011
+item 33 Frets Outline closed
+  L -26.231616 636.580163 26.231616 636.580163
+  L 26.231616 636.580163 26.268384 633.790163
+  L 26.268384 633.790163 -26.268384 633.790163
+  L -26.268384 633.790163 -26.231616 636.580163
+item 34 Frets Outline closed
+  L -26.470150 618.479629 26.470150 618.479629
+  L 26.470150 618.479629 26.506918 615.689629
+  L 26.506918 615.689629 -26.506918 615.689629
+  L -26.506918 615.689629 -26.470150 618.479629
+item 35 Frets Outline closed
+  L -26.695297 601.395000 26.695297 601.395000
+  L 26.695297 601.395000 26.732064 598.605000
+  L 26.732064 598.605000 -26.732064 598.605000
+  L -26.732064 598.605000 -26.695297 601.395000
+item 36 Frets Outline closed
+  L -26.907807 585.269257 26.907807 585.269257
+  L 26.907807 585.269257 26.944574 582.479257
+  L 26.944574 582.479257 -26.944574 582.479257
+  L -26.944574 582.479257 -26.907807 585.269257
+item 37 Frets Outline closed
+  L -27.108389 570.048583 27.108389 570.048583
+  L 27.108389 570.048583 27.145156 567.258583
+  L 27.145156 567.258583 -27.145156 567.258583
+  L -27.145156 567.258583 -27.108389 570.048583
+item 38 Frets Outline closed
+  L -27.297714 555.682180 27.297714 555.682180
+  L 27.297714 555.682180 27.334481 552.892180
+  L 27.334481 552.892180 -27.334481 552.892180
+  L -27.334481 552.892180 -27.297714 555.682180
+item 39 Frets Outline closed
+  L -27.476412 542.122100 27.476412 542.122100
+  L 27.476412 542.122100 27.513180 539.332100
+  L 27.513180 539.332100 -27.513180 539.332100
+  L -27.513180 539.332100 -27.476412 542.122100
+item 40 Frets Outline closed
+  L -27.645082 529.323090 27.645082 529.323090
+  L 27.645082 529.323090 27.681849 526.533090
+  L 27.681849 526.533090 -27.681849 526.533090
+  L -27.681849 526.533090 -27.645082 529.323090
+item 41 Frets Outline closed
+  L -27.804284 517.242433 27.804284 517.242433
+  L 27.804284 517.242433 27.841051 514.452433
+  L 27.841051 514.452433 -27.841051 514.452433
+  L -27.841051 514.452433 -27.804284 517.242433
+item 42 Strings Outline closed
+  L 18.347513 957.683154 18.652487 957.687173
+  L 18.652487 957.687173 27.152487 312.687173
+  L 27.152487 312.687173 26.847513 312.683154
+  L 26.847513 312.683154 18.347513 957.683154
+item 43 Strings Outline closed
+  L -19.172942 957.694032 -17.827058 957.676295
+  L -17.827058 957.676295 -26.327058 312.676295
+  L -26.327058 312.676295 -27.672942 312.694032
+  L -27.672942 312.694032 -19.172942 957.694032
+item 44 Fretboard Outline closed
+  L -22.000000 957.685163 22.000000 957.685163
+  L 22.000000 957.685163 27.888559 510.847433
+  L 27.888559 510.847433 -27.888559 510.847433
+  L -27.888559 510.847433 -22.000000 957.685163
+item 45 FretSlots Outline closed
+  L -22.473576 921.749095 22.473576 921.749095
+  L 22.473576 921.749095 22.480561 921.219095
+  L 22.480561 921.219095 -22.480561 921.219095
+  L -22.480561 921.219095 -22.473576 921.749095
+item 46 FretSlots Outline closed
+  L -22.923869 887.579837 22.923869 887.579837
+  L 22.923869 887.579837 22.930853 887.049837
+  L 22.930853 887.049837 -22.930853 887.049837
+  L -22.930853 887.049837 -22.923869 887.579837
+item 47 FretSlots Outline closed
+  L -23.348888 855.328351 23.348888 855.328351
+  L 23.348888 855.328351 23.355873 854.798351
+  L 23.355873 854.798351 -23.355873 854.798351
+  L -23.355873 854.798351 -23.348888 855.328351
+item 48 FretSlots Outline closed
+  L -23.750053 824.887003 23.750053 824.887003
+  L 23.750053 824.887003 23.757038 824.357003
+  L 23.757038 824.357003 -23.757038 824.357003
+  L -23.757038 824.357003 -23.750053 824.887003
+item 49 FretSlots Outline closed
+  L -24.128703 796.154196 24.128703 796.154196
+  L 24.128703 796.154196 24.135687 795.624196
+  L 24.135687 795.624196 -24.135687 795.624196
+  L -24.135687 795.624196 -24.128703 796.154196
+item 50 FretSlots Outline closed
+  L -24.486100 769.034037 24.486100 769.034037
+  L 24.486100 769.034037 24.493085 768.504037
+  L 24.493085 768.504037 -24.493085 768.504037
+  L -24.493085 768.504037 -24.486100 769.034037
+item 51 FretSlots Outline closed
+  L -24.823438 743.436016 24.823438 743.436016
+  L 24.823438 743.436016 24.830423 742.906016
+  L 24.830423 742.906016 -24.830423 742.906016
+  L -24.830423 742.906016 -24.823438 743.436016
+item 52 FretSlots Outline closed
+  L -25.141843 719.274702 25.141843 719.274702
+  L 25.141843 719.274702 25.148828 718.744702
+  L 25.148828 718.744702 -25.148828 718.744702
+  L -25.148828 718.744702 -25.141843 719.274702
+item 53 FretSlots Outline closed
+  L -25.442378 696.469458 25.442378 696.469458
+  L 25.442378 696.469458 25.449362 695.939458
+  L 25.449362 695.939458 -25.449362 695.939458
+  L -25.449362 695.939458 -25.442378 696.469458
+item 54 FretSlots Outline closed
+  L -25.726044 674.944174 25.726044 674.944174
+  L 25.726044 674.944174 25.733029 674.414174
+  L 25.733029 674.414174 -25.733029 674.414174
+  L -25.733029 674.414174 -25.726044 674.944174
+item 55 FretSlots Outline closed
+  L -25.993790 654.627011 25.993790 654.627011
+  L 25.993790 654.627011 26.000774 654.097011
+  L 26.000774 654.097011 -26.000774 654.097011
+  L -26.000774 654.097011 -25.993790 654.627011
+item 56 FretSlots Outline closed
+  L -26.246508 635.450163 26.246508 635.450163
+  L 26.246508 635.450163 26.253492 634.920163
+  L 26.253492 634.920163 -26.253492 634.920163
+  L -26.253492 634.920163 -26.246508 635.450163
+item 57 FretSlots Outline closed
+  L -26.485042 617.349629 26.485042 617.349629
+  L 26.485042 617.349629 26.492026 616.819629
+  L 26.492026 616.819629 -26.492026 616.819629
+  L -26.492026 616.819629 -26.485042 617.349629
+item 58 FretSlots Outline closed
+  L -26.710188 600.265000 26.710188 600.265000
+  L 26.710188 600.265000 26.717173 599.735000
+  L 26.717173 599.735000 -26.717173 599.735000
+  L -26.717173 599.735000 -26.710188 600.265000
+item 59 FretSlots Outline closed
+  L -26.922698 584.139257 26.922698 584.139257
+  L 26.922698 584.139257 26.929682 583.609257
+  L 26.929682 583.609257 -26.929682 583.609257
+  L -26.929682 583.609257 -26.922698 584.139257
+item 60 FretSlots Outline closed
+  L -27.123281 568.918583 27.123281 568.918583
+  L 27.123281 568.918583 27.130265 568.388583
+  L 27.130265 568.388583 -27.130265 568.388583
+  L -27.130265 568.388583 -27.123281 568.918583
+item 61 FretSlots Outline closed
+  L -27.312605 554.552180 27.312605 554.552180
+  L 27.312605 554.552180 27.319590 554.022180
+  L 27.319590 554.022180 -27.319590 554.022180
+  L -27.319590 554.022180 -27.312605 554.552180
+item 62 FretSlots Outline closed
+  L -27.491304 540.992100 27.491304 540.992100
+  L 27.491304 540.992100 27.498288 540.462100
+  L 27.498288 540.462100 -27.498288 540.462100
+  L -27.498288 540.462100 -27.491304 540.992100
+item 63 FretSlots Outline closed
+  L -27.659973 528.193090 27.659973 528.193090
+  L 27.659973 528.193090 27.666958 527.663090
+  L 27.666958 527.663090 -27.666958 527.663090
+  L -27.666958 527.663090 -27.659973 528.193090
+item 64 FretSlots Outline closed
+  L -27.819176 516.112433 27.819176 516.112433
+  L 27.819176 516.112433 27.826160 515.582433
+  L 27.826160 515.582433 -27.826160 515.582433
+  L -27.826160 515.582433 -27.819176 516.112433
+item 65 FaceDots Outline
+  C 0.000000 871.189094 3.000000
+item 66 FaceDots Outline
+  C 0.000000 810.255599 3.000000
+item 67 FaceDots Outline
+  C 15.123641 644.773587 3.000000
+item 68 FaceDots Outline
+  C -15.123641 644.773587 3.000000
+item 69 FretboardSide Outline closed
+  L 162.636894 957.562594 169.634495 957.745832
+  L 169.634495 957.745832 180.331686 511.035045
+  L 180.331686 511.035045 174.333742 510.877983
+  L 174.333742 510.877983 162.636894 957.562594
+item 70 FretSlots Outline open
+  L 170.501140 921.555048 168.582814 921.504815
+item 71 FretSlots Outline open
+  L 171.319144 887.395497 169.477261 887.347266
+item 72 FretSlots Outline open
+  L 172.091237 855.153174 170.321506 855.106832
+item 73 FretSlots Outline open
+  L 172.819996 824.720474 171.118368 824.675915
+item 74 FretSlots Outline open
+  L 173.507853 795.995830 171.870505 795.952954
+item 75 FretSlots Outline open
+  L 174.157103 768.883376 172.580428 768.842089
+item 76 FretSlots Outline open
+  L 174.769914 743.292627 173.250506 743.252840
+item 77 FretSlots Outline open
+  L 175.348330 719.138177 173.882976 719.099805
+item 78 FretSlots Outline open
+  L 175.894282 696.339412 174.479948 696.302376
+item 79 FretSlots Outline open
+  L 176.409592 674.820243 175.043414 674.784468
+item 80 FretSlots Outline open
+  L 176.895981 654.508852 175.575255 654.474268
+item 81 FretSlots Outline open
+  L 177.355070 635.337452 176.077246 635.303991
+item 82 FretSlots Outline open
+  L 177.788392 617.242060 176.551063 617.209660
+item 83 FretSlots Outline open
+  L 178.197394 600.162284 176.998287 600.130885
+item 84 FretSlots Outline open
+  L 178.583441 584.041123 177.420409 584.010668
+item 85 FretSlots Outline open
+  L 178.947820 568.824773 177.818840 568.795209
+item 86 FretSlots Outline open
+  L 179.291749 554.462451 178.194909 554.433729
+item 87 FretSlots Outline open
+  L 179.616374 540.906224 178.549870 540.878296
+item 88 FretSlots Outline open
+  L 179.922779 528.110849 178.884909 528.083672
+item 89 FretSlots Outline open
+  L 180.211987 516.033624 179.201144 516.007154
+item 90 SideDots Outline
+  C 167.900069 871.174695 1.000000
+item 91 SideDots Outline
+  C 169.495122 810.262081 1.000000
+item 92 SideDots Outline
+  C 173.774582 646.836090 1.000000
+item 93 SideDots Outline
+  C 173.879290 642.837461 1.000000
+item 94 NeckSide Construction open
+  L 170.501140 921.555048 149.507159 921.052315
+item 95 NeckSide Construction open
+  L 175.894282 696.339412 152.900874 695.788798
+item 96 NeckSide Construction open
+  L 113.000000 600.000000 113.000000 655.000000
+item 97 NeckSide Outline closed
+  L 162.479832 963.560538 172.000000 600.000000
+  L 172.000000 600.000000 154.343983 600.000000
+  L 154.343983 600.000000 153.070455 684.532546
+  L 153.070455 684.532546 148.871659 963.234669
+  L 148.871659 963.234669 162.479832 963.560538
+item 98 Heel Outline closed
+  L 154.343983 600.000000 83.000000 600.000000
+  L 83.000000 600.000000 83.000000 640.000000
+  L 83.000000 640.000000 144.780361 670.890181
+  A 144.780361 670.890181 153.070455 684.532546 150.890956 676.516954
+  L 153.070455 684.532546 154.343983 600.000000
+item 99 HeelCap Outline closed
+  L 78.000000 600.000000 83.000000 600.000000
+  L 83.000000 600.000000 83.000000 640.000000
+  L 83.000000 640.000000 78.000000 640.000000
+  L 78.000000 640.000000 78.000000 600.000000
+item 100 Nut Outline closed
+  L 162.636894 957.562594 172.133639 957.811275
+  L 172.133639 957.811275 171.976577 963.809219
+  L 171.976577 963.809219 162.479832 963.560538
+  L 162.479832 963.560538 162.636894 957.562594
+item 101 NeckProfiles Outline closed
+  A 233.300488 931.423026 278.254624 931.423026 255.777556 932.055048
+  L 278.254624 931.423026 278.254624 925.136065
+  L 278.254624 925.136065 255.777556 911.055048
+  L 255.777556 911.055048 233.300488 925.136065
+  L 233.300488 925.136065 233.300488 931.423026
+item 102 NeckProfiles Outline open
+  L 233.300488 925.136065 278.254624 925.136065
+item 103 NeckProfiles Outline closed
+  A 230.331686 707.029226 281.223426 707.029226 255.777556 707.839412
+  L 281.223426 707.029226 281.223426 701.424592
+  L 281.223426 701.424592 255.777556 684.839412
+  L 255.777556 684.839412 230.331686 701.424592
+  L 230.331686 701.424592 230.331686 707.029226
+item 104 NeckProfiles Outline open
+  L 230.331686 701.424592 281.223426 701.424592
+item 105 NeckProfiles Outline closed
+  L 331.223426 655.000000 389.007929 655.000000
+  L 389.007929 655.000000 389.007929 647.000000
+  L 389.007929 647.000000 360.115677 600.000000
+  L 360.115677 600.000000 331.223426 647.000000
+  L 331.223426 647.000000 331.223426 655.000000
+item 106 NeckProfiles Outline closed
+  L 439.007929 640.000000 499.007929 640.000000
+  L 499.007929 640.000000 499.007929 630.000000
+  L 499.007929 630.000000 469.007929 600.000000
+  L 469.007929 600.000000 439.007929 630.000000
+  L 439.007929 630.000000 439.007929 640.000000
+""",
+        };
+
+        static readonly Dictionary<string, string> ExpectedMessagesEnglish = new()
+        {
+            ["Full"] = "",
+            ["Venetian"] = """
+Bracing Error: The headblock doesn't fit inside the outline.
+""",
+            ["Florentine"] = """
+Bracing Error: The headblock doesn't fit inside the outline.
+""",
+            ["BracingHeavy"] = "",
+            ["SteepNeck"] = "",
+            ["Unfinished"] = """
+Body Remark: Set the Body Length (BDL) to draw the body outline.
+Body Error: The Body Length (BDL), Body Depth at Tail End (BDDT) and Body Depth at Neck End (BDDN) must be greater than zero to draw the side view.
+Bracing Remark: The bracing is drawn on the body outline: it isn't drawn until the body outline can be.
+Fretboard Remark: Set the Body Length (BDL) to draw the fretboard.
+Neck Remark: Set the Body Length (BDL) to draw the neck profile at the first fret.
+Neck Remark: Set the Body Length (BDL) to draw the neck profile at the selected fret.
+Neck Remark: Set the Body Length (BDL) to draw the heel profile at the heel section.
+""",
+            ["Failing"] = """
+Body Error: The cutaway's offset line, 176.71 mm from the centerline, doesn't meet the neck end or the upper bout above its widest point: reduce the Cutaway Offset from Neck (CTO).
+Body Warning: The body outline has errors; the rest is drawn without it.
+Bracing Remark: The bracing is drawn on the body outline: it isn't drawn until the body outline can be.
+""",
+        };
+
+        static readonly Dictionary<string, string> ExpectedMessagesGerman = new()
+        {
+            ["Full"] = "",
+            ["Venetian"] = """
+Bracing Error: The headblock doesn't fit inside the outline.
+""",
+            ["Florentine"] = """
+Bracing Error: The headblock doesn't fit inside the outline.
+""",
+            ["BracingHeavy"] = "",
+            ["SteepNeck"] = "",
+            ["Unfinished"] = """
+Body Remark: Set the Body Length (BDL) to draw the body outline.
+Body Error: The Body Length (BDL), Body Depth at Tail End (BDDT) and Body Depth at Neck End (BDDN) must be greater than zero to draw the side view.
+Bracing Remark: The bracing is drawn on the body outline: it isn't drawn until the body outline can be.
+Fretboard Remark: Set the Body Length (BDL) to draw the fretboard.
+Neck Remark: Set the Body Length (BDL) to draw the neck profile at the first fret.
+Neck Remark: Set the Body Length (BDL) to draw the neck profile at the selected fret.
+Neck Remark: Set the Body Length (BDL) to draw the heel profile at the heel section.
+""",
+            ["Failing"] = """
+Body Error: The cutaway's offset line, 176,71 mm from the centerline, doesn't meet the neck end or the upper bout above its widest point: reduce the Cutaway Offset from Neck (CTO).
+Body Warning: The body outline has errors; the rest is drawn without it.
+Bracing Remark: The bracing is drawn on the body outline: it isn't drawn until the body outline can be.
+""",
+        };
+
+    }
+}

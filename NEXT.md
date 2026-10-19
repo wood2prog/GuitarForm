@@ -5,7 +5,7 @@ Running record of where the project stands. Update it at the end of each session
 ## State
 
 - Branch: `main`. This session's work is committed.
-- Build: 0 warnings. Tests: 405 passing (down from 443 with the deleted legacy tests).
+- Build: 0 warnings. Tests: 519 passing (405 before wave A).
 - An independent review of this batch was done and its findings were fixed (T10). 
 - A code review of the whole codebase was done; the quick fixes from it are in.
 - Bracing, Fretboard and Frets docs are written.
@@ -24,6 +24,16 @@ Running record of where the project stands. Update it at the end of each session
   - Bead-width frets with a thinner center line, strings as rectangles at their diameter, and the "Show strings" plug-in setting.
   - Model fields FWSD, FWPR and FBSO (FWM is now optional).
 - Wrote `docs/Frets.md` and updated `docs/Fretboard.md`, the README, `CLAUDE.md` and `IMPROVEMENTS.md`.
+
+## Pre-migration cleanup progress
+
+- Wave A is done: golden test (en-US and de-DE), Segment/side view/soundhole/ShapeCurves/FK-cascade tests, library v1 upgrade test, culture tests. It also found and fixed the `Vector2.ToString` infinite recursion.
+- Remaining waves:
+  - B: shared shape helpers and the splits.
+  - C: backup before migration, move `ComponentStyles` to Geometry, `InternalsVisibleTo`, caching and `UiMetrics` bypasses.
+  - D: `Directory.Build.props` and American spelling.
+- Owner decisions: the upgrade backup goes next to the library (e.g. `GuitarForm.before-v1.bak`), and a failed copy blocks opening. `Directory.Build.props`, the `ComponentStyles` move and Shapes `InternalsVisibleTo` are approved. UI helper duplicates are deferred.
+- Follow-ups found by the tests are in `IMPROVEMENTS.md` ("Follow-ups from the test work").
 
 ## Rhino checks
 

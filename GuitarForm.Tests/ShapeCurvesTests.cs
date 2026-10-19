@@ -86,6 +86,131 @@ namespace GuitarForm.Tests
             }
         }
 
+        static Path Rectangle(double gap = 0) => new Path(new Segment[]
+        {
+            Line(0, 0, 10, 0), Line(10 + gap, 0, 10, 5), Line(10, 5 + gap, 0, 5), Line(0, 5, 0, gap),
+        }, true);
+
+        [Test]
+        public void Curves_AnEmptyDrawing_HasNoCurvesAndNoFailures()
+        {
+            var curves = ShapeCurves.Curves(new GuitarDrawing(), out int failed);
+
+            Assert.That(curves, Is.Empty);
+            Assert.That(failed, Is.EqualTo(0));
+            Assert.That(ShapeCurves.Outline(new GuitarDrawing()), Is.Empty);
+            Assert.That(ShapeCurves.Construction(new GuitarDrawing()), Is.Empty);
+        }
+
+        [Test]
+        public void Curves_ClosedPathsJoinClosed_OpenPathsStayOpen()
+        {
+            var shapes = new GuitarDrawing();
+            shapes.Items.Add(new DrawnItem(DrawingComponent.TopPlate, DrawingRole.Outline, Rectangle()));
+            shapes.Items.Add(new DrawnItem(DrawingComponent.Sides, DrawingRole.Outline,
+                new Path(new Segment[] { Line(0, 0, 10, 0), Line(10, 0, 10, 5), Line(10, 5, 0, 5) }, false)));
+
+            var curves = ShapeCurves.Curves(shapes, out int failed);
+
+            Assert.That(failed, Is.EqualTo(0));
+            Assert.That(curves.Count, Is.EqualTo(2));
+            Assert.That(curves[0].Curve.IsClosed, Is.True);
+            Assert.That(curves[0].Curve.GetLength(), Is.EqualTo(30).Within(1e-9));
+            Assert.That(curves[1].Curve.IsClosed, Is.False);
+            Assert.That(curves[1].Curve.GetLength(), Is.EqualTo(25).Within(1e-9));
+        }
+
+        [Test]
+        public void Curves_AClosedPathWithATinyGap_StillJoins()
+        {
+            // 0.0005 mm is under the 0.001 join tolerance. (Larger gaps are not asserted: Rhino's PolyCurve.AppendSegment
+            // snaps even a 50 mm gap, so the path does not fail.)
+            var shapes = new GuitarDrawing();
+            shapes.Items.Add(new DrawnItem(DrawingComponent.Sides, DrawingRole.Outline, Rectangle(0.0005)));
+
+            var curves = ShapeCurves.Curves(shapes, out int failed);
+
+            Assert.That(failed, Is.EqualTo(0));
+            Assert.That(curves.Single().Curve.GetLength(), Is.EqualTo(30).Within(0.01));
+        }
+
+        [Test]
+        public void Curves_AnEmptyPath_IsCountedAsFailed()
+        {
+            var shapes = new GuitarDrawing();
+            shapes.Items.Add(new DrawnItem(DrawingComponent.TopPlate, DrawingRole.Outline, new Path(new Segment[0], false)));
+
+            var curves = ShapeCurves.Curves(shapes, out int failed);
+
+            Assert.That(curves, Is.Empty);
+            Assert.That(failed, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Curves_PathsComeFirstThenCircles_AndItemsWithNeitherAreIgnored()
+        {
+            var shapes = new GuitarDrawing();
+            shapes.Items.Add(new DrawnItem(DrawingComponent.Soundhole, DrawingRole.Outline, Circle: new Circle(new Point2(5, 5), 3)));
+            shapes.Items.Add(new DrawnItem(DrawingComponent.Bracing, DrawingRole.Construction));
+            shapes.Items.Add(new DrawnItem(DrawingComponent.TopPlate, DrawingRole.Centerline,
+                new Path(new Segment[] { Line(0, 0, 0, 10) }, false)));
+            shapes.Items.Add(new DrawnItem(DrawingComponent.FaceDots, DrawingRole.Outline, Circle: new Circle(new Point2(1, 1), 1)));
+
+            var curves = ShapeCurves.Curves(shapes, out int failed);
+
+            Assert.That(failed, Is.EqualTo(0));
+            Assert.That(curves.Select(c => c.Component), Is.EqualTo(new[]
+                { DrawingComponent.TopPlate, DrawingComponent.Soundhole, DrawingComponent.FaceDots }));
+            // The circles are closed curves of the right size.
+            Assert.That(curves[1].Curve.IsClosed, Is.True);
+            Assert.That(curves[1].Curve.GetLength(), Is.EqualTo(2 * Math.PI * 3).Within(1e-9));
+        }
+
+        [Test]
+        public void OutlineAndConstruction_SplitByRole_AndOutlineCountsFailures()
+        {
+            var shapes = new GuitarDrawing();
+            shapes.Items.Add(new DrawnItem(DrawingComponent.TopPlate, DrawingRole.Outline, Rectangle()));
+            shapes.Items.Add(new DrawnItem(DrawingComponent.TopPlate, DrawingRole.Construction, new Path(new Segment[] { Line(0, 0, 5, 5) }, false)));
+            shapes.Items.Add(new DrawnItem(DrawingComponent.TopPlate, DrawingRole.Centerline, new Path(new Segment[] { Line(0, 0, 0, 5) }, false)));
+            shapes.Items.Add(new DrawnItem(DrawingComponent.Sides, DrawingRole.Outline, new Path(new Segment[] { new UnknownSegment() }, false)));
+            shapes.Items.Add(new DrawnItem(DrawingComponent.Soundhole, DrawingRole.Construction, Circle: new Circle(Point2.Origin, 2)));
+
+            var outline = ShapeCurves.Outline(shapes, out int failed);
+            var construction = ShapeCurves.Construction(shapes);
+
+            Assert.That(outline.Length, Is.EqualTo(1));
+            Assert.That(failed, Is.EqualTo(1));
+            // The centerline and the construction line and circle all count as construction.
+            Assert.That(construction.Length, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void ToCurve_Segments_MatchTheirShapes()
+        {
+            var line = ShapeCurves.ToCurve(Line(0, 0, 3, 4));
+            Assert.That(line, Is.InstanceOf<Rhino.Geometry.LineCurve>());
+            Assert.That(line.GetLength(), Is.EqualTo(5).Within(1e-9));
+
+            var arc = ShapeCurves.ToCurve(new ArcSegment(Point2.Origin, 10, 0, Math.PI / 2));
+            Assert.That(arc.GetLength(), Is.EqualTo(5 * Math.PI).Within(1e-9));
+            Assert.That(arc.PointAtEnd.Y, Is.EqualTo(10).Within(1e-9));
+
+            var polyline = ShapeCurves.ToCurve(new PolylineSegment(new[] { new Point2(0, 0), new Point2(10, 0), new Point2(10, 10) }));
+            Assert.That(polyline, Is.InstanceOf<Rhino.Geometry.PolylineCurve>());
+            Assert.That(polyline.GetLength(), Is.EqualTo(20).Within(1e-9));
+
+            Assert.That(ShapeCurves.ToCurve(new UnknownSegment()), Is.Null);
+        }
+
+        [Test]
+        public void ToCurve_ASinglePathSegment_IsThatSegmentsCurve_NotAPolyCurve()
+        {
+            var curve = ShapeCurves.ToCurve(new Path(new Segment[] { Line(0, 0, 10, 0) }, false));
+
+            Assert.That(curve, Is.InstanceOf<Rhino.Geometry.LineCurve>());
+        }
+
         [Test]
         public void Curves_SkipAndCountPathsThatCantBeConverted()
         {
