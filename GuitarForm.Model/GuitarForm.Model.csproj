@@ -4,9 +4,7 @@
        Lengths are in millimetres. -->
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
-    <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
-    <NoWarn>NETSDK1138</NoWarn>
   </PropertyGroup>
 
 </Project>

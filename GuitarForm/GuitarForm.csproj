@@ -7,9 +7,8 @@
     <Description>Guitar designer for Rhino</Description>
     <TargetExt>.rhp</TargetExt>
     <EnableDynamicLoading>true</EnableDynamicLoading>
-    <LangVersion>latest</LangVersion>
     <UseWindowsForms>true</UseWindowsForms>
-    <NoWarn>NU1701;NETSDK1086;NETSDK1138</NoWarn>
+    <NoWarn>$(NoWarn);NU1701;NETSDK1086</NoWarn>
     <!-- Builds for Windows x64 only, so SQLite's native e_sqlite3.dll is copied next to the .rhp, where Rhino finds it.
          Without this it goes into runtimes/<platform>/native/, which Rhino doesn't search for a plug-in. -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>

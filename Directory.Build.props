@@ -1,0 +1,10 @@
+<Project>
+
+  <!-- Settings every project shares. Anything that differs between projects stays in that project's csproj. -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <!-- NETSDK1138: the targeted .NET version is out of support. Projects add their own entries with $(NoWarn);... -->
+    <NoWarn>$(NoWarn);NETSDK1138</NoWarn>
+  </PropertyGroup>
+
+</Project>

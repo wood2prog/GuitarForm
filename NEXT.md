@@ -31,7 +31,7 @@ Running record of where the project stands. Update it at the end of each session
 - Wave B is done: shared shape helpers (`ShapeSupport`, `ShapeMessages`, `PolygonMath`), the splits of `BracingShape`, `PlateShape.AddCutaway`, `NeckSideShape` and `NeckProfilesShape` sampling, and `InternalsVisibleTo` for the tests. An independent review passed.
 - Remaining waves:
   - C is done: backup before migration (T8), `ComponentStyles` moved to Geometry with `ComponentStylesTests` (T10), and `DesignDrawing` caching and the `UiMetrics` tidy (T11).
-  - D (remaining): `Directory.Build.props` and American spelling.
+  - D: `Directory.Build.props` is done (T9: LangVersion and NETSDK1138 centralised; output and 596 tests unchanged). Remaining: American spelling.
 - Owner decisions: the upgrade backup goes next to the library (e.g. `GuitarForm.before-v1.bak`), and a failed copy blocks opening. `Directory.Build.props`, the `ComponentStyles` move and Shapes `InternalsVisibleTo` are approved. UI helper duplicates are deferred.
 - Follow-ups found by the tests are in `IMPROVEMENTS.md` ("Follow-ups from the test work").
 
@@ -111,7 +111,7 @@ Unsaved library edits, prompts and builds:
 
 ## Next up
 
-1. Remaining pre-migration cleanup (wave D), from `IMPROVEMENTS.md`: `Directory.Build.props` and American spelling; then tests for the untested shapes and for plug-in code.
+1. Remaining pre-migration cleanup (wave D), from `IMPROVEMENTS.md`: American spelling; then tests for the untested shapes and for plug-in code.
 2. Migrate `NewFields` into the library. This needs the owner's sign-off and a senior-engineer plan first.
 
 ## Open questions for the owner

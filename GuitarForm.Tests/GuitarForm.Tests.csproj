@@ -2,9 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
-    <LangVersion>latest</LangVersion>
     <IsPackable>false</IsPackable>
-    <NoWarn>NU1701;NETSDK1138</NoWarn>
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
   </PropertyGroup>
 
   <!-- Rhino.Testing loads the installed Rhino 8 into the test process, so RhinoCommon works as it does in Rhino.

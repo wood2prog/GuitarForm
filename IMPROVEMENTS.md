@@ -103,7 +103,7 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 - [x] Back up the library before a schema migration.
 - [x] Add non-invariant culture tests (de-DE).
 - [x] Add tests for `Segment`, `FretboardSideShape`, `SideViewShape`, `SoundholeShape`, `ShapeCurves` and FK/cascade behaviour (the Rhino-free parts of `NewFields` are still untested).
-- [ ] Centralise the csproj settings (`Directory.Build.props`).
+- [x] Centralise the csproj settings (`Directory.Build.props`).
 - [ ] Extract the duplicated UI helpers (Run, ActionButton, the discard prompt). Partly done: `LibraryItemUi` now holds the library-item helpers shared by the Strings and Frets tabs; `GuitarFormPanel` and `SettingsPage` still have their own.
 - [x] Remove the `UiMetrics` bypasses and dead code. Partly done: `ScreenScale` is gone and `NumberSlider`'s sizes are named in `UiMetrics`; `Scale` stays as a no-op wrapper. The bypasses in `SectionEditor.cs` and `Sections.cs` are left for the migration.
 - [ ] Pick one spelling (American) across code and docs, including the UI text and CLAUDE.md. Rhino API names such as `DisplayColor` aren't affected.

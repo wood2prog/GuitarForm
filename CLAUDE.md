@@ -18,6 +18,7 @@ dotnet build GuitarForm/GuitarForm.csproj
 ```
 
 - This is a Rhino 8–only project. It uses the `RhinoCommon` NuGet package (8.0.x, `ExcludeAssets="runtime"`), targets `net7.0-windows` (Rhino 8 runs it on its current .NET runtime), and outputs `GuitarForm/bin/Debug/net7.0-windows/GuitarForm.rhp`.
+- `Directory.Build.props` (repo root) holds the settings every project shares (`LangVersion`, `NoWarn` NETSDK1138); a project adds its own warnings with `$(NoWarn);...`.
 - It builds for `win-x64` only, so SQLite's native `e_sqlite3.dll` lands next to the `.rhp`: Rhino doesn't search `runtimes/<platform>/native/` for a plug-in.
 - The launch profile (`GuitarForm/Properties/launchSettings.json`) starts Rhino 8 with the build folder in `RHINO_PACKAGE_DIRS`, so the plug-in loads without being installed, and runs the `GuitarForm` command, which opens the panel. Start Rhino for testing from PowerShell, not Git Bash, which rewrites `/`-arguments into paths.
 - Tests: `dotnet test GuitarForm.Tests`. They cover the model, the library and the geometry (NUnit plus Rhino.Testing, which loads the installed Rhino 8; the test project targets `net8.0-windows` to match Rhino 8's current runtime). Add tests when the model, library or geometry changes, and keep the Quick Test values in `docs/` and the tests in agreement. The panel, preview and Build still need checking in Rhino.
