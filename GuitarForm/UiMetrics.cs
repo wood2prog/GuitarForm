@@ -1,4 +1,3 @@
-using System;
 using Eto.Drawing;
 using Eto.Forms;
 
@@ -71,22 +70,26 @@ namespace GuitarForm
         /// <summary>Colour for faint tick marks and other secondary detail, visible but quiet on the current background.</summary>
         public static Color MutedTickColor => IsDark ? Color.FromArgb(150, 150, 150) : Color.FromArgb(120, 120, 120);
 
-        /// <summary>The screen's scale factor, 1.0 when it can't be read.</summary>
-        public static float ScreenScale
-        {
-            get
-            {
-                try
-                {
-                    float scale = Screen.PrimaryScreen?.Scale ?? 1f;
-                    return scale > 0 ? scale : 1f;
-                }
-                catch (Exception)
-                {
-                    return 1f;
-                }
-            }
-        }
+        /// <summary>Height of a slider and its number box, in pixels.</summary>
+        public const int SliderHeight = 26;
+
+        /// <summary>Width of a slider's lever, in pixels.</summary>
+        public const int LeverWidth = 72;
+
+        /// <summary>Height of a slider's lever, in pixels.</summary>
+        public const int LeverHeight = 22;
+
+        /// <summary>Pixels a slider's lever moves for one step.</summary>
+        public const int LeverPixelsPerStep = 2;
+
+        /// <summary>Pixels a press on a slider's lever moves before it counts as a drag rather than a click.</summary>
+        public const int DragThreshold = 3;
+
+        /// <summary>Distance between the tick marks along a slider's track, in pixels.</summary>
+        public const int TickSpacing = 10;
+
+        /// <summary>Half the thickness of a slider's groove and the margin of its end stops, in pixels.</summary>
+        public const int TrackInset = 2;
 
         /// <summary>
         /// Returns the size unchanged. Rhino 8's Eto on Windows (WPF) already works in device-independent units, so

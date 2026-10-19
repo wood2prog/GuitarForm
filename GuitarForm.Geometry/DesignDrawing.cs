@@ -17,10 +17,12 @@ namespace GuitarForm.Geometry
         public IReadOnlyList<DrawnCurve> Curves => _curves;
 
         // Views of Curves: construction (and center) lines and circles, and the final outline.
+        // Computed once, on first use: _curves is only filled in FromShapes, before the drawing is returned.
+        IReadOnlyList<Curve> _construction, _outline;
         public IReadOnlyList<Curve> Construction =>
-            _curves.Where(c => c.Role != Shapes.DrawingRole.Outline).Select(c => c.Curve).ToList();
+            _construction ??= _curves.Where(c => c.Role != Shapes.DrawingRole.Outline).Select(c => c.Curve).ToList();
         public IReadOnlyList<Curve> Outline =>
-            _curves.Where(c => c.Role == Shapes.DrawingRole.Outline).Select(c => c.Curve).ToList();
+            _outline ??= _curves.Where(c => c.Role == Shapes.DrawingRole.Outline).Select(c => c.Curve).ToList();
 
         public List<GeometryMessage> InstrumentMessages { get; } = new List<GeometryMessage>();
         public List<GeometryMessage> BodyMessages { get; } = new List<GeometryMessage>();

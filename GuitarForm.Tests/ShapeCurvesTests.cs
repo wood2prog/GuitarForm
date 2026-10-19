@@ -54,6 +54,17 @@ namespace GuitarForm.Tests
         }
 
         [Test]
+        public void ConstructionAndOutline_AreComputedOnce()
+        {
+            var shapes = GuitarDrawing.Draw(BracingShapeTests.TestGuitar(), 0.001, 50);
+            var drawing = FromShapes(shapes);
+
+            Assert.That(drawing.Construction, Is.SameAs(drawing.Construction));
+            Assert.That(drawing.Outline, Is.SameAs(drawing.Outline));
+            Assert.That(drawing.Construction.Count + drawing.Outline.Count, Is.EqualTo(drawing.Curves.Count));
+        }
+
+        [Test]
         public void FromShapes_TagsTheBlocks()
         {
             var shapes = GuitarDrawing.Draw(BracingShapeTests.TestGuitar(), 0.001, 50);

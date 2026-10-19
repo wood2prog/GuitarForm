@@ -105,13 +105,13 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 - [x] Add tests for `Segment`, `FretboardSideShape`, `SideViewShape`, `SoundholeShape`, `ShapeCurves` and FK/cascade behaviour (the Rhino-free parts of `NewFields` are still untested).
 - [ ] Centralise the csproj settings (`Directory.Build.props`).
 - [ ] Extract the duplicated UI helpers (Run, ActionButton, the discard prompt). Partly done: `LibraryItemUi` now holds the library-item helpers shared by the Strings and Frets tabs; `GuitarFormPanel` and `SettingsPage` still have their own.
-- [ ] Remove the `UiMetrics` bypasses and dead code (`ScreenScale`, the `Scale` no-op).
+- [x] Remove the `UiMetrics` bypasses and dead code. Partly done: `ScreenScale` is gone and `NumberSlider`'s sizes are named in `UiMetrics`; `Scale` stays as a no-op wrapper. The bypasses in `SectionEditor.cs` and `Sections.cs` are left for the migration.
 - [ ] Pick one spelling (American) across code and docs, including the UI text and CLAUDE.md. Rhino API names such as `DisplayColor` aren't affected.
 - [x] Fix the Strings tab's missing unsaved-changes prompt on switch. There is still no prompt on hide or close, by design, since Rhino's shutdown must not be blocked.
 - [ ] Make `CopyDesign`, `ImportDesign` and `SaveDesign` atomic with `NewFields` (resolved by the migration).
 - [ ] Slider steps converted from mm look odd in inches (0.1 mm = 0.003937 in); snap to a sensible grid in non-mm units.
 - [ ] Tests for plug-in code (`NewFields.Delete`, `RequireNoInputErrors`, slider conversion) need Rhino-free code moved out of the .rhp.
-- [ ] Add tests for `NeckSideShape` parallel-line/near-parallel guards and the `BracingShape` unsupported segment (currently unreachable via the public API); add `InternalsVisibleTo` or a public seam for `Library.IsNameConflict`.
+- [ ] Add tests for `NeckSideShape` parallel-line/near-parallel guards and the `BracingShape` unsupported segment (currently unreachable via the public API); add `InternalsVisibleTo` or a public seam for `Library.IsNameConflict` (`InternalsVisibleTo` is already in for Shapes).
 - [ ] Tidy: a failed plate makes the side view jump horizontally while editing.
 - [ ] Only an unset `Body.Length` is treated as unfinished (Remark); other missing plate values rely on the plate's own Remarks.
 
@@ -182,7 +182,7 @@ These need the product owner's direction before any code is written.
 
 - [x] `ComponentStyles` completeness (every `DrawingComponent` has a style) and the print colour path (a Print override reaches `Layer.PlotColor`) are tested: `ComponentStyles` moved to `GuitarForm.Geometry` (`ComponentStylesTests`).
 - [ ] Unsaved Frets and Strings library edits have no crash recovery.
-- [ ] `DesignDrawing.Construction` and `DesignDrawing.Outline` recompute on every access: cache them in callers that loop.
+- [x] `DesignDrawing.Construction` and `DesignDrawing.Outline` recompute on every access. Done: each is computed once, on first use.
 - [ ] NeckSideShape heel split: the Error for a seam that doesn't land on the joint line between the heel end and the top of the joint has no test (hard to reach through the public API: other Errors fire first); also nothing checks that the back line stays beyond heelEndX all the way up to the heel end's front (extreme neck angle could make the heel self-intersect without an Error).
 
 ## Follow-ups from the upgrade backup

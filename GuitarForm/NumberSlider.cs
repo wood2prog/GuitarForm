@@ -14,14 +14,14 @@ namespace GuitarForm
     {
         // The sizes below are scaled to the screen with UiMetrics.Scale. The slider fills the width it is given, from
         // SliderMinWidth up; past SliderMaxWidth the track stops growing and the extra space is left empty.
-        static readonly int ControlHeight = UiMetrics.Scale(26);
-        static readonly int LeverWidth = UiMetrics.Scale(72);
-        static readonly int LeverHeight = UiMetrics.Scale(22);
+        static readonly int ControlHeight = UiMetrics.Scale(UiMetrics.SliderHeight);
+        static readonly int LeverWidth = UiMetrics.Scale(UiMetrics.LeverWidth);
+        static readonly int LeverHeight = UiMetrics.Scale(UiMetrics.LeverHeight);
 
         // Pixels the lever moves for one step, and before a press on it counts as a drag rather than a click.
-        static readonly int PixelsPerStep = UiMetrics.Scale(2);
-        static readonly int DragThreshold = UiMetrics.Scale(3);
-        static readonly float TickSpacing = UiMetrics.Scale(10);
+        static readonly int PixelsPerStep = UiMetrics.Scale(UiMetrics.LeverPixelsPerStep);
+        static readonly int DragThreshold = UiMetrics.Scale(UiMetrics.DragThreshold);
+        static readonly float TickSpacing = UiMetrics.Scale(UiMetrics.TickSpacing);
 
         readonly Drawable _bar = new Drawable { CanFocus = true, Cursor = Cursors.Default };
         readonly TextBox _textBox = new TextBox();
@@ -202,7 +202,7 @@ namespace GuitarForm
         float Center => TrackWidth / 2f;
 
         // How far the lever's center can move from the middle of the track.
-        float Travel => Math.Max(0, (TrackWidth - LeverWidth) / 2f - UiMetrics.Scale(2));
+        float Travel => Math.Max(0, (TrackWidth - LeverWidth) / 2f - UiMetrics.Scale(UiMetrics.TrackInset));
 
         RectangleF LeverBounds => new RectangleF(Center + _leverOffset - LeverWidth / 2f,
             (_bar.Height - LeverHeight) / 2f, LeverWidth, LeverHeight);
