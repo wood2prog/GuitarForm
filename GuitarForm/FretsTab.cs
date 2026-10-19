@@ -27,7 +27,6 @@ namespace GuitarForm
         readonly Button _delete = new Button { Text = "&Delete" };
         readonly Button _new = new Button { Text = "&New" };
         readonly Button _use = new Button { Text = "&Use for this guitar" };
-        readonly Button _useNone = new Button { Text = "Use &no fretwire" };
         readonly Label _usedBy = new Label { Text = "", VerticalAlignment = VerticalAlignment.Center };
         readonly Func<string> _libraryPath;
         bool _designOpen;
@@ -52,14 +51,9 @@ namespace GuitarForm
             _delete.Click += (_, _) => Run(Delete);
             _new.Click += (_, _) => Run(NewItem);
             _use.Click += (_, _) => Run(UseForGuitar);
-            _useNone.Click += (_, _) => Run(() =>
-            {
-                if (_designOpen)
-                    UseRequested?.Invoke(null);
-            });
 
             var buttons = new StackLayout { Orientation = Orientation.Horizontal, Spacing = UiMetrics.Gap };
-            foreach (var button in new[] { _new, _save, _saveAs, _revert, _delete, _use, _useNone })
+            foreach (var button in new[] { _new, _save, _saveAs, _revert, _delete, _use })
                 buttons.Items.Add(button);
 
             // The picker and buttons stay put above the scrolling editor.
@@ -204,8 +198,6 @@ namespace GuitarForm
                 : _item.Id == null ? "Save the new fretwire first."
                 : dirty ? "Save the changes to this fretwire first."
                 : "Use this fretwire for the open guitar.";
-            _useNone.Enabled = _designOpen;
-            _useNone.ToolTip = _designOpen ? "Draw the open guitar's frets with no fretwire." : "Open a design first.";
         }
 
         void FillPicker(IReadOnlyList<LibraryItemInfo> items, long? select)

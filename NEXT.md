@@ -62,7 +62,7 @@ Frets tab (see `docs/Frets.md`):
 
 - Create, edit, Save, Save as, Revert and Delete a fretwire. Delete one that a saved neck uses, and pick the replacement.
 - Save is refused with no Product Code, and while a field holds junk text.
-- **Use for this guitar** and **Use no fretwire**: the design shows Unsaved changes. Frets then draw as beads, with slots, after Use.
+- **Use for this guitar**: the design shows Unsaved changes. Frets then draw as beads, with slots, after Use.
 - Change the document units mm to inches and back: the fields follow.
 - The fretwire carries through Save, reopen, Save as (a design copy), Export and Import. A deleted fretwire shows the note "isn't in the library" and the design opens with none. An imported name that isn't in the library does the same.
 - The Strings tab behaves exactly as before after the refactor, including the new prompt when switching with unsaved changes.
@@ -226,10 +226,9 @@ Stage 3 must:
 ## Open questions for the owner
 
 - The plan in `docs/Plan-FretsAndLayers.md` is built.
-- When the strings overlap, should the fallback draw rectangles instead of the two outer center lines?
-- Should the fretwire's Slot Depth be cross-checked against its Tang Height or the fretboard thickness, and how?
-- What unit or currency is the fretwire price in?
-- Construction lines print at the outline weight. Is that what you want?
-- The **Use no fretwire** button was added unasked. Keep it?
+- Decided, no change: when the strings overlap, the fallback stays as it is (the two outer center lines); the fretwire's Slot Depth gets no cross-checks; the fretwire price currency stays as it is.
+- Decided, no change: construction lines print at the outline weight, which is fine.
+- Decided, no change: number parsing stays culture-based (the owner doesn't need German).
+- Decided and done: guitars always have frets, so the **Use no fretwire** button is removed from the Frets tab.
 - The stricter value coercion now rejects wrong-typed values in hand-edited JSON with a `FormatException`. Is that the intended behavior?
 - Decided and done: migration v5 drops the old tables (`designs`, `instruments`, `bodies`, `soundholes`). Old Instrument and Soundhole presets survive only in the `before-v{N}.bak` safety copy and the notes file; the `NewFields` folders stay on disk and can be deleted by the user.

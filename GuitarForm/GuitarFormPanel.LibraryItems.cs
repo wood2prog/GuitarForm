@@ -28,7 +28,7 @@ namespace GuitarForm
             _frets?.ShowAssigned(_session.IsOpen, CurrentGuitar.Neck.Fretwire, _session.FretwireNote);
         }
 
-        // "Use for this guitar" on the Frets tab (null for none): the fretwire becomes the working guitar's, as an unsaved edit.
+        // "Use for this guitar" on the Frets tab: the fretwire becomes the working guitar's, as an unsaved edit.
         void OnUseFretwire(Fretwire wire)
         {
             if (!_session.IsOpen)

@@ -16,7 +16,6 @@ The **Fretwire** picker lists the saved fretwires by name: the manufacturer and 
 | **Revert** | Throws away the unsaved changes to the shown fretwire, after asking. Enabled only while there are unsaved changes. |
 | **Delete** | Deletes the shown saved fretwire (see below). Enabled only for a saved fretwire. |
 | **Use for this guitar** | Chooses the shown fretwire for the open design's guitar (see below). |
-| **Use no fretwire** | Takes the fretwire away from the open design's guitar. Enabled only when a design is open. |
 
 The label beside the picker says **Unsaved changes** while the working copy differs from the saved fretwire. Below the buttons, **Used by this guitar** names the fretwire the open design uses, or **none**.
 
@@ -35,7 +34,7 @@ Only saved necks in the library are checked for this. A design's own copy of the
 
 **Use for this guitar** is enabled only when a design is open, the shown fretwire is saved, and it has no unsaved changes. Otherwise its tooltip says what to do first: open a design, save the new fretwire, or save the changes to this fretwire.
 
-Choosing it makes the fretwire the open design's guitar fretwire, which marks the design as having unsaved changes. Save the design to keep it. **Use no fretwire** does the same with none.
+Choosing it makes the fretwire the open design's guitar fretwire, which marks the design as having unsaved changes. Save the design to keep it.
 
 ## Unsaved changes
 
@@ -92,7 +91,7 @@ Frets and slots are previewed and built in their component colors; see [Layers a
 
 Use a document in millimeters. This is a checklist for the panel; the drawn values are checked by tests and listed in [Fretboard.md](Fretboard.md#quick-test) (a Bead Width of 2.5 gives 20 bead-width frets, fret 14 with corners at y = 601.25 and 598.75; a Tang Thickness of 0.53 gives 20 slots; a Slot Depth of 2 gives 20 slot lines).
 
-1. Open the **Frets** tab with no design open. Click **New**. **Use for this guitar** and **Use no fretwire** are disabled.
+1. Open the **Frets** tab with no design open. Click **New**. **Use for this guitar** is disabled.
 2. Click **Save** with the Product Code blank. It is refused, naming the Product Code.
 3. Enter Product Code `Quick 1`, Bead Width `2.5`, Tang Thickness `0.53`, Slot Depth `2`, and fill the other dimensions. Type `abc` in a field: Messages shows an input error and Save is refused; fix it and Save works.
 4. Click **Save**. The picker shows `Quick 1` and the label clears.
@@ -100,5 +99,4 @@ Use a document in millimeters. This is a checklist for the panel; the drawn valu
 6. Change a value and switch the picker: the prompt appears. Cancel stays; No discards; Yes saves. **Revert** asks first.
 7. Open a design with the Fretboard tab set up as in its Quick Test. On the Frets tab pick `Quick 1`, click **Use for this guitar**, and see **Used by this guitar** read `Quick 1` and the design show Unsaved changes. The preview now draws bead-width frets, slots and, in the side view, slot lines.
 8. Save the design, reopen it, Save as a copy, and Export then Import it: the fretwire is still `Quick 1` each time. Change the document's units to inches and back: the fields follow.
-9. Click **Use no fretwire**: the frets go back to center lines with the Remark.
-10. Use `Quick 1` again, then delete it from the Frets tab. Because a saved neck may use it, expect the replacement dialog when one does; with none, a plain confirmation. Reopen the design: it shows none, with the note.
+9. With `Quick 1` in use, delete it from the Frets tab. Because a saved neck may use it, expect the replacement dialog when one does; with none, a plain confirmation. Reopen the design: it shows none, with the note.
