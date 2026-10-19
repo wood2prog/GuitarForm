@@ -8,8 +8,8 @@ Project-organization work, in the order we plan to do it. Tick items off as they
 - The move onto the new model is finished and committed, in this order: Strings tab (f1297f3, 40747d1, cc76023); Frets tab, courses, side dots, colors and layer tree (bbd7e07); legacy geometry removed (14ea0ec); shape refactors and tests (3e79f8d, f136626); library migration stages 1 to 3 (90f33b0, fa80373, 7017346, df52dfe, ccd5081); saved copies of the body, neck and bracing replacing preset rows (be349bf); old model and storage retired (a2588ae); schema v5 dropping the old design tables (6763b2d); disabled sliders grayed out (f4d10b4); the "Use no fretwire" button removed (9978932).
 - What is built: the panel works on a `DesignSession` holding a `Guitar`; every tab is built from `GuitarFields`; preview and Build draw through `GuitarForm.Shapes` and `DesignDrawing.FromShapes`; the string set and fretwire a neck uses live on the neck in the library (no more `NewFields` files). `NEXT.md` is older than this and describes the earlier pre-migration waves.
 - Workflow: the manager session delegates all edits to workers. All new work needs the user's explicit "build it" before implementation starts.
-- Done: crash recovery for Strings and Frets edits (`LibraryItemRecovery`). It needs a Rhino check, listed in `NEXT.md` with the migrated panel.
-- Next: the Rhino checks in `NEXT.md`, then the remaining items in section 1 (bridge settings, UI polish, limits on values and slider feel). The glossary pass is finished.
+- Done and checked in Rhino by the product owner: crash recovery for Strings and Frets edits (`LibraryItemRecovery`).
+- Next: the Rhino check of the migrated panel in `NEXT.md`, then the remaining items in section 1 (bridge settings, UI polish, limits on values and slider feel). The glossary pass is finished.
 - Known limitations of the library tabs:
   - Add/Remove String drops held invalid input in other boxes, and Remove has no confirmation.
   - Collapsed string groups can re-expand under the wrong title after Add/Remove, because state is keyed by title.
@@ -200,7 +200,7 @@ These need the product owner's direction before any code is written.
 ## Review follow-ups (layers, library tabs)
 
 - [x] `ComponentStyles` completeness (every `DrawingComponent` has a style) and the print color path (a Print override reaches `Layer.PlotColor`) are tested: `ComponentStyles` moved to `GuitarForm.Geometry` (`ComponentStylesTests`).
-- [x] Unsaved Frets and Strings library edits have no crash recovery. Done: `LibraryItemRecovery` keeps one file per library for the edited string set or fretwire, offered back on load and after a library change; needs a Rhino check.
+- [x] Unsaved Frets and Strings library edits have no crash recovery. Done: `LibraryItemRecovery` keeps one file per library for the edited string set or fretwire, offered back on load and after a library change; checked in Rhino by the product owner.
 - [ ] Known limitation of Strings and Frets recovery: after a library switch with "No" to unsaved work, the old library's recovery file isn't cleared, so it is offered again if you return to that library.
 - [ ] Text in a box that doesn't parse isn't recovered, and neither is the unit-weight display preference (only the parsed values are).
 - [x] `DesignDrawing.Construction` and `DesignDrawing.Outline` recompute on every access. Done: each is computed once, on first use.
