@@ -12,10 +12,10 @@ namespace GuitarForm.Tests
     public class LibraryUpgradeTests
     {
         const long ApplicationId = Schema.ApplicationId;
-        const int LatestVersion = 4; // pinned: bump by hand with each migration
+        const int LatestVersion = 5; // pinned: bump by hand with each migration
 
         // The version 1 schema (migration 0 in Schema.cs), frozen here as it was released.
-        const string V1Schema = @"
+        internal const string V1Schema = @"
             CREATE TABLE designs (
                 id INTEGER PRIMARY KEY,
                 name TEXT NOT NULL UNIQUE COLLATE NOCASE CHECK (name <> ''),
@@ -165,7 +165,7 @@ namespace GuitarForm.Tests
                 b = library.CreateGuitar(TestGuitars.OM("Beta"));
             }
             // Take it back to version 2: no uid or legacy_design_id columns, name kept as an IN value as before.
-            Execute("DROP INDEX parts_uids; ALTER TABLE parts DROP COLUMN uid; ALTER TABLE parts DROP COLUMN legacy_design_id;" +
+            Execute(V1Schema + "DROP INDEX parts_uids; ALTER TABLE parts DROP COLUMN uid; ALTER TABLE parts DROP COLUMN legacy_design_id;" +
                 "INSERT OR IGNORE INTO part_values (part_id, abbreviation, item, value) " +
                 $"SELECT id, 'IN', -1, name FROM parts WHERE kind = 'guitar'; PRAGMA user_version = 2;");
 
@@ -194,11 +194,11 @@ namespace GuitarForm.Tests
         void MakeVersion3LibraryWithDesigns()
         {
             using (Library.Open(_path)) { }
-            Execute(V1Data + "PRAGMA user_version = 3;");
+            Execute(V1Schema + V1Data + "PRAGMA user_version = 3;");
         }
 
         [Test]
-        public void Version3Library_ConvertsItsDesignsToGuitars_AndKeepsTheOldTables()
+        public void Version3Library_ConvertsItsDesignsToGuitars_ThenDropsTheOldTables()
         {
             MakeVersion3LibraryWithDesigns();
 
@@ -211,17 +211,39 @@ namespace GuitarForm.Tests
                 Assert.That(om.ScaleLength.Value, Is.EqualTo(645));
                 Assert.That(om.NeckJoinFret.Value, Is.EqualTo(14));
                 Assert.That(om.Body.Length.Value, Is.EqualTo(495));
-                Assert.That(Scalar("SELECT count(*) FROM designs"), Is.EqualTo(2));
+                Assert.That(library.LoadGuitar(guitars[0].Id).Body.TopPlate.SoundholeDiameter.Value, Is.EqualTo(100));
             }
 
             Assert.That(Scalar("PRAGMA user_version"), Is.EqualTo(LatestVersion));
-            Assert.That(Scalar("SELECT count(*) FROM instruments"), Is.EqualTo(3));
-            Assert.That(Scalar("SELECT count(*) FROM soundholes"), Is.EqualTo(2));
+            AssertOldTablesGone();
 
             string backup = BackupPath("GuitarForm.before-v3.bak");
             Assert.That(File.Exists(backup));
             Assert.That(ScalarAt(backup, "PRAGMA user_version"), Is.EqualTo(3));
             Assert.That(ScalarAt(backup, "SELECT count(*) FROM parts WHERE kind = 'guitar'"), Is.EqualTo(0));
+            // The safety copy still holds the old tables.
+            Assert.That(ScalarAt(backup, "SELECT count(*) FROM designs"), Is.EqualTo(2));
+            Assert.That(ScalarAt(backup, "SELECT count(*) FROM instruments"), Is.EqualTo(3));
+        }
+
+        void AssertOldTablesGone() =>
+            Assert.That(Scalar("SELECT count(*) FROM sqlite_master WHERE name IN ('designs', 'instruments', 'bodies', 'soundholes')"),
+                Is.Zero);
+
+        [Test]
+        public void Version4Library_JustLosesTheOldTables()
+        {
+            using (Library.Open(_path)) { }
+            Execute(V1Schema + V1Data + "PRAGMA user_version = 4;");
+            using (var library = Library.Open(_path))
+                Assert.That(library.ListGuitars(), Is.Empty);
+
+            Assert.That(Scalar("PRAGMA user_version"), Is.EqualTo(LatestVersion));
+            AssertOldTablesGone();
+            Assert.That(Scalar("SELECT count(*) FROM sqlite_master WHERE name IN ('parts', 'part_values')"), Is.EqualTo(2));
+            string backup = BackupPath("GuitarForm.before-v4.bak");
+            Assert.That(ScalarAt(backup, "PRAGMA user_version"), Is.EqualTo(4));
+            Assert.That(ScalarAt(backup, "SELECT count(*) FROM designs"), Is.EqualTo(2));
         }
 
         [Test]
@@ -270,18 +292,22 @@ namespace GuitarForm.Tests
         }
 
         [Test]
-        public void Version1Library_KeepsItsOldTables()
+        public void Version1Library_ConvertsFirst_ThenLosesItsOldTables()
         {
             MakeVersion1Library();
 
-            using (Library.Open(_path)) { }
+            using (var library = Library.Open(_path))
+            {
+                var om = library.ListGuitars().Single(g => g.Name == "OM");
+                var loaded = library.LoadGuitar(om.Id);
+                Assert.That(loaded.ScaleLength.Value, Is.EqualTo(645));
+                Assert.That(loaded.Body.Length.Value, Is.EqualTo(495));
+                Assert.That(library.LoadGuitar(library.ListGuitars().Single(g => g.Name == "Parlour").Id).Body.Length.Value,
+                    Is.EqualTo(450));
+            }
 
-            Assert.That(Scalar("SELECT count(*) FROM designs"), Is.EqualTo(2));
-            Assert.That(Scalar("SELECT scale_length FROM instruments WHERE design_id = 1"), Is.EqualTo(645));
-            Assert.That(Scalar("SELECT body_length FROM bodies WHERE design_id = 2"), Is.EqualTo(450));
-            Assert.That(Scalar("SELECT count(*) FROM soundholes WHERE design_id = 2"), Is.Zero);
-            Assert.That(Scalar("SELECT count(*) FROM instruments WHERE preset_name = 'Short'"), Is.EqualTo(1));
-            Assert.That(Scalar("SELECT count(*) FROM soundholes WHERE preset_name = 'Round'"), Is.EqualTo(1));
+            AssertOldTablesGone();
+            Assert.That(ScalarAt(BackupPath("GuitarForm.before-v1.bak"), "SELECT count(*) FROM designs"), Is.EqualTo(2));
         }
 
         [Test]
@@ -295,7 +321,7 @@ namespace GuitarForm.Tests
 
             using var reopened = Library.Open(_path);
             TestGuitars.AssertSameValues(reopened.LoadGuitar(id), TestGuitars.OM("Upgraded"));
-            Assert.That(Scalar("SELECT count(*) FROM designs"), Is.EqualTo(2));
+            AssertOldTablesGone();
         }
 
         [Test]

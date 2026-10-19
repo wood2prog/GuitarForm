@@ -112,7 +112,7 @@ Unsaved library edits, prompts and builds:
 ## Next up
 
 1. The NewFields migration is complete (stages 1 to 4, including R1/R2 below). Next: tests for the untested shapes and for plug-in code, and the Rhino checks listed under P2, P4 and P5.
-2. A later migration (v5) can drop the old tables (`designs`, `instruments`, `bodies`, `soundholes`) once the owner is happy with the converted libraries. `LegacyDesignMigration` reads them with raw SQL, so its tests must stay green until then.
+2. Done: migration v5 drops the old tables (`designs`, `instruments`, `bodies`, `soundholes`) right after the v4 conversion. `LegacyDesignMigration` still reads them with raw SQL when called directly, and its tests recreate them.
 
 ### NewFields → library migration (complete)
 
@@ -232,4 +232,4 @@ Stage 3 must:
 - Construction lines print at the outline weight. Is that what you want?
 - The **Use no fretwire** button was added unasked. Keep it?
 - The stricter value coercion now rejects wrong-typed values in hand-edited JSON with a `FormatException`. Is that the intended behavior?
-- When should migration v5 drop the old tables (`designs`, `instruments`, `bodies`, `soundholes`)? Until then the old Instrument and Soundhole presets live only there, and the `NewFields` folders stay on disk.
+- Decided and done: migration v5 drops the old tables (`designs`, `instruments`, `bodies`, `soundholes`). Old Instrument and Soundhole presets survive only in the `before-v{N}.bak` safety copy and the notes file; the `NewFields` folders stay on disk and can be deleted by the user.

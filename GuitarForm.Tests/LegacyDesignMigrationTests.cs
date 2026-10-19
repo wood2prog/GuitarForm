@@ -42,6 +42,8 @@ namespace GuitarForm.Tests
                 });
             }
 
+            // The library is at the latest version, which has no old tables: put them back for the step to read.
+            Execute(LibraryUpgradeTests.V1Schema);
             Execute($@"
                 INSERT INTO designs (id, name, created, modified) VALUES
                     (1, 'OM', '{T1}', '{T1}'),

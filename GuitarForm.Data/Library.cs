@@ -7,8 +7,8 @@ using Microsoft.Data.Sqlite;
 namespace GuitarForm.Data
 {
     // The SQLite database that holds guitars, their parts, named copies of parts and the fretwire and string sets (see
-    // Library.Parts.cs). The tables of the first versions (designs and section presets) are kept as they were, for the
-    // upgrade that converted them (LegacyDesignMigration).
+    // Library.Parts.cs). The tables of the first versions (designs and section presets) exist only until the upgrade
+    // that converts them (LegacyDesignMigration, version 4) is followed by version 5, which drops them.
     public sealed partial class Library : IDisposable
     {
         public string Path { get; }

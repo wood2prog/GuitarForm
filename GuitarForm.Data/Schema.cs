@@ -8,9 +8,8 @@ namespace GuitarForm.Data
     // The library's tables. The schema version is kept in PRAGMA user_version, and Migrations[i] upgrades a library
     // from version i to i + 1. Never edit a migration that has been released: add a new one instead.
     //
-    // Each section has its own table. A section row belongs either to a design (design_id) or to the library as a named
-    // preset (preset_name), never both. A design has one row in each required section's table, and at most one in
-    // each optional section's table.
+    // Versions 1 to 4 also had the old model's tables (designs, instruments, bodies, soundholes: a row belongs to a
+    // design or is a named preset). Version 4 converted them to guitars and version 5 dropped them.
     static class Schema
     {
         // Stored in the file header to mark the file as a GuitarForm library ("GtFm").
@@ -117,10 +116,21 @@ namespace GuitarForm.Data
                 AND part_id IN (SELECT id FROM parts WHERE kind = 'guitar');
             "),
 
-            // 3 -> 4: the designs of the old model become guitars (the C# step); the old tables stay as they are.
+            // 3 -> 4: the designs of the old model become guitars (the C# step); the old tables stay as they are
+            // until the next step.
             new Migration("SELECT 1;",
                 (connection, transaction, context) =>
                     LegacyDesignMigration.Run(connection, transaction, context.Path, context.Notes)),
+
+            // 4 -> 5: the old design and section tables are dropped (their designs and body presets were converted by
+            // the step above, which runs first). Their indexes go with them. A safety copy of the library is made
+            // before any upgrade, so the old data is in the before-v{N} file.
+            new Migration(@"
+            DROP TABLE soundholes;
+            DROP TABLE bodies;
+            DROP TABLE instruments;
+            DROP TABLE designs;
+            "),
         };
 
         // What a migration's C# step can use: the library's file, and a list of notes it can leave for the user.
