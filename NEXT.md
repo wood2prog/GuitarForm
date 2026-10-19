@@ -179,7 +179,7 @@ Stage 3 must:
 **Still needed:**
 
 - A copy of the owner's real library and `NewFields` folder, for a dry run before stage 3 ships.
-- A decision on whether `MoveLibrary` moves `*.before-v*.bak` and notes files.
+- ~~A decision on whether `MoveLibrary` moves `*.before-v*.bak` and notes files.~~ Decided yes; done (`LibraryFiles.Move`).
 
 **Rhino check after stage 1:** open the current library. It should upgrade to v3 and leave `GuitarForm.before-v2.bak` beside it (or the matching `before-v{N}` name). Designs, presets, new fields, the Strings and Frets tabs, Build and recovery should all work as before.
 

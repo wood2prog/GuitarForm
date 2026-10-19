@@ -52,16 +52,12 @@ namespace GuitarForm
             }
         }
 
-        // Moves the library file, if there is one, to a new path.
+        // Moves the library file, if there is one, to a new path, with its upgrade safety copies and notes files
+        // (see LibraryFiles.Move). Throws IOException, having moved nothing, if any destination name is taken.
         public void MoveLibrary(string from, string to)
         {
             lock (_lock)
-            {
-                if (!File.Exists(from))
-                    return;
-                Directory.CreateDirectory(Path.GetDirectoryName(to));
-                File.Move(from, to);
-            }
+                LibraryFiles.Move(from, to);
         }
 
         public void Dispose()

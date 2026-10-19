@@ -9,7 +9,7 @@ All designs and presets are kept in one SQLite database, `GuitarForm.db`. The ma
 **Library folder › Change…** picks another folder:
 
 - If the folder already has a `GuitarForm.db`, you're asked whether to use it. The current library stays where it was.
-- Otherwise you're asked whether to move the current library there (**Yes**) or start a new, empty library there (**No**).
+- Otherwise you're asked whether to move the current library there (**Yes**) or start a new, empty library there (**No**). Moving takes the library's upgrade safety copies (`GuitarForm.before-v{N}.bak`) and notes files (`.notes.txt`) along. If a file with any of those names is already in the new folder, nothing is moved and you're told which file is in the way.
 
 The file is marked as a GuitarForm library; GuitarForm won't open another kind of database, or a library made by a newer version of GuitarForm. A library made by an older version is upgraded when it's opened.
 

@@ -202,4 +202,4 @@ These need the product owner's direction before any code is written.
 - [ ] Two processes upgrading the same library at once can collide on the .bak/.tmp names (one open is blocked, nothing is lost, and retrying works).
 - [ ] A .tmp left by a crash mid-copy costs one spurious failure, then recovers.
 - [ ] No test for a read-only folder or a very long path.
-- [ ] **(decision)** `BackupScheduler.MoveLibrary` does not move the `*.before-v*.bak` files. Should it?
+- [x] **(decision: yes)** `BackupScheduler.MoveLibrary` now moves the `*.before-v*.bak` and `.notes.txt` files too (`LibraryFiles.Move`); it aborts before changing anything if a destination name is taken.
