@@ -165,6 +165,16 @@ Stage 3 must:
 - Temporary bridge, deleted in P4: `GuitarForm.Model/GuitarFieldMap.cs` (a Guitar as the old Instrument, Body and Soundhole records and back, tested in `GuitarFieldMapTests`) and `GuitarForm/LegacyFieldAdapter.cs` (the panel's `Design`, `Fields` and `Apply`). The new-field editors edit the session's Guitar directly; the `NewFields` file I/O was removed.
 - The Instrument, Body and Soundhole presets still use the old preset tables (P5 replaces them).
 
+**P3 done (unused until P4):** field table `GuitarFields` in GuitarForm.Model/Parts and `FieldBinding` in the plug-in; tests 717. Open P4 questions:
+
+1. Soundhole yes/no as its own group vs a pinned top check box.
+2. Unticking the soundhole keeps SHD/SHOC/SHOT values (new model) whereas the bridge clears them.
+3. A blank required field clears the value and Validate reports it, rather than "X is required".
+4. Minimums come from the definitions' limits.
+5. Required fields show a "required" placeholder.
+
+P4 must keep `NewFields.WithStartingShape`/`WithMarkers` rows or move them.
+
 **Rhino check after P2** (stage 3):
 
 - Open a copy of the real library. It upgrades to v4, leaves `GuitarForm.before-v3.bak` (or the matching `before-v{N}`) and a `.notes.txt` beside it, and the panel shows the notes once (a message box and the command history). Every old design is in the list, with the same values on the Instrument, Body, Soundhole, Bracing, Fretboard, Neck, Strings and Frets tabs.
