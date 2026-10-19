@@ -5,7 +5,7 @@ Running record of where the project stands. Update it at the end of each session
 ## State
 
 - Branch: `main`. This session's work is committed.
-- Build: 0 warnings. Tests: 402 passing (down from 443 with the deleted legacy tests).
+- Build: 0 warnings. Tests: 405 passing (down from 443 with the deleted legacy tests).
 - An independent review of this batch was done and its findings were fixed (T10). 
 - A code review of the whole codebase was done; the quick fixes from it are in.
 - Bracing, Fretboard and Frets docs are written.
@@ -77,6 +77,7 @@ Unsaved library edits, prompts and builds:
 - Old empty `GuitarForm` layers (and the parent) are removed in the same build. A layer with an object, the current layer, or one used by a block stays.
 - **Show strings** redraws the preview, persists across a Rhino restart, and doesn't reset the backup timer.
 - A fretboard slot deeper than the board's thickness shows the cut-through Warning and draws no slot lines.
+- Heel layer now has objects: Build puts the shaft on `Guitar::Neck::Side view` and the heel on `Guitar::Neck::Heel`. They share the cut line, and the Heel layer's colour shows in the preview.
 
 ## Decisions made
 
@@ -98,9 +99,8 @@ Unsaved library edits, prompts and builds:
 
 ## Next up
 
-1. Split the neck heel from the `NeckSideShape` outline, so the Heel layer gets objects.
-2. Remaining pre-migration cleanup, from `IMPROVEMENTS.md`: extract the shared shape helpers; add an upgrade test and a backup before migration; add culture tests; add tests for the untested shapes and for plug-in code.
-3. Migrate `NewFields` into the library. This needs the owner's sign-off and a senior-engineer plan first.
+1. Remaining pre-migration cleanup, from `IMPROVEMENTS.md`: extract the shared shape helpers; add an upgrade test and a backup before migration; add culture tests; add tests for the untested shapes and for plug-in code.
+2. Migrate `NewFields` into the library. This needs the owner's sign-off and a senior-engineer plan first.
 
 ## Open questions for the owner
 

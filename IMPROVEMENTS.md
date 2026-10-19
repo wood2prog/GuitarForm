@@ -90,7 +90,7 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 - [ ] Extract the shared shape helpers (Format, Error/Remark/Warning, Intersect, Join, Rectangle, tolerances) from the shapes.
 - [ ] Split `BracingShape` (move the outline offset and point-in-polygon maths out), `PlateShape.AddCutaway`, `NeckSideShape.Build` and `NeckProfilesShape` sampling.
 - [x] Tag `GuitarDrawing` output by role and layer, so `DesignBuilder` can use separate layers (`GuitarDrawing.Items` of `DrawnItem`; `DesignBuilder` uses the `ComponentStyles` layer tree).
-- [ ] Split the neck heel from the `NeckSideShape` outline: the Heel layer exists, but nothing is tagged Heel yet.
+- [x] Split the neck heel from the `NeckSideShape` outline: `Heel` and `Shaft` are drawn separately, the Heel layer has objects.
 - [ ] Add tests for plug-in code and for `ComponentStyles` (needs Rhino-free code moved out of the .rhp, as above).
 - [x] The T0 deletion of the legacy Geometry classes is done, and `CLAUDE.md` is updated.
 - [ ] **(decision)** The `docs/Body.md` side-view Quick Test row disagrees with the Shapes drawing; the owner decides which is right.
@@ -159,3 +159,4 @@ These need the product owner's direction before any code is written.
 - [ ] `ComponentStyles` completeness (every `DrawingComponent` has a style) needs a test. Plug-in internals aren't visible to the tests: use `InternalsVisibleTo`, or move the table's component list into a testable place.
 - [ ] Unsaved Frets and Strings library edits have no crash recovery.
 - [ ] `DesignDrawing.Construction` and `DesignDrawing.Outline` recompute on every access: cache them in callers that loop.
+- [ ] NeckSideShape heel split: nothing checks that the dividing line avoids the heel's front in extreme geometry (front reaching past onBack), and the out-of-range cut Error has no test (not reachable through the public API).

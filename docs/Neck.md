@@ -95,6 +95,10 @@ Below that, the profile runs from the shoulder start down to the bottom, which i
 
 The neck profiles share a centerline, the drawing gap right of the side view, each centered on the height of its fret on the playing surface. The heel section and then the heel end follow, each the drawing gap further right, level with the heel.
 
+### Side view
+
+The shaft and the heel are two closed outlines, on separate layers (`Guitar::Neck::Side view` and `Guitar::Neck::Heel`). The neck is split along a line that starts where the heel shaft fillet ends on the back of the neck and runs square to the back, up to the fretboard's underside. That line is drawn in both outlines. If it doesn't land on the underside between the heel/body joint and the nut end, an Error says the heel's dividing line can't land on the fretboard's underside, and neither piece is drawn.
+
 ## Quick Test
 
 The tests use a 645 scale, a 600 body, 20 frets, a 44 nut and 54 at the bridge, a 400 fretboard radius and thicknesses of 7 at the nut and 6 at the end. In a document in millimetres, with Neck Thickness at First Fret 21, Neck Thickness at Selected Fret 23, Neck Thickness Fret 9 and Profile Includes Fretboard unticked at the first fret:

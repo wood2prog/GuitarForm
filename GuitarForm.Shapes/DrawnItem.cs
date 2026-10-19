@@ -23,7 +23,7 @@ namespace GuitarForm.Shapes
 
         // Neck group.
 
-        /// <summary>The neck's shaft in the side view (with the heel, until the heel is drawn on its own).</summary>
+        /// <summary>The neck's shaft in the side view (the heel is drawn on its own, as Heel).</summary>
         NeckSide,
         /// <summary>The heel of the neck, the part that attaches to the body.</summary>
         Heel,

@@ -25,9 +25,19 @@ namespace GuitarForm.Shapes
     // the heel to the back of the neck, tangent to both.
     public sealed class NeckSideShape
     {
-        // Clockwise from the top at the nut end: the top, the heel/body joint, the heel end, the front of the heel, the
-        // heel shaft fillet, the back of the neck and the nut end. Null until it can be drawn.
+        // The whole neck, clockwise from the top at the nut end: the top, the heel/body joint, the heel end, the front of
+        // the heel, the heel shaft fillet, the back of the neck and the nut end. Null until it can be drawn. It's drawn as
+        // the Heel and the Shaft, not on its own.
         public Path Outline { get; private set; }
+
+        // The heel: the top from the cut to the joint, the joint, the heel end, the front, the heel shaft fillet and
+        // the cut, which runs square to the back of the neck from the end of the fillet up to the top. Null until it
+        // can be drawn, and when the cut doesn't land between the joint and the nut end.
+        public Path Heel { get; private set; }
+
+        // The shaft: the top from the nut end to the cut, the cut, the back of the neck and the nut end. Null when the
+        // Heel is.
+        public Path Shaft { get; private set; }
 
         // The heel cap on the heel end, when there is one.
         public Path HeelCap { get; private set; }
@@ -235,6 +245,28 @@ namespace GuitarForm.Shapes
             segments.Add(new LineSegment(onBack, nutBack));
             segments.Add(new LineSegment(nutBack, nutEnd));
             Outline = new Path(segments, isClosed: true);
+
+            // The heel and the shaft are split along the line square to the back of the neck from where the heel shaft
+            // fillet ends, up to the fretboard's underside. Both pieces carry that line.
+            var cutMeet = Intersect(onBack, -outward, fretboardSide.NutUnder, boardToNut);
+            if (cutMeet is Point2 cut &&
+                (cut - joint).Dot(boardToNut) > _tolerance && (nutEnd - cut).Dot(boardToNut) > _tolerance)
+            {
+                var heel = new List<Segment> { new LineSegment(cut, joint) };
+                heel.AddRange(segments.Skip(1).Take(segments.Count - 3));
+                heel.Add(new LineSegment(onBack, cut));
+                Heel = new Path(heel, isClosed: true);
+                Shaft = new Path(new Segment[]
+                {
+                    new LineSegment(nutEnd, cut),
+                    new LineSegment(cut, onBack),
+                    new LineSegment(onBack, nutBack),
+                    new LineSegment(nutBack, nutEnd),
+                }, isClosed: true);
+            }
+            else
+                Error("The heel's dividing line can't land on the fretboard's underside, so the neck can't be split into its " +
+                      "shaft and heel: check the Heel Shaft Radius and the heel's front.");
 
             if (heelEndX - capOuter > _tolerance)
                 HeelCap = Rectangle(new Point2(capOuter, neckEnd), new Point2(heelEndX, neckEnd),

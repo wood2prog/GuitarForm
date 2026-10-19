@@ -206,12 +206,83 @@ namespace GuitarForm.Tests
             }));
         }
 
+        // The area inside a closed path, by sampling each segment.
+        static double Area(Path path)
+        {
+            var points = path.Segments.SelectMany(s => Enumerable.Range(0, 400).Select(i => s.PointAt(i / 400.0))).ToList();
+            double twice = 0;
+            for (int i = 0; i < points.Count; i++)
+                twice += points[i].X * points[(i + 1) % points.Count].Y - points[(i + 1) % points.Count].X * points[i].Y;
+            return Math.Abs(twice) / 2;
+        }
+
+        static void AssertSplit(NeckSideShape neck, int heelSegments)
+        {
+            Assert.That(neck.Heel.IsClosed, Is.True);
+            Assert.That(neck.Shaft.IsClosed, Is.True);
+            Assert.That(neck.Heel.Segments, Has.Count.EqualTo(heelSegments));
+            Assert.That(neck.Shaft.Segments, Has.Count.EqualTo(4));
+
+            // The cut runs from where the heel shaft fillet ends on the back, square to the back, up to the top.
+            var back = neck.Outline.Segments[^2];
+            var cutInHeel = (LineSegment)neck.Heel.Segments[^1];
+            var cutInShaft = (LineSegment)neck.Shaft.Segments[1];
+            AssertPoint(cutInHeel.From, back.Start.X, back.Start.Y);
+            Assert.That((cutInHeel.To - cutInHeel.From).Unit.Dot((back.End - back.Start).Unit), Is.EqualTo(0).Within(1e-9));
+            // Both pieces have it, the same line either way round.
+            AssertPoint(cutInShaft.From, cutInHeel.To.X, cutInHeel.To.Y);
+            AssertPoint(cutInShaft.To, cutInHeel.From.X, cutInHeel.From.Y);
+            // It lands on the top, between the joint and the nut end.
+            var top = neck.Outline.Segments[0];
+            Assert.That(DistanceToLine(cutInHeel.To, top), Is.EqualTo(0).Within(1e-6));
+            Assert.That((cutInHeel.To - top.Start).Dot((top.End - top.Start).Unit), Is.GreaterThan(0));
+            Assert.That((top.End - cutInHeel.To).Dot((top.End - top.Start).Unit), Is.GreaterThan(0));
+            // Heel and shaft together make the whole neck.
+            Assert.That(Area(neck.Heel) + Area(neck.Shaft), Is.EqualTo(Area(neck.Outline)).Within(1e-6));
+            Assert.That(neck.Messages, Is.Empty);
+        }
+
+        [Test]
+        public void HeelAndShaft_SplitAtTheEndOfTheFilletSquareToTheBack()
+        {
+            var (neck, _) = Solve(TestGuitar());
+
+            // Top, joint, heel end, front, fillet and cut, after the heel end front.
+            AssertSplit(neck, 6);
+            AssertPoint(neck.Heel.Segments[1].Start, neck.Outline.Segments[0].End.X, neck.Outline.Segments[0].End.Y);
+            AssertPoint(neck.Shaft.Segments[0].Start, neck.Outline.Segments[0].Start.X, neck.Outline.Segments[0].Start.Y);
+        }
+
+        [Test]
+        public void HeelAndShaft_WithAHeelShaftOffset()
+        {
+            var (neck, _) = Solve(TestGuitar(n => n with { HeelShaftOffset = new(Neck.Definitions.HeelShaftOffset, 10) }));
+
+            Assert.That(neck.Heel.Segments.OfType<ArcSegment>().Count(), Is.EqualTo(2));
+            AssertSplit(neck, 6);
+        }
+
+        [Test]
+        public void HeelAndShaft_NullWithoutTheValues()
+        {
+            var (neck, _) = Solve(TestGuitar(n => n with { HeelShaftRadius = new(Neck.Definitions.HeelShaftRadius) }));
+
+            Assert.That(neck.Outline, Is.Null);
+            Assert.That(neck.Heel, Is.Null);
+            Assert.That(neck.Shaft, Is.Null);
+            Assert.That(neck.Messages.Select(m => m.Level), Is.EqualTo(new[] { MessageLevel.Remark }));
+        }
+
         [Test]
         public void GuitarDrawing_DrawsTheNeckAndPlacesTheProfilesPastIt()
         {
             var drawing = GuitarDrawing.Draw(TestGuitar(), Tolerance, 50);
 
-            Assert.That(drawing.OutlinePaths, Has.Member(drawing.NeckSide.Outline));
+            Assert.That(drawing.Items.Where(i => i.Component == DrawingComponent.Heel && i.Role == DrawingRole.Outline)
+                .Select(i => i.Path), Is.EqualTo(new[] { drawing.NeckSide.Heel }));
+            Assert.That(drawing.Items.Where(i => i.Component == DrawingComponent.NeckSide && i.Role == DrawingRole.Outline)
+                .Select(i => i.Path), Is.EqualTo(new[] { drawing.NeckSide.Shaft }));
+            Assert.That(drawing.OutlinePaths, Has.No.Member(drawing.NeckSide.Outline));
             Assert.That(drawing.OutlinePaths, Has.Member(drawing.NeckSide.Nut));
             double right = new[] { drawing.SideView.Outline, drawing.FretboardSide.Outline, drawing.NeckSide.Nut }
                 .Max(path => path.Bounds.MaxX);

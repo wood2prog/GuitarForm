@@ -151,8 +151,10 @@ namespace GuitarForm.Shapes
             var neckSide = drawing.NeckSide = NeckSideShape.Solve(guitar, side, fretboardSide, tolerance, unit, culture);
             drawing.NeckMessages.AddRange(neckSide.Messages);
             drawing.AddLines(DrawingComponent.NeckSide, DrawingRole.Construction, neckSide.ConstructionLines);
+            // neckSide.Outline is the whole neck, kept for layout bounds only: Heel and Shaft are what get drawn.
             var neckSidePaths = new[] { neckSide.Outline, neckSide.HeelCap, neckSide.Nut }.Where(path => path != null).ToList();
-            drawing.AddPaths(DrawingComponent.NeckSide, DrawingRole.Outline, new[] { neckSide.Outline });
+            drawing.AddPaths(DrawingComponent.NeckSide, DrawingRole.Outline, new[] { neckSide.Shaft });
+            drawing.AddPaths(DrawingComponent.Heel, DrawingRole.Outline, new[] { neckSide.Heel });
             drawing.AddPaths(DrawingComponent.HeelCap, DrawingRole.Outline, new[] { neckSide.HeelCap });
             drawing.AddPaths(DrawingComponent.Nut, DrawingRole.Outline, new[] { neckSide.Nut });
 
