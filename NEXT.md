@@ -5,7 +5,7 @@ Running record of where the project stands. Update it at the end of each session
 ## State
 
 - Branch: `main`. This session's work is committed.
-- Build: 0 warnings. Tests: 519 passing (405 before wave A).
+- Build: 0 warnings. Tests: 582 passing (405 before wave A).
 - An independent review of this batch was done and its findings were fixed (T10). 
 - A code review of the whole codebase was done; the quick fixes from it are in.
 - Bracing, Fretboard and Frets docs are written.
@@ -27,10 +27,10 @@ Running record of where the project stands. Update it at the end of each session
 
 ## Pre-migration cleanup progress
 
-- Wave A is done: golden test (en-US and de-DE), Segment/side view/soundhole/ShapeCurves/FK-cascade tests, library v1 upgrade test, culture tests. It also found and fixed the `Vector2.ToString` infinite recursion.
+- Wave A is done and committed: golden test (en-US and de-DE), Segment/side view/soundhole/ShapeCurves/FK-cascade tests, library v1 upgrade test, culture tests. It also found and fixed the `Vector2.ToString` infinite recursion.
+- Wave B is done: shared shape helpers (`ShapeSupport`, `ShapeMessages`, `PolygonMath`), the splits of `BracingShape`, `PlateShape.AddCutaway`, `NeckSideShape` and `NeckProfilesShape` sampling, and `InternalsVisibleTo` for the tests. An independent review passed.
 - Remaining waves:
-  - B: shared shape helpers and the splits.
-  - C: backup before migration, move `ComponentStyles` to Geometry, `InternalsVisibleTo`, caching and `UiMetrics` bypasses.
+  - C: backup before migration, move `ComponentStyles` to Geometry, caching and `UiMetrics` bypasses.
   - D: `Directory.Build.props` and American spelling.
 - Owner decisions: the upgrade backup goes next to the library (e.g. `GuitarForm.before-v1.bak`), and a failed copy blocks opening. `Directory.Build.props`, the `ComponentStyles` move and Shapes `InternalsVisibleTo` are approved. UI helper duplicates are deferred.
 - Follow-ups found by the tests are in `IMPROVEMENTS.md` ("Follow-ups from the test work").
@@ -109,7 +109,7 @@ Unsaved library edits, prompts and builds:
 
 ## Next up
 
-1. Remaining pre-migration cleanup, from `IMPROVEMENTS.md`: extract the shared shape helpers; add an upgrade test and a backup before migration; add culture tests; add tests for the untested shapes and for plug-in code.
+1. Remaining pre-migration cleanup (waves C and D), from `IMPROVEMENTS.md`: add an upgrade test and a backup before migration; add culture tests; add tests for the untested shapes and for plug-in code.
 2. Migrate `NewFields` into the library. This needs the owner's sign-off and a senior-engineer plan first.
 
 ## Open questions for the owner

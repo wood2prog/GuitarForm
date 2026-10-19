@@ -51,7 +51,7 @@ namespace GuitarForm.Shapes
             if (missing.Count > 0)
             {
                 shape.Messages.Add(new GeometryMessage(MessageLevel.Remark,
-                    $"Set the {FretboardShape.Join(missing)} to draw the fretboard in the side view."));
+                    $"Set the {ShapeSupport.Join(missing)} to draw the fretboard in the side view."));
                 return shape;
             }
             // The model reports values out of range.
@@ -203,7 +203,7 @@ namespace GuitarForm.Shapes
             }
             if (tooThin.Count > 0)
                 Messages.Add(new GeometryMessage(MessageLevel.Warning,
-                    $"The slot bottom is above the playing surface at fret {FretboardShape.Join(tooThin.Select(f => f.ToString()).ToList())}, " +
+                    $"The slot bottom is above the playing surface at fret {ShapeSupport.Join(tooThin.Select(f => f.ToString()).ToList())}, " +
                     "so no slot line is drawn there: the fretboard tapers more than the slot depth."));
         }
     }

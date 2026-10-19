@@ -87,8 +87,8 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 ### Pre-migration cleanup
 
 - [x] Delete the legacy Geometry classes used only by tests (`PlateGeometry`, `SideViewGeometry`, `SoundholeGeometry`, `DesignDrawing.Draw`) and their tests.
-- [ ] Extract the shared shape helpers (Format, Error/Remark/Warning, Intersect, Join, Rectangle, tolerances) from the shapes.
-- [ ] Split `BracingShape` (move the outline offset and point-in-polygon maths out), `PlateShape.AddCutaway`, `NeckSideShape.Build` and `NeckProfilesShape` sampling.
+- [x] Extract the shared shape helpers (Format, Error/Remark/Warning, Intersect, Join, Rectangle, tolerances) from the shapes. Done: `ShapeSupport`, `ShapeMessages` and `PolygonMath`, with `InternalsVisibleTo` for the tests.
+- [x] Split `BracingShape` (move the outline offset and point-in-polygon maths out), `PlateShape.AddCutaway`, `NeckSideShape.Build` and `NeckProfilesShape` sampling. Characterization tests cover each extracted branch.
 - [x] Tag `GuitarDrawing` output by role and layer, so `DesignBuilder` can use separate layers (`GuitarDrawing.Items` of `DrawnItem`; `DesignBuilder` uses the `ComponentStyles` layer tree).
 - [x] Split the neck heel from the `NeckSideShape` outline: `Heel` and `Shaft` are drawn separately, the Heel layer has objects.
 - [ ] Add tests for plug-in code and for `ComponentStyles` (needs Rhino-free code moved out of the .rhp, as above).
@@ -127,6 +127,17 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 - [ ] `Schema` is internal, so `LibraryUpgradeTests` repeats the `ApplicationId` and `LatestVersion` constants: bump them by hand on the next migration, or add `InternalsVisibleTo` to `GuitarForm.Data`.
 - [ ] **(decision)** `NumberParameter`/`CountParameter.TryParse` use the current culture, so `1.5` is rejected under de-DE. Accept both?
 - [ ] `Format`/`TryParse` with a null culture depend on the machine culture.
+
+### Follow-ups from the shape refactors
+
+- [ ] `PolygonMath.Contains` judges a point outside when the +X ray passes exactly through a reflex vertex, and is asymmetric on the boundary (left and bottom edges inside, right and top edges outside). The test `PolygonMathTests.Contains_RayThroughReflexVertex` pins the wrong answer, so a fix must update it.
+- [ ] `OffsetInward` does not re-join corners, and a zero-length line offsets to NaN.
+- [ ] `PlateShape` Florentine width and Venetian valley radius that are invalid fail with no message.
+- [ ] `NeckProfilesShape` drops an invalid profile (e.g. asymmetry of +/-100) with no message.
+- [ ] Two `SolveBack` branches in `NeckSideShape` (underside parallel to the neck end line, back square to the playing surface at the nut) are unreachable without exact floating-point parallelism.
+- [ ] Four shapes still build "Set the X to draw Y" remarks by hand with `Messages.Add` instead of `ShapeMessages` (`FretboardShape`, `FretboardSideShape`, `SideViewShape`, `NeckSideShape`).
+- [ ] `ShapeSupport.BracingSlack` is used by the general-purpose `PolygonMath`; consider renaming it.
+- [ ] Long interpolated messages in the moved code need re-indenting (cosmetic).
 
 ### Migration (needs product-owner sign-off and a senior-engineer plan first)
 

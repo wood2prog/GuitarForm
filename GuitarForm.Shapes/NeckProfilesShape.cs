@@ -80,8 +80,7 @@ namespace GuitarForm.Shapes
         readonly Neck _neck;
         readonly Fretboard _fretboard;
         readonly double _tolerance;
-        readonly LengthUnit _unit;
-        readonly IFormatProvider _culture;
+        readonly ShapeMessages _messages;
 
         NeckProfilesShape(Guitar guitar, double tolerance, LengthUnit unit, IFormatProvider culture)
         {
@@ -89,8 +88,7 @@ namespace GuitarForm.Shapes
             _neck = guitar.Neck;
             _fretboard = _neck.Fretboard;
             _tolerance = tolerance;
-            _unit = unit;
-            _culture = culture;
+            _messages = new ShapeMessages(Messages, unit, culture);
         }
 
         // The profiles placed beside the side view, starting at left. fretboardSide places the neck profiles at their
@@ -194,8 +192,8 @@ namespace GuitarForm.Shapes
             double radius = _fretboard.Radius.Value.Value;
             if (radius < half)
             {
-                Error($"At {place}, the {_fretboard.Radius.Label} must be at least half the fretboard's width there " +
-                      $"({Format(half)}).");
+                _messages.Error($"At {place}, the {_fretboard.Radius.Label} must be at least half the fretboard's width there " +
+                      $"({_messages.Format(half)}).");
                 return null;
             }
             double fromNut = _guitar.FretDistance(fret).Value;
@@ -205,19 +203,27 @@ namespace GuitarForm.Shapes
             double depth = thickness.Value.Value;
             if (depth <= boardThickness)
             {
-                Error($"At {place}, the {thickness.Label} must be more than the fretboard's thickness there " +
-                      $"({Format(boardThickness)}).");
+                _messages.Error($"At {place}, the {thickness.Label} must be more than the fretboard's thickness there " +
+                      $"({_messages.Format(boardThickness)}).");
                 return null;
             }
 
+            return NeckProfileOutline(place, thickness, settings, half, radius, boardThickness, depth);
+        }
+
+        // The neck profile's outline and fretboard underside, once its values are known to fit. Null when the profile
+        // includes the fretboard and the surface drops past the neck's thickness.
+        NeckProfileShape NeckProfileOutline(string place, NumberParameter thickness, Settings settings, double half,
+            double radius, double boardThickness, double depth)
+        {
             var surface = new Circle(new Point2(0, -radius), radius);
             double edgeTop = -(radius - Math.Sqrt(radius * radius - half * half));
             var trebleTop = new Point2(half, edgeTop);
             var bassTop = new Point2(-half, edgeTop);
             if (settings.IncludesFretboard && edgeTop <= -depth)
             {
-                Error($"At {place}, the {thickness.Label} must be more than the drop of the fretboard's surface at its " +
-                      $"edge ({Format(-edgeTop)}), because the profile includes the fretboard.");
+                _messages.Error($"At {place}, the {thickness.Label} must be more than the drop of the fretboard's surface at its " +
+                      $"edge ({_messages.Format(-edgeTop)}), because the profile includes the fretboard.");
                 return null;
             }
             var trebleUnder = new Point2(half, -boardThickness);
@@ -300,8 +306,8 @@ namespace GuitarForm.Shapes
             double offset = _neck.HeelSectionOffsetFromHeelEnd.Value.Value;
             if (offset >= span)
             {
-                Error($"The heel section must be between the heel end and the fretboard: the " +
-                      $"{_neck.HeelSectionOffsetFromHeelEnd.Label} must be less than {Format(span)}.");
+                _messages.Error($"The heel section must be between the heel end and the fretboard: the " +
+                      $"{_neck.HeelSectionOffsetFromHeelEnd.Label} must be less than {_messages.Format(span)}.");
                 return null;
             }
             double endWidth = _neck.HeelEndWidth.Value.Value;
@@ -313,26 +319,6 @@ namespace GuitarForm.Shapes
             settings.Asymmetry is >= Neck.MinimumAsymmetry and <= Neck.MaximumAsymmetry &&
             (settings.Advanced ? settings.Blend is >= 0 and <= 100 : settings.Squareness > 0);
 
-        // The reference squareness values the blend mixes between, at 0%, 50% and 100%.
-        static readonly double[] BlendReferences = { 1, 2, 3.2 };
-
-        // A point of the unit quadrant at angle t (0 at the shoulder, pi/2 at the apex): across from the apex as a
-        // fraction of the half's width, and up from the bottom as a fraction of the height.
-        static (double X, double Y) Quadrant(Settings settings, double t)
-        {
-            double cos = Math.Max(Math.Cos(t), 0), sin = Math.Max(Math.Sin(t), 0);
-            if (!settings.Advanced)
-                return Superellipse(settings.Squareness, cos, sin);
-            int lower = settings.Blend < 50 ? 0 : 1;
-            double weight = (settings.Blend - 50 * lower) / 50;
-            var a = Superellipse(BlendReferences[lower], cos, sin);
-            var b = Superellipse(BlendReferences[lower + 1], cos, sin);
-            return ((1 - weight) * a.X + weight * b.X, (1 - weight) * a.Y + weight * b.Y);
-        }
-
-        static (double X, double Y) Superellipse(double n, double cos, double sin) =>
-            (Math.Pow(cos, 2 / n), 1 - Math.Pow(sin, 2 / n));
-
         // The two halves of the profile below the shoulder start, clockwise from the treble shoulder start through the
         // apex to the bass shoulder start. Half is the half-width, shoulder the height of the shoulder start and bottom
         // the lowest point.
@@ -341,60 +327,96 @@ namespace GuitarForm.Shapes
             double apex = half * settings.Asymmetry / 100;
             double height = shoulder - bottom;
             var apexPoint = new Point2(apex, bottom);
-            var treble = Sample(settings, half - apex, 1, apex, bottom, height, new Point2(half, shoulder), apexPoint);
-            var bass = Sample(settings, half + apex, -1, apex, bottom, height, new Point2(-half, shoulder), apexPoint);
+            var sampler = new HalfSampler(settings, _tolerance);
+            var treble = sampler.Sample(half - apex, 1, apex, bottom, height, new Point2(half, shoulder), apexPoint);
+            var bass = sampler.Sample(half + apex, -1, apex, bottom, height, new Point2(-half, shoulder), apexPoint);
             bass.Reverse();
             return new List<Segment> { new PolylineSegment(treble), new PolylineSegment(bass) };
         }
 
-        // Points along one half from its shoulder start to the apex (direction is 1 for treble, -1 for bass, and
-        // width the half's width from the apex). The angle is split in eight and each piece subdivided until its chord
-        // is within half the tolerance of the curve, down to a depth that bounds the count.
-        List<Point2> Sample(Settings settings, double width, int direction, double apexX, double bottom, double height,
-            Point2 first, Point2 last)
+        // Samples one half of a profile's curve (a superellipse quadrant, or in advanced mode a blend of the reference
+        // ones) as points.
+        sealed class HalfSampler
         {
-            Point2 At(double t)
-            {
-                var (x, y) = Quadrant(settings, t);
-                return new Point2(apexX + direction * width * x, bottom + height * y);
-            }
+            // The reference squareness values the blend mixes between, at 0%, 50% and 100%.
+            static readonly double[] BlendReferences = { 1, 2, 3.2 };
 
             const int Initial = 8, MaxDepth = 6;
-            double allowed = Math.Max(_tolerance, 1e-6) / 2;
-            var points = new List<Point2> { first };
 
-            void Refine(double t0, Point2 p0, double t1, Point2 p1, int depth)
+            readonly Settings _settings;
+            readonly double _allowed;
+
+            public HalfSampler(Settings settings, double tolerance)
+            {
+                _settings = settings;
+                _allowed = Math.Max(tolerance, ShapeSupport.ProfileCurveMinimumTolerance) / 2;
+            }
+
+            // Points along one half from its shoulder start to the apex (direction is 1 for treble, -1 for bass, and
+            // width the half's width from the apex). The angle is split in eight and each piece subdivided until its
+            // chord is within half the tolerance of the curve, down to a depth that bounds the count.
+            public List<Point2> Sample(double width, int direction, double apexX, double bottom, double height,
+                Point2 first, Point2 last)
+            {
+                Point2 At(double t)
+                {
+                    var (x, y) = Quadrant(t);
+                    return new Point2(apexX + direction * width * x, bottom + height * y);
+                }
+
+                var points = new List<Point2> { first };
+                var previous = first;
+                for (int i = 1; i <= Initial; i++)
+                {
+                    var next = i == Initial ? last : At(Math.PI / 2 * i / Initial);
+                    Refine(points, At, Math.PI / 2 * (i - 1) / Initial, previous, Math.PI / 2 * i / Initial, next, 0);
+                    previous = next;
+                }
+                return points;
+            }
+
+            // Adds the end of the piece from t0 to t1, after the points that keep its chords within the tolerance.
+            void Refine(List<Point2> points, Func<double, Point2> at, double t0, Point2 p0, double t1, Point2 p1,
+                int depth)
             {
                 double mid = (t0 + t1) / 2;
-                var pm = At(mid);
+                var pm = at(mid);
                 if (depth < MaxDepth &&
-                    (DistanceToChord(pm, p0, p1) > allowed ||
-                     DistanceToChord(At((t0 + mid) / 2), p0, p1) > allowed ||
-                     DistanceToChord(At((mid + t1) / 2), p0, p1) > allowed))
+                    (DistanceToChord(pm, p0, p1) > _allowed ||
+                     DistanceToChord(at((t0 + mid) / 2), p0, p1) > _allowed ||
+                     DistanceToChord(at((mid + t1) / 2), p0, p1) > _allowed))
                 {
-                    Refine(t0, p0, mid, pm, depth + 1);
-                    Refine(mid, pm, t1, p1, depth + 1);
+                    Refine(points, at, t0, p0, mid, pm, depth + 1);
+                    Refine(points, at, mid, pm, t1, p1, depth + 1);
                 }
                 else
                     points.Add(p1);
             }
 
-            var previous = first;
-            for (int i = 1; i <= Initial; i++)
+            // A point of the unit quadrant at angle t (0 at the shoulder, pi/2 at the apex): across from the apex as a
+            // fraction of the half's width, and up from the bottom as a fraction of the height.
+            (double X, double Y) Quadrant(double t)
             {
-                var next = i == Initial ? last : At(Math.PI / 2 * i / Initial);
-                Refine(Math.PI / 2 * (i - 1) / Initial, previous, Math.PI / 2 * i / Initial, next, 0);
-                previous = next;
+                double cos = Math.Max(Math.Cos(t), 0), sin = Math.Max(Math.Sin(t), 0);
+                if (!_settings.Advanced)
+                    return Superellipse(_settings.Squareness, cos, sin);
+                int lower = _settings.Blend < 50 ? 0 : 1;
+                double weight = (_settings.Blend - 50 * lower) / 50;
+                var a = Superellipse(BlendReferences[lower], cos, sin);
+                var b = Superellipse(BlendReferences[lower + 1], cos, sin);
+                return ((1 - weight) * a.X + weight * b.X, (1 - weight) * a.Y + weight * b.Y);
             }
-            return points;
-        }
 
-        static double DistanceToChord(Point2 p, Point2 a, Point2 b)
-        {
-            var ab = b - a;
-            double lengthSquared = ab.Dot(ab);
-            double along = lengthSquared == 0 ? 0 : Math.Clamp((p - a).Dot(ab) / lengthSquared, 0, 1);
-            return p.DistanceTo(a + ab * along);
+            static (double X, double Y) Superellipse(double n, double cos, double sin) =>
+                (Math.Pow(cos, 2 / n), 1 - Math.Pow(sin, 2 / n));
+
+            static double DistanceToChord(Point2 p, Point2 a, Point2 b)
+            {
+                var ab = b - a;
+                double lengthSquared = ab.Dot(ab);
+                double along = lengthSquared == 0 ? 0 : Math.Clamp((p - a).Dot(ab) / lengthSquared, 0, 1);
+                return p.DistanceTo(a + ab * along);
+            }
         }
 
         // Adds a remark naming the parameters that aren't set. True when any isn't.
@@ -402,14 +424,9 @@ namespace GuitarForm.Shapes
         {
             var missing = parameters.Where(p => !p.HasValue).Select(p => p.Label).Distinct().ToList();
             if (missing.Count > 0)
-                Messages.Add(new GeometryMessage(MessageLevel.Remark, $"Set the {FretboardShape.Join(missing)} to draw {part}."));
+                _messages.Remark($"Set the {ShapeSupport.Join(missing)} to draw {part}.");
             return missing.Count > 0;
         }
-
-        void Error(string text) => Messages.Add(new GeometryMessage(MessageLevel.Error, text));
-
-        string Format(double millimeters) =>
-            new NumberParameter(Body.Definitions.Length, millimeters).FormatWithUnit(_unit, _culture);
     }
 
     static class SegmentListExtensions

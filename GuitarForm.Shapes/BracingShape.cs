@@ -73,10 +73,11 @@ namespace GuitarForm.Shapes
         // Where a side of a brace meets its stop: on the boundary's segment at the parameter, for an outline stop.
         readonly record struct Hit(Point2 Point, int Segment, double Parameter);
 
-        const double Slack = 1e-9;
+        const double Slack = ShapeSupport.BracingSlack;
 
         readonly LengthUnit _unit;
         readonly IFormatProvider _culture;
+        readonly ShapeMessages _messages;
         readonly Dictionary<double, IReadOnlyList<Segment>> _boundaries = new Dictionary<double, IReadOnlyList<Segment>>();
         IReadOnlyList<Segment> _outline;
         bool _clockwise;
@@ -85,6 +86,7 @@ namespace GuitarForm.Shapes
         {
             _unit = unit;
             _culture = culture;
+            _messages = new ShapeMessages(Messages, unit, culture);
         }
 
         // Lengths in messages are shown in unit.
@@ -105,7 +107,7 @@ namespace GuitarForm.Shapes
             {
                 shape.Braces.Clear();
                 shape.ConstructionLines.Clear();
-                shape.Error(e.Message);
+                shape._messages.Error(e.Message);
             }
             return shape;
         }
@@ -132,7 +134,7 @@ namespace GuitarForm.Shapes
             var bracing = body.TopPlate.Bracing;
             double length = body.Length.Value.Value;
             _outline = Plate.Segments;
-            _clockwise = SignedArea(_outline) < 0;
+            _clockwise = PolygonMath.SignedArea(_outline) < 0;
             ConstructionLines.Add(new LineSegment(Point2.Origin, new Point2(0, length)));
             var laid = new List<Laid>();
 
@@ -169,7 +171,7 @@ namespace GuitarForm.Shapes
             }
             else if (bracing.BassFingerBraceCount.Value > 0 || bracing.TrebleFingerBraceCount.Value > 0 ||
                      bracing.ToneBarCount.Value > 0)
-                Remark("The finger braces and tone bars are placed on the X brace: set it to draw them.");
+                _messages.Remark("The finger braces and tone bars are placed on the X brace: set it to draw them.");
 
             AddSoundholeBraces(bracing, laid);
         }
@@ -239,8 +241,8 @@ namespace GuitarForm.Shapes
                 string name = $"{Capitalized(sideName)} finger brace {k}";
                 if (along >= legLength)
                 {
-                    Error($"{name} is past the end of the X brace's {sideName} side lower leg: {count.Label} times " +
-                          $"{spacing.Label} must be less than the leg is long ({Format(legLength)}).");
+                    _messages.Error($"{name} is past the end of the X brace's {sideName} side lower leg: {count.Label} times " +
+                          $"{spacing.Label} must be less than the leg is long ({_messages.Format(legLength)}).");
                     return;
                 }
                 Add(laid, Lay(name, x.Crossing + leg.Value * along, direction, bracing.FingerBraceWidth.Value.Value,
@@ -268,15 +270,15 @@ namespace GuitarForm.Shapes
                 double along = k * bracing.ToneBarSpacing.Value.Value;
                 if (along >= legLength)
                 {
-                    Error($"Tone bar {k} is past the end of the X brace's treble side lower leg: " +
+                    _messages.Error($"Tone bar {k} is past the end of the X brace's treble side lower leg: " +
                           $"{bracing.ToneBarCount.Label} times {bracing.ToneBarSpacing.Label} must be less than the leg " +
-                          $"is long ({Format(legLength)}).");
+                          $"is long ({_messages.Format(legLength)}).");
                     return;
                 }
                 var origin = x.Crossing + leg.Value * along;
                 if (CrossesBassLowerLeg(origin, direction, width, x, edgeOffset))
                 {
-                    Error($"Tone bar {k} runs into the X brace's bass side lower leg before it reaches the outline: " +
+                    _messages.Error($"Tone bar {k} runs into the X brace's bass side lower leg before it reaches the outline: " +
                           $"turn it toward the tail with a lower {bracing.ToneBarAngle.Label}, or move it along the " +
                           $"leg with the {bracing.ToneBarSpacing.Label}.");
                     continue;
@@ -315,7 +317,7 @@ namespace GuitarForm.Shapes
                 // The leg's side facing the tone bar.
                 var legSide = through.Origin + through.Normal * (Math.Sign((start - through.Origin).Dot(through.Normal)) *
                                                                  through.Width / 2);
-                if (Intersect(start, direction, legSide, through.Direction) is not Point2 meets)
+                if (ShapeSupport.Intersect(start, direction, legSide, through.Direction) is not Point2 meets)
                     continue;
                 double along = (meets - through.Origin).Dot(through.Direction);
                 double distance = (meets - start).Dot(direction);
@@ -378,14 +380,14 @@ namespace GuitarForm.Shapes
             Stop stop = reach == null ? null : new OutlineStop(boundary);
             foreach (var obstacle in obstacles ?? Enumerable.Empty<Laid>())
             {
-                if (Intersect(origin, direction, obstacle.Origin, obstacle.Direction) is not Point2 meets)
+                if (ShapeSupport.Intersect(origin, direction, obstacle.Origin, obstacle.Direction) is not Point2 meets)
                     continue;
                 double along = (meets - obstacle.Origin).Dot(obstacle.Direction);
                 if (along < obstacle.From || along > obstacle.To)
                     continue;
                 double facing = Math.Sign((origin - obstacle.Origin).Dot(obstacle.Normal));
                 var side = obstacle.Origin + obstacle.Normal * (facing * obstacle.Width / 2);
-                if (Intersect(origin, direction, side, obstacle.Direction) is not Point2 atSide)
+                if (ShapeSupport.Intersect(origin, direction, side, obstacle.Direction) is not Point2 atSide)
                     continue;
                 double distance = (atSide - origin).Dot(direction);
                 if (distance > Slack && distance < best)
@@ -423,7 +425,7 @@ namespace GuitarForm.Shapes
             if (!fits)
             {
                 if (into != null)
-                    Error($"{Capitalized(name)} doesn't fit inside the outline.");
+                    _messages.Error($"{Capitalized(name)} doesn't fit inside the outline.");
                 return null;
             }
 
@@ -482,7 +484,7 @@ namespace GuitarForm.Shapes
 
         Hit? HitStop(Stop stop, Point2 origin, Vector2 direction) => stop switch
         {
-            LineStop line => Intersect(origin, direction, line.Point, line.Direction) is Point2 point
+            LineStop line => ShapeSupport.Intersect(origin, direction, line.Point, line.Direction) is Point2 point
                 ? new Hit(point, -1, 0)
                 : null,
             OutlineStop outline => HitOutline(outline.Boundary, origin, direction),
@@ -513,74 +515,21 @@ namespace GuitarForm.Shapes
         {
             if (_boundaries.TryGetValue(offset, out var cached))
                 return cached;
-            var boundary = new List<Segment>();
-            foreach (var segment in _outline)
-            {
-                var tangent = segment.TangentAt(0);
-                var inward = _clockwise ? tangent.Right : tangent.Left;
-                if (offset == 0)
-                    boundary.Add(segment);
-                else if (segment is LineSegment line)
-                    boundary.Add(line.Moved(inward * offset));
-                else if (segment is ArcSegment arc)
-                {
-                    double radius = (arc.Center - arc.Start).Dot(inward) > 0 ? arc.Radius - offset : arc.Radius + offset;
-                    if (radius > Slack)
-                        boundary.Add(arc with { Radius = radius });
-                }
-                else
-                    throw new NotSupportedException(
-                        "The bracing can't be drawn: the plate outline has a piece that isn't a line or an arc.");
-            }
+            var boundary = PolygonMath.OffsetInward(_outline, _clockwise, offset);
             return _boundaries[offset] = boundary;
         }
 
-        // Whether a point is inside the plate outline: a line from it toward +X crosses the outline an odd number of
-        // times.
-        bool Inside(Point2 point)
-        {
-            var crossings = _outline.SelectMany(segment => segment.CrossingsAtY(point.Y))
-                .Where(crossing => crossing.Point.X > point.X)
-                .Select(crossing => crossing.Point.X)
-                .OrderBy(x => x)
-                .ToList();
-            // A crossing at the joint between two segments is found on both.
-            int count = crossings.Where((x, i) => i == 0 || x - crossings[i - 1] > Slack).Count();
-            return count % 2 == 1;
-        }
-
-        // Twice the outline's area, from points along it: negative when it runs clockwise.
-        static double SignedArea(IReadOnlyList<Segment> outline)
-        {
-            var points = outline.SelectMany(segment => Enumerable.Range(0, 8).Select(i => segment.PointAt(i / 8.0))).ToList();
-            return points.Select((p, i) => p.X * points[(i + 1) % points.Count].Y - points[(i + 1) % points.Count].X * p.Y)
-                .Sum();
-        }
-
-        static Point2? Intersect(Point2 p, Vector2 d, Point2 q, Vector2 e)
-        {
-            double cross = d.Cross(e);
-            if (Math.Abs(cross) < 1e-12)
-                return null;
-            return p + d * ((q - p).Cross(e) / cross);
-        }
+        bool Inside(Point2 point) => PolygonMath.Contains(_outline, point);
 
         // True when every value is set. When some are, a remark says which are missing.
         bool Ready(string what, params Parameter[] values)
         {
             var missing = values.Where(p => !p.HasValue).Select(p => p.Label).ToList();
             if (missing.Count > 0 && missing.Count < values.Length)
-                Remark($"Set the {FretboardShape.Join(missing)} to draw {what}.");
+                _messages.Remark($"Set the {ShapeSupport.Join(missing)} to draw {what}.");
             return missing.Count == 0;
         }
 
         static string Capitalized(string text) => char.ToUpperInvariant(text[0]) + text.Substring(1);
-
-        void Error(string text) => Messages.Add(new GeometryMessage(MessageLevel.Error, text));
-
-        void Remark(string text) => Messages.Add(new GeometryMessage(MessageLevel.Remark, text));
-
-        string Format(double millimeters) =>
-            new NumberParameter(Body.Definitions.Length, millimeters).FormatWithUnit(_unit, _culture);
     }
 }

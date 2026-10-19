@@ -103,7 +103,7 @@ namespace GuitarForm.Shapes
                 foreach (var crossing in onPiece(i))
                 {
                     double parameter = total == 0 ? 0 : (_cumulative[i] + crossing.Parameter * pieceLength) / total;
-                    if (result.Count > 0 && Math.Abs(result[^1].Parameter - parameter) < 1e-9)
+                    if (result.Count > 0 && Math.Abs(result[^1].Parameter - parameter) < ShapeSupport.PolylineCrossingParameter)
                         continue;
                     result.Add(new Crossing(crossing.Point, parameter));
                 }

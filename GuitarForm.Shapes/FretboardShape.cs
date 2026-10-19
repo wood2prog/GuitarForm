@@ -307,10 +307,7 @@ namespace GuitarForm.Shapes
         {
             var missing = parameters.Where(p => !p.HasValue).Select(p => p.Label).ToList();
             if (missing.Count > 0)
-                Messages.Add(new GeometryMessage(MessageLevel.Remark, $"Set the {Join(missing)} to draw {part}."));
+                Messages.Add(new GeometryMessage(MessageLevel.Remark, $"Set the {ShapeSupport.Join(missing)} to draw {part}."));
         }
-
-        internal static string Join(IReadOnlyList<string> items) =>
-            items.Count <= 1 ? string.Join("", items) : string.Join(", ", items.Take(items.Count - 1)) + " and " + items[^1];
     }
 }

@@ -21,7 +21,7 @@ namespace GuitarForm.Shapes
     public readonly record struct Crossing(Point2 Point, double Parameter)
     {
         // Rounding error allowed on a parameter, so a crossing at a segment's end isn't missed.
-        const double Slack = 1e-9;
+        const double Slack = ShapeSupport.SegmentParameterSlack;
 
         internal static bool OnSegment(double parameter) => parameter is >= -Slack and <= 1 + Slack;
 
@@ -105,7 +105,7 @@ namespace GuitarForm.Shapes
         {
             var along = To - From;
             double cross = along.Cross(direction);
-            if (Math.Abs(cross) < 1e-12)
+            if (Math.Abs(cross) < ShapeSupport.ParallelCrossProduct)
                 return Array.Empty<Crossing>();
             double t = (through - From).Cross(direction) / cross;
             return Crossing.OnSegment(t)

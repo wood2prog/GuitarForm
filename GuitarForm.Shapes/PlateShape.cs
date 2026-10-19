@@ -43,8 +43,7 @@ namespace GuitarForm.Shapes
         readonly Guitar _guitar;
         readonly Body _body;
         readonly double _tolerance;
-        readonly LengthUnit _unit;
-        readonly IFormatProvider _culture;
+        readonly ShapeMessages _messages;
 
         // The treble side's slots, top to bottom. Null when a value it needs isn't set; empty when it's known but has
         // nothing to draw (e.g. no shoulder arc when the upper bout circle reaches the neck end).
@@ -63,8 +62,7 @@ namespace GuitarForm.Shapes
             _guitar = guitar;
             _body = guitar.Body;
             _tolerance = tolerance;
-            _unit = unit;
-            _culture = culture;
+            _messages = new ShapeMessages(Messages, unit, culture);
         }
 
         // Lengths in messages are shown in unit.
@@ -117,13 +115,13 @@ namespace GuitarForm.Shapes
             double half = width.Value.Value / 2, r = radius.Value.Value;
             double y = _length - r - offset.Value.Value;
             if (y < 0)
-                Warning($"The upper bout's widest point is past the tail end: {offset.Label} and {radius.Label} " +
+                _messages.Warning($"The upper bout's widest point is past the tail end: {offset.Label} and {radius.Label} " +
                         $"together are more than the {_body.Length.Label}.");
             ConstructionLines.Add(Across(half, y));
 
             // Without a heel flat the model doesn't check this.
             if (r > half && !_body.HeelFlatWidth.HasValue)
-                Warning($"{radius.Label} is more than half the {width.Label}.");
+                _messages.Warning($"{radius.Label} is more than half the {width.Label}.");
             _ubPrimary = AddRadii(half - r, y, r);
             return AddSecondary(_body.UpperBoutSecondaryOffset, _ubPrimary.Value, out _ubSecondary);
         }
@@ -139,7 +137,7 @@ namespace GuitarForm.Shapes
 
             double half = width.Value.Value / 2, y = offset.Value.Value;
             if (y > _length)
-                Warning($"The waist is past the neck end: {offset.Label} is more than the {_body.Length.Label}.");
+                _messages.Warning($"The waist is past the neck end: {offset.Label} is more than the {_body.Length.Label}.");
             ConstructionLines.Add(Across(half, y));
 
             if (!radius.HasValue)
@@ -163,12 +161,12 @@ namespace GuitarForm.Shapes
             double half = width.Value.Value / 2, r = radius.Value.Value, o = offset.Value.Value;
             double y = r + o;
             if (y > _length)
-                Warning($"The lower bout's widest point is past the neck end: {offset.Label} and {radius.Label} " +
+                _messages.Warning($"The lower bout's widest point is past the neck end: {offset.Label} and {radius.Label} " +
                         $"together are more than the {_body.Length.Label}.");
             ConstructionLines.Add(Across(half, y));
 
             if (r > half)
-                Warning($"{radius.Label} is more than half the {width.Label}.");
+                _messages.Warning($"{radius.Label} is more than half the {width.Label}.");
             _lbPrimary = AddRadii(half - r, y, r);
             return AddSecondary(_body.LowerBoutSecondaryOffset, _lbPrimary.Value, out _lbSecondary) &&
                    AddTail(_lbPrimary.Value, o);
@@ -308,17 +306,59 @@ namespace GuitarForm.Shapes
         {
             var type = _body.CutawayType.Value;
             var offset = _body.CutawayOffsetFromNeck; var width = _body.CutawayWidth; var depth = _body.CutawayDepth;
-            var valley = _body.CutawayValleyRadius; var point = _body.CutawayPointRadius;
-            // The model reports these when they're missing; the outline is drawn without the cutaway until they're set.
-            if (!(offset.HasValue && width.HasValue && depth.HasValue))
+            switch (CheckCutawayValues(type))
+            {
+                case CutawayValues.NotSet: return true;
+                case CutawayValues.Invalid: return false;
+            }
+            if (!CutawayFretboardEdge(treble, out double edge))
                 return true;
-            if (type == CutawayType.Venetian && !(valley.HasValue && point.HasValue))
-                return true;
-            if (!(offset.Value >= 0 && width.Value > 0 && depth.Value >= 0) ||
-                type == CutawayType.Venetian && !(valley.Value > 0 && point.Value > 0))
+
+            double wallX = edge + offset.Value.Value, endX = wallX + width.Value.Value;
+            double arcStartY = _length - depth.Value.Value;
+            var segments = treble.SelectMany((slot, index) => slot.Select(segment => (segment, index))).ToList();
+
+            if (!FindCutawayJoins(segments, wallX, endX, arcStartY, out var wallTop, out var end))
+                return false;
+            var endPoint = end.Point;
+            var arcStart = new Point2(wallX, arcStartY);
+
+            var cut = type == CutawayType.Florentine
+                ? BuildFlorentineCut(wallX, arcStartY, arcStart, endPoint)
+                : BuildVenetianCut(wallX, arcStartY, arcStart, end);
+            if (cut == null)
                 return false;
 
-            if (FretboardShape.TrebleEdgeAtNeckEnd(_guitar) is not double edge)
+            ConstructionLines.Add(new LineSegment(new Point2(wallX, _length), arcStart));
+            ConstructionLines.Add(new LineSegment(new Point2(endX, _length), endPoint));
+
+            SpliceCutaway(treble, segments, wallTop, end, arcStart, cut);
+            return true;
+        }
+
+        enum CutawayValues { Ready, NotSet, Invalid }
+
+        // The model reports missing values; the outline is drawn without the cutaway until they're set.
+        CutawayValues CheckCutawayValues(CutawayType type)
+        {
+            var offset = _body.CutawayOffsetFromNeck; var width = _body.CutawayWidth; var depth = _body.CutawayDepth;
+            var valley = _body.CutawayValleyRadius; var point = _body.CutawayPointRadius;
+            if (!(offset.HasValue && width.HasValue && depth.HasValue))
+                return CutawayValues.NotSet;
+            if (type == CutawayType.Venetian && !(valley.HasValue && point.HasValue))
+                return CutawayValues.NotSet;
+            if (!(offset.Value >= 0 && width.Value > 0 && depth.Value >= 0) ||
+                type == CutawayType.Venetian && !(valley.Value > 0 && point.Value > 0))
+                return CutawayValues.Invalid;
+            return CutawayValues.Ready;
+        }
+
+        // The fretboard's treble edge at the neck end, which the wall is measured from. False, with a remark, while it
+        // or the rest of the outline isn't known yet.
+        bool CutawayFretboardEdge(List<Segment[]> treble, out double edge)
+        {
+            edge = 0;
+            if (FretboardShape.TrebleEdgeAtNeckEnd(_guitar) is not double known)
             {
                 var fretboard = _guitar.Neck.Fretboard;
                 var needed = new Parameter[]
@@ -326,81 +366,105 @@ namespace GuitarForm.Shapes
                     _guitar.ScaleLength, _guitar.NeckJoinFret, fretboard.NutWidth, fretboard.StringSpacingAtBridge,
                     fretboard.BassStringSetback, fretboard.TrebleStringSetback,
                 };
-                Remark("The cutaway is drawn once the fretboard's treble edge at the body is known: set the " +
-                       Join(needed.Where(p => !p.HasValue).Select(p => p.Label)) + ".");
-                return true;
+                _messages.Remark("The cutaway is drawn once the fretboard's treble edge at the body is known: set the " +
+                       ShapeSupport.Join(needed.Where(p => !p.HasValue).Select(p => p.Label)) + ".");
+                return false;
             }
+            edge = known;
             if (treble.Any(slot => slot == null))
             {
-                Remark("The cutaway is drawn once the outline is complete.");
-                return true;
+                _messages.Remark("The cutaway is drawn once the outline is complete.");
+                return false;
             }
+            return true;
+        }
 
-            double wallX = edge + offset.Value.Value, endX = wallX + width.Value.Value;
-            double arcStartY = _length - depth.Value.Value;
-            var segments = treble.SelectMany((slot, index) => slot.Select(segment => (segment, index))).ToList();
+        // Where the wall and the end point meet the outline; fails, with an error, when they don't or the arc can't start.
+        bool FindCutawayJoins(List<(Segment segment, int slot)> segments, double wallX, double endX, double arcStartY,
+            out OutlineCrossing wallTop, out OutlineCrossing end)
+        {
+            var offset = _body.CutawayOffsetFromNeck; var width = _body.CutawayWidth; var depth = _body.CutawayDepth;
+            wallTop = default; end = default;
 
-            var wallTop = FirstCrossing(segments, wallX);
-            if (wallTop == null)
-                return Fail($"The cutaway's offset line, {Format(wallX)} from the centerline, doesn't meet the neck end " +
+            var top = FirstCrossing(segments, wallX);
+            if (top == null)
+                return Fail($"The cutaway's offset line, {_messages.Format(wallX)} from the centerline, doesn't meet the neck end " +
                             $"or the upper bout above its widest point: reduce the {offset.Label}.");
-            if (arcStartY > wallTop.Value.Point.Y + _tolerance)
+            wallTop = top.Value;
+            if (arcStartY > wallTop.Point.Y + _tolerance)
                 return Fail($"The cutaway's arc must start below where its offset line meets the outline: the " +
-                            $"{depth.Label} must be at least {Format(_length - wallTop.Value.Point.Y)}.");
+                            $"{depth.Label} must be at least {_messages.Format(_length - wallTop.Point.Y)}.");
 
-            var end = FirstCrossing(segments, endX);
-            if (end == null)
-                return Fail($"The cutaway's end point, {Format(endX)} from the centerline, must be on the upper bout " +
-                            $"above its widest point: no more than {Format(_body.UpperBoutWidth.Value.Value / 2)} from " +
+            var found = FirstCrossing(segments, endX);
+            if (found == null)
+                return Fail($"The cutaway's end point, {_messages.Format(endX)} from the centerline, must be on the upper bout " +
+                            $"above its widest point: no more than {_messages.Format(_body.UpperBoutWidth.Value.Value / 2)} from " +
                             $"the centerline. Reduce the {width.Label} or the {offset.Label}.");
-            var endPoint = end.Value.Point;
-            var arcStart = new Point2(wallX, arcStartY);
+            end = found.Value;
+            return true;
+        }
 
-            var cut = new List<Segment>();
-            if (type == CutawayType.Florentine)
+        // Florentine: one arc tangent to the wall at the arc's start, so its center is level with it, and through the
+        // end point. Null, after an error, when the arc would start at or below the end point.
+        List<Segment> BuildFlorentineCut(double wallX, double arcStartY, Point2 arcStart, Point2 endPoint)
+        {
+            var width = _body.CutawayWidth; var depth = _body.CutawayDepth;
+            double dy = arcStartY - endPoint.Y;
+            if (dy <= _tolerance)
             {
-                // Tangent to the wall at the arc's start, so its center is level with it, and through the end point.
-                double dy = arcStartY - endPoint.Y;
-                if (dy <= _tolerance)
-                    return Fail($"The cutaway's arc must start above its end point: the {depth.Label} must be less " +
-                                $"than {Format(_length - endPoint.Y)}.");
-                double w = width.Value.Value, radius = (w * w + dy * dy) / (2 * w);
-                var arc = new Circle(new Point2(wallX + radius, arcStartY), radius);
-                Radii.Add(arc);
-                cut.Add(ArcSegment.Around(arc, arcStart, endPoint, clockwise: false, _tolerance));
+                Fail($"The cutaway's arc must start above its end point: the {depth.Label} must be less " +
+                     $"than {_messages.Format(_length - endPoint.Y)}.");
+                return null;
             }
-            else
+            double w = width.Value.Value, radius = (w * w + dy * dy) / (2 * w);
+            var arc = new Circle(new Point2(wallX + radius, arcStartY), radius);
+            Radii.Add(arc);
+            return new List<Segment> { ArcSegment.Around(arc, arcStart, endPoint, clockwise: false, _tolerance) };
+        }
+
+        // Venetian: a valley arc, a straight line and a point arc tangent to the outline at the end point. Null, after an
+        // error, when the two arcs overlap.
+        List<Segment> BuildVenetianCut(double wallX, double arcStartY, Point2 arcStart, OutlineCrossing end)
+        {
+            var width = _body.CutawayWidth;
+            var valley = _body.CutawayValleyRadius; var point = _body.CutawayPointRadius;
+            var endPoint = end.Point;
+            var valleyCircle = new Circle(new Point2(wallX + valley.Value.Value, arcStartY), valley.Value.Value);
+            // Inside the body, the point radius away from the end point. The outline runs clockwise, so outward is
+            // to the left of its direction.
+            var outward = end.Segment.TangentAt(end.Parameter).Left;
+            var pointCircle = new Circle(endPoint - outward * point.Value.Value, point.Value.Value);
+            Radii.Add(valleyCircle);
+            Radii.Add(pointCircle);
+
+            // The valley arc turns counterclockwise and the point arc clockwise, so the line between them has the
+            // valley circle on its left and the point circle on its right: the circles' crossing tangent.
+            var between = pointCircle.Center - valleyCircle.Center;
+            double distance = between.Length, radii = valleyCircle.Radius + pointCircle.Radius;
+            if (distance <= radii + _tolerance)
             {
-                var valleyCircle = new Circle(new Point2(wallX + valley.Value.Value, arcStartY), valley.Value.Value);
-                // Inside the body, the point radius away from the end point. The outline runs clockwise, so outward is
-                // to the left of its direction.
-                var outward = end.Value.Segment.TangentAt(end.Value.Parameter).Left;
-                var pointCircle = new Circle(endPoint - outward * point.Value.Value, point.Value.Value);
-                Radii.Add(valleyCircle);
-                Radii.Add(pointCircle);
-
-                // The valley arc turns counterclockwise and the point arc clockwise, so the line between them has the
-                // valley circle on its left and the point circle on its right: the circles' crossing tangent.
-                var between = pointCircle.Center - valleyCircle.Center;
-                double distance = between.Length, radii = valleyCircle.Radius + pointCircle.Radius;
-                if (distance <= radii + _tolerance)
-                    return Fail($"The cutaway's valley and point arcs overlap: reduce the {valley.Label} or the " +
-                                $"{point.Label}, or move the end point with the {width.Label}.");
-                var u = between / distance;
-                double k = -radii / distance;
-                var normal = u * k + u.Left * Math.Sqrt(1 - k * k);
-                var lineStart = valleyCircle.Center - normal * valleyCircle.Radius;
-                var lineEnd = pointCircle.Center + normal * pointCircle.Radius;
-
-                cut.Add(ArcSegment.Around(valleyCircle, arcStart, lineStart, clockwise: false, _tolerance));
-                cut.Add(new LineSegment(lineStart, lineEnd));
-                cut.Add(ArcSegment.Around(pointCircle, lineEnd, endPoint, clockwise: true, _tolerance));
+                Fail($"The cutaway's valley and point arcs overlap: reduce the {valley.Label} or the " +
+                     $"{point.Label}, or move the end point with the {width.Label}.");
+                return null;
             }
+            var u = between / distance;
+            double k = -radii / distance;
+            var normal = u * k + u.Left * Math.Sqrt(1 - k * k);
+            var lineStart = valleyCircle.Center - normal * valleyCircle.Radius;
+            var lineEnd = pointCircle.Center + normal * pointCircle.Radius;
 
-            ConstructionLines.Add(new LineSegment(new Point2(wallX, _length), arcStart));
-            ConstructionLines.Add(new LineSegment(new Point2(endX, _length), endPoint));
+            return new List<Segment>
+            {
+                ArcSegment.Around(valleyCircle, arcStart, lineStart, clockwise: false, _tolerance),
+                new LineSegment(lineStart, lineEnd),
+                ArcSegment.Around(pointCircle, lineEnd, endPoint, clockwise: true, _tolerance),
+            };
+        }
 
-            var top = wallTop.Value;
+        // Replaces the treble side between the wall's top and the end point with the cut.
+        void SpliceCutaway(List<Segment[]> treble, List<(Segment segment, int slot)> segments, OutlineCrossing top,
+            OutlineCrossing e, Point2 arcStart, List<Segment> cut)
+        {
             var outline = new List<Segment>();
             outline.AddRange(segments.Take(top.Index).Select(s => s.segment));
             if (top.Parameter > 0)
@@ -408,14 +472,12 @@ namespace GuitarForm.Shapes
             if (top.Point.DistanceTo(arcStart) > _tolerance)
                 outline.Add(new LineSegment(top.Point, arcStart));
             outline.AddRange(cut.Where(segment => segment != null));
-            var e = end.Value;
             if (e.Parameter < 1)
                 outline.Add(e.Segment.Between(e.Parameter, 1));
             outline.AddRange(segments.Skip(e.Index + 1).Select(s => s.segment));
 
             treble.Clear();
             treble.Add(outline.Where(segment => segment.Length > _tolerance).ToArray());
-            return true;
         }
 
         readonly record struct OutlineCrossing(int Index, Segment Segment, Point2 Point, double Parameter);
@@ -514,26 +576,13 @@ namespace GuitarForm.Shapes
             if (parameters.All(p => p.HasValue))
                 return true;
             if (parameters.Any(p => p.HasValue))
-                Remark($"The {Join(parameters.Select(p => p.Label))} are all needed to draw {part}.");
+                _messages.Remark($"The {ShapeSupport.Join(parameters.Select(p => p.Label))} are all needed to draw {part}.");
             return false;
         }
 
-        static string Join(IEnumerable<string> items)
-        {
-            var list = items.ToList();
-            return list.Count <= 1 ? string.Join("", list) : string.Join(", ", list.Take(list.Count - 1)) + " and " + list[^1];
-        }
-
-        string Format(double millimeters) =>
-            new NumberParameter(Body.Definitions.Length, millimeters).FormatWithUnit(_unit, _culture);
-
-        void Remark(string text) => Messages.Add(new GeometryMessage(MessageLevel.Remark, text));
-
-        void Warning(string text) => Messages.Add(new GeometryMessage(MessageLevel.Warning, text));
-
         bool Fail(string text)
         {
-            Messages.Add(new GeometryMessage(MessageLevel.Error, text));
+            _messages.Error(text);
             return false;
         }
     }
