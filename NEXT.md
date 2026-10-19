@@ -30,7 +30,7 @@ Running record of where the project stands. Update it at the end of each session
 - Wave A is done and committed: golden test (en-US and de-DE), Segment/side view/soundhole/ShapeCurves/FK-cascade tests, library v1 upgrade test, culture tests. It also found and fixed the `Vector2.ToString` infinite recursion.
 - Wave B is done: shared shape helpers (`ShapeSupport`, `ShapeMessages`, `PolygonMath`), the splits of `BracingShape`, `PlateShape.AddCutaway`, `NeckSideShape` and `NeckProfilesShape` sampling, and `InternalsVisibleTo` for the tests. An independent review passed.
 - Remaining waves:
-  - C: (backup before migration is done) move `ComponentStyles` to Geometry, caching and `UiMetrics` bypasses.
+  - C: (backup before migration is done) `ComponentStyles` moved to Geometry (done, with `ComponentStylesTests`), caching and `UiMetrics` bypasses.
   - D: `Directory.Build.props` and American spelling.
 - Owner decisions: the upgrade backup goes next to the library (e.g. `GuitarForm.before-v1.bak`), and a failed copy blocks opening. `Directory.Build.props`, the `ComponentStyles` move and Shapes `InternalsVisibleTo` are approved. UI helper duplicates are deferred.
 - Follow-ups found by the tests are in `IMPROVEMENTS.md` ("Follow-ups from the test work").
@@ -53,6 +53,8 @@ The owner confirmed the Rhino checks all passed.
 - An unfinished design (no body length) should show a Remark, not an Error, and no Build prompt. YES
 - F5 / `launchSettings` starts Rhino. DIDN'T TEST
 - The last build was blocked by a running Rhino locking the `.rhp`. Close Rhino and rebuild to confirm 0 warnings after the Bracing and Fretboard field additions.
+
+- Rhino check for the `ComponentStyles` move: Build still creates the `Guitar` layer tree with the same colours, and a layer recoloured by hand keeps its colour after building again.
 
 ### New this round
 

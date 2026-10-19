@@ -91,7 +91,7 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 - [x] Split `BracingShape` (move the outline offset and point-in-polygon maths out), `PlateShape.AddCutaway`, `NeckSideShape.Build` and `NeckProfilesShape` sampling. Characterization tests cover each extracted branch.
 - [x] Tag `GuitarDrawing` output by role and layer, so `DesignBuilder` can use separate layers (`GuitarDrawing.Items` of `DrawnItem`; `DesignBuilder` uses the `ComponentStyles` layer tree).
 - [x] Split the neck heel from the `NeckSideShape` outline: `Heel` and `Shaft` are drawn separately, the Heel layer has objects.
-- [ ] Add tests for plug-in code and for `ComponentStyles` (needs Rhino-free code moved out of the .rhp, as above).
+- [ ] Add tests for plug-in code and for `ComponentStyles`. Done for `ComponentStyles` (moved to `GuitarForm.Geometry`, `ComponentStylesTests`); other plug-in code is still untested.
 - [x] The T0 deletion of the legacy Geometry classes is done, and `CLAUDE.md` is updated.
 - [ ] **(decision)** The `docs/Body.md` side-view Quick Test row disagrees with the Shapes drawing; the owner decides which is right.
 - [ ] **(question)** When the strings overlap, the fallback draws the two outer strings as center lines. Should it draw rectangles anyway?
@@ -180,7 +180,7 @@ These need the product owner's direction before any code is written.
 
 ## Review follow-ups (layers, library tabs)
 
-- [ ] `ComponentStyles` completeness (every `DrawingComponent` has a style) needs a test. Plug-in internals aren't visible to the tests: use `InternalsVisibleTo`, or move the table's component list into a testable place.
+- [x] `ComponentStyles` completeness (every `DrawingComponent` has a style) and the print colour path (a Print override reaches `Layer.PlotColor`) are tested: `ComponentStyles` moved to `GuitarForm.Geometry` (`ComponentStylesTests`).
 - [ ] Unsaved Frets and Strings library edits have no crash recovery.
 - [ ] `DesignDrawing.Construction` and `DesignDrawing.Outline` recompute on every access: cache them in callers that loop.
 - [ ] NeckSideShape heel split: the Error for a seam that doesn't land on the joint line between the heel end and the top of the joint has no test (hard to reach through the public API: other Errors fire first); also nothing checks that the back line stays beyond heelEndX all the way up to the heel end's front (extreme neck angle could make the heel self-intersect without an Error).

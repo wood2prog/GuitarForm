@@ -2,8 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using GuitarForm.Shapes;
+using Rhino.DocObjects;
 
-namespace GuitarForm
+namespace GuitarForm.Geometry
 {
     // How a drawn component looks: the layer it's built on (root first), its display colour (the layer colour when
     // Build creates the layer, and the preview colour) and an optional print colour (the layer's PlotColor). This is
@@ -65,20 +66,27 @@ namespace GuitarForm
             [DrawingComponent.Strings] = Style("Fretboard", "Strings", 0, 160, 0),
         };
 
-        public static ComponentStyle Of(DrawingComponent component)
+        public static ComponentStyle Of(DrawingComponent component) => Of(component, Overrides);
+
+        // As Of, with the given overrides (component -> display, print) in place of the built-in (empty) set.
+        internal static ComponentStyle Of(DrawingComponent component,
+            IReadOnlyDictionary<DrawingComponent, (Color Display, Color? Print)> overrides)
         {
             if (!Table.TryGetValue(component, out var style))
                 throw new InvalidOperationException($"No style is defined for the component {component}.");
-            if (Overrides.TryGetValue(component, out var over))
+            if (overrides != null && overrides.TryGetValue(component, out var over))
                 style = style with { Display = over.Display, Print = over.Print };
             return style;
         }
 
         // The layer path, layer colour and print colour for a drawn item: construction items go on their group's
         // Construction layer in light grey, the rest on their component's layer.
-        public static ComponentStyle For(DrawingComponent component, DrawingRole role)
+        public static ComponentStyle For(DrawingComponent component, DrawingRole role) => For(component, role, Overrides);
+
+        internal static ComponentStyle For(DrawingComponent component, DrawingRole role,
+            IReadOnlyDictionary<DrawingComponent, (Color Display, Color? Print)> overrides)
         {
-            var style = Of(component);
+            var style = Of(component, overrides);
             return role == DrawingRole.Construction
                 ? new ComponentStyle(new[] { Root, style.Group, ConstructionName }, ConstructionColor)
                 : style;
@@ -92,5 +100,15 @@ namespace GuitarForm
 
         public static int Thickness(DrawingRole role) =>
             role == DrawingRole.Outline ? OutlineThickness : CenterlineThickness;
+
+        // Colours a layer that Build is creating: the display colour on the leaf (parents are black), and the print
+        // colour (PlotColor) only when the style has one. Never called for a layer that already exists, so a layer
+        // the user has recoloured keeps its colour.
+        internal static void ApplyNewLayerStyle(Layer layer, ComponentStyle style, bool leaf = true)
+        {
+            layer.Color = leaf ? style.Display : Color.Black;
+            if (leaf && style.Print is { } print)
+                layer.PlotColor = print;
+        }
     }
 }

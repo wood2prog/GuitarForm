@@ -100,9 +100,8 @@ namespace GuitarForm
                 if (index < 0)
                 {
                     bool leaf = depth == style.LayerPath.Length - 1;
-                    var layer = new Layer { Name = style.LayerPath[depth], Color = leaf ? style.Display : Color.Black };
-                    if (leaf && style.Print is { } print)
-                        layer.PlotColor = print;
+                    var layer = new Layer { Name = style.LayerPath[depth] };
+                    ComponentStyles.ApplyNewLayerStyle(layer, style, leaf);
                     if (parent != null)
                         layer.ParentLayerId = parent.Id;
                     index = doc.Layers.Add(layer);
