@@ -74,6 +74,8 @@ namespace GuitarForm.Tests
             Execute("CREATE TABLE something (x)");
 
             Assert.That(() => Library.Open(_path), Throws.TypeOf<InvalidDataException>());
+            Assert.That(Directory.GetFiles(_folder, "*.bak*"), Is.Empty);
+            Assert.That(Directory.GetFiles(_folder, "*.tmp"), Is.Empty);
         }
 
         [Test]

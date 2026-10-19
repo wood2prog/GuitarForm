@@ -114,6 +114,21 @@ namespace GuitarForm.Tests
             return Convert.ToInt64(command.ExecuteScalar());
         }
 
+        string BackupPath(string name) => Path.Combine(_folder, name);
+
+        static string Hash(string file) => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(file)));
+
+        string[] SafetyFiles() => Array.ConvertAll(Directory.GetFiles(_folder, "*.bak*"), Path.GetFileName);
+
+        static long ScalarAt(string file, string sql)
+        {
+            using var connection = new SqliteConnection($"Data Source={file};Mode=ReadOnly;Pooling=False");
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            return Convert.ToInt64(command.ExecuteScalar());
+        }
+
         void MakeVersion1Library()
         {
             Execute($"PRAGMA application_id = {ApplicationId};" + V1Schema + V1Data + "PRAGMA user_version = 1;");
@@ -125,9 +140,15 @@ namespace GuitarForm.Tests
         {
             MakeVersion1Library();
 
-            // T8: assert here that a backup of the version 1 file was made before the migration ran.
-
             using (Library.Open(_path)) { }
+
+            // T8: the version 1 file was copied beside the library before the migration ran.
+            string backup = BackupPath("GuitarForm.before-v1.bak");
+            Assert.That(File.Exists(backup));
+            Assert.That(ScalarAt(backup, "PRAGMA user_version"), Is.EqualTo(1));
+            Assert.That(ScalarAt(backup, "SELECT count(*) FROM designs"), Is.EqualTo(2));
+            Assert.That(ScalarAt(backup, "SELECT count(*) FROM instruments"), Is.EqualTo(3));
+            Assert.That(ScalarAt(backup, "SELECT count(*) FROM sqlite_master WHERE name = 'parts'"), Is.EqualTo(0));
 
             Assert.That(Scalar("PRAGMA user_version"), Is.EqualTo(LatestVersion));
             Assert.That(Scalar("SELECT count(*) FROM sqlite_master WHERE name IN ('parts', 'part_values')"),
@@ -194,6 +215,51 @@ namespace GuitarForm.Tests
         }
 
         [Test]
+        public void NewLibrary_MakesNoSafetyCopy_AndNeitherDoesReopeningAnUpgradedOne()
+        {
+            using (Library.Open(_path)) { }
+            using (Library.Open(_path)) { }
+            Assert.That(SafetyFiles(), Is.Empty);
+
+            File.Delete(_path);
+            MakeVersion1Library();
+            using (Library.Open(_path)) { }
+            using (Library.Open(_path)) { }
+            Assert.That(SafetyFiles(), Is.EqualTo(new[] { "GuitarForm.before-v1.bak" }));
+        }
+
+        [Test]
+        public void ExistingSafetyCopy_IsNeverOverwritten()
+        {
+            File.WriteAllText(BackupPath("GuitarForm.before-v1.bak"), "earlier");
+            MakeVersion1Library();
+
+            using (Library.Open(_path)) { }
+
+            Assert.That(File.ReadAllText(BackupPath("GuitarForm.before-v1.bak")), Is.EqualTo("earlier"));
+            Assert.That(ScalarAt(BackupPath("GuitarForm.before-v1.1.bak"), "PRAGMA user_version"), Is.EqualTo(1));
+            Assert.That(Scalar("PRAGMA user_version"), Is.EqualTo(LatestVersion));
+        }
+
+        [Test]
+        public void FailedSafetyCopy_BlocksTheOpen_AndLeavesTheLibraryUnmigrated()
+        {
+            MakeVersion1Library();
+            Directory.CreateDirectory(BackupPath("GuitarForm.before-v1.bak.tmp"));
+            string before = Hash(_path);
+
+            var error = Assert.Throws<IOException>(() => Library.Open(_path));
+
+            Assert.That(error.Message, Does.Contain("GuitarForm.before-v1.bak"));
+            Assert.That(Scalar("PRAGMA user_version"), Is.EqualTo(1));
+            Assert.That(Scalar("SELECT count(*) FROM designs"), Is.EqualTo(2));
+            Assert.That(Scalar("SELECT count(*) FROM sqlite_master WHERE name = 'parts'"), Is.EqualTo(0));
+            Assert.That(File.Exists(BackupPath("GuitarForm.before-v1.bak")), Is.False);
+            Assert.That(Hash(_path), Is.EqualTo(before));
+            Assert.That(error.Message, Does.Contain("folder is writable"));
+        }
+
+        [Test]
         public void LibraryNewerThanTheCode_IsRefused_AndLeftAlone()
         {
             using (Library.Open(_path)) { }
@@ -203,6 +269,7 @@ namespace GuitarForm.Tests
 
             Assert.That(error.Message, Does.Contain("made by a newer GuitarForm"));
             Assert.That(Scalar("PRAGMA user_version"), Is.EqualTo(LatestVersion + 1));
+            Assert.That(SafetyFiles(), Is.Empty);
         }
     }
 }

@@ -138,6 +138,16 @@ namespace GuitarForm.Data
             return version;
         }
 
+        // The version an existing library is about to be upgraded from, or 0 if no upgrade is due (a new or empty file,
+        // another kind of database, or a library already up to date or newer, which Prepare deals with).
+        public static int UpgradeFrom(SqliteConnection connection)
+        {
+            if ((long)Scalar(connection, "PRAGMA application_id") != ApplicationId)
+                return 0;
+            int version = (int)(long)Scalar(connection, "PRAGMA user_version");
+            return version > 0 && version < LatestVersion ? version : 0;
+        }
+
         static object Scalar(SqliteConnection connection, string sql)
         {
             using var command = connection.CreateCommand();

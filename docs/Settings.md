@@ -29,6 +29,8 @@ Backups are complete copies of the library, written to the backup folder as `Gui
 - **Restore…** replaces the library with a backup you choose. The current library is backed up first, so a restore can be undone by restoring that backup. If the open design has unsaved changes, you're asked first whether to save them (**Yes**), discard them (**No**) or cancel. A file that isn't a GuitarForm library is refused and the library left alone. Restore is also how you start on another computer: point the backup folder at the synced folder and restore the newest backup.
 - **Open backup folder** opens it in File Explorer.
 
+When GuitarForm upgrades the library to a newer format, it first copies the file beside it as `GuitarForm.before-v1.bak` (the number is the version being upgraded from; a name already taken gets `.1`, `.2` and so on). One safety file is kept per upgrade, and you can delete it by hand once you're happy with the upgraded library. If the copy can't be made, the library isn't opened or changed.
+
 Backups don't merge changes made on two computers: whichever library is restored last wins.
 
 ## Drawing

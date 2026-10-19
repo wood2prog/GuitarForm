@@ -100,7 +100,7 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 - [ ] **(question)** Construction lines print at the outline weight. Confirm that is right.
 - [ ] The print colour path (a component's optional print colour to the layer's PlotColor) is untested.
 - [x] Add a library upgrade test (a v1 library with data migrates to v2).
-- [ ] Back up the library before a schema migration.
+- [x] Back up the library before a schema migration.
 - [x] Add non-invariant culture tests (de-DE).
 - [x] Add tests for `Segment`, `FretboardSideShape`, `SideViewShape`, `SoundholeShape`, `ShapeCurves` and FK/cascade behaviour (the Rhino-free parts of `NewFields` are still untested).
 - [ ] Centralise the csproj settings (`Directory.Build.props`).
@@ -184,3 +184,10 @@ These need the product owner's direction before any code is written.
 - [ ] Unsaved Frets and Strings library edits have no crash recovery.
 - [ ] `DesignDrawing.Construction` and `DesignDrawing.Outline` recompute on every access: cache them in callers that loop.
 - [ ] NeckSideShape heel split: the Error for a seam that doesn't land on the joint line between the heel end and the top of the joint has no test (hard to reach through the public API: other Errors fire first); also nothing checks that the back line stays beyond heelEndX all the way up to the heel end's front (extreme neck angle could make the heel self-intersect without an Error).
+
+## Follow-ups from the upgrade backup
+
+- [ ] Two processes upgrading the same library at once can collide on the .bak/.tmp names (one open is blocked, nothing is lost, and retrying works).
+- [ ] A .tmp left by a crash mid-copy costs one spurious failure, then recovers.
+- [ ] No test for a read-only folder or a very long path.
+- [ ] **(decision)** `BackupScheduler.MoveLibrary` does not move the `*.before-v*.bak` files. Should it?

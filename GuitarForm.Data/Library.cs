@@ -32,9 +32,14 @@ namespace GuitarForm.Data
         public static Library Open(string path)
         {
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(path)));
+            bool existed = File.Exists(path);
             var connection = Connect(path, SqliteOpenMode.ReadWriteCreate);
             try
             {
+                // A real upgrade is about to run: keep a copy of the file as it is, and don't migrate without one.
+                int from = existed ? Schema.UpgradeFrom(connection) : 0;
+                if (from > 0)
+                    Backups.SafetyCopy(path, from);
                 Schema.Prepare(connection, path);
                 return new Library(path, connection);
             }

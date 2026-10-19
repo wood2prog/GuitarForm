@@ -34,7 +34,7 @@ namespace GuitarForm.Data
             }
             finally
             {
-                try { if (File.Exists(temporary)) File.Delete(temporary); } catch (IOException) { }
+                try { if (File.Exists(temporary)) File.Delete(temporary); } catch { /* best effort: must not replace the real failure */ }
             }
             return path;
         }
@@ -113,6 +113,34 @@ namespace GuitarForm.Data
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(libraryPath)));
             Copy(backupPath, libraryPath);
             return safety;
+        }
+
+        // Before a schema upgrade: copies the library beside itself as "<name>.before-v{version}.bak" (".1.bak", ".2.bak"
+        // and so on if that name is taken, so an earlier safety copy is never overwritten). Written to a temporary name
+        // and then renamed. Throws IOException, naming the file and the cause, if the copy can't be made.
+        internal static string SafetyCopy(string libraryPath, int fromVersion)
+        {
+            string folder = System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(libraryPath));
+            string stem = System.IO.Path.GetFileNameWithoutExtension(libraryPath) + ".before-v" + fromVersion.ToString(CultureInfo.InvariantCulture);
+            string path = System.IO.Path.Combine(folder, stem + ".bak");
+            for (int n = 1; File.Exists(path) || Directory.Exists(path); n++)
+                path = System.IO.Path.Combine(folder, stem + "." + n.ToString(CultureInfo.InvariantCulture) + ".bak");
+            string temporary = path + ".tmp";
+            try
+            {
+                Copy(libraryPath, temporary);
+                File.Move(temporary, path, false);
+                return path;
+            }
+            catch (Exception e)
+            {
+                throw new IOException(
+                    $"Could not back up {libraryPath} to {path} before upgrading it, so it was not opened: {e.Message} Check that the library's folder is writable and has free space, or move the library to a folder you can write to.", e);
+            }
+            finally
+            {
+                try { if (File.Exists(temporary)) File.Delete(temporary); } catch { /* best effort: must not replace the real failure */ }
+            }
         }
 
         // Copies a database page by page, replacing the destination's contents.
