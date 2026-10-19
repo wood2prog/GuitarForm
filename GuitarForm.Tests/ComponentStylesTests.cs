@@ -10,8 +10,8 @@ using Rhino.Testing.Fixtures;
 
 namespace GuitarForm.Tests
 {
-    // Checks the component style table (layer paths, names, colours), the construction layers and how a new layer is
-    // coloured. The expected values are written out literally, from the table before it moved to Geometry.
+    // Checks the component style table (layer paths, names, colors), the construction layers and how a new layer is
+    // colored. The expected values are written out literally, from the table before it moved to Geometry.
     [RhinoTestFixture]
     public class ComponentStylesTests
     {
@@ -66,7 +66,7 @@ namespace GuitarForm.Tests
         }
 
         [Test]
-        public void NamesPathsAndColoursMatchThePalette()
+        public void NamesPathsAndColorsMatchThePalette()
         {
             foreach (var e in Expected)
             {
@@ -80,13 +80,13 @@ namespace GuitarForm.Tests
         [Test]
         public void ConstructionItemsGoOnTheGroupsGreyConstructionLayer()
         {
-            var grey = Color.FromArgb(200, 200, 200);
+            var gray = Color.FromArgb(200, 200, 200);
             foreach (var e in Expected)
             {
                 var style = ComponentStyles.For(e.Component, DrawingRole.Construction);
                 Assert.That(style.LayerPath, Is.EqualTo(new[] { "Guitar", e.Group, "Construction" }), e.Component.ToString());
-                Assert.That(style.Display, Is.EqualTo(grey), e.Component.ToString());
-                Assert.That(ComponentStyles.DisplayColor(e.Component, DrawingRole.Construction), Is.EqualTo(grey));
+                Assert.That(style.Display, Is.EqualTo(gray), e.Component.ToString());
+                Assert.That(ComponentStyles.DisplayColor(e.Component, DrawingRole.Construction), Is.EqualTo(gray));
             }
         }
 
@@ -118,7 +118,7 @@ namespace GuitarForm.Tests
             Assert.That(over.LayerPath, Is.EqualTo(new[] { "Guitar", "Neck", "Nut" }));
             Assert.That(ComponentStyles.For(DrawingComponent.Nut, DrawingRole.Outline, overrides).Display,
                 Is.EqualTo(Color.FromArgb(1, 2, 3)));
-            // Construction stays grey whatever the override.
+            // Construction stays gray whatever the override.
             Assert.That(ComponentStyles.For(DrawingComponent.Nut, DrawingRole.Construction, overrides).Display,
                 Is.EqualTo(Color.FromArgb(200, 200, 200)));
             // Other components and the default lookup are unchanged.
@@ -129,9 +129,9 @@ namespace GuitarForm.Tests
         }
 
         [Test]
-        public void ANewLayerGetsTheDisplayColourAndSetsNoPlotColourOfItsOwnWithoutAPrintColour()
+        public void ANewLayerGetsTheDisplayColorAndSetsNoPlotColorOfItsOwnWithoutAPrintColor()
         {
-            // Rhino's PlotColor follows the layer colour until one is set, so it matches the display colour here.
+            // Rhino's PlotColor follows the layer color until one is set, so it matches the display color here.
             var layer = new Layer { Name = "Nut" };
             ComponentStyles.ApplyNewLayerStyle(layer, ComponentStyles.Of(DrawingComponent.Nut));
             Assert.That(layer.Color, Is.EqualTo(Color.FromArgb(110, 110, 110)));
@@ -139,7 +139,7 @@ namespace GuitarForm.Tests
         }
 
         [Test]
-        public void APrintColourReachesThePlotColour()
+        public void APrintColorReachesThePlotColor()
         {
             var layer = new Layer { Name = "Nut" };
             ComponentStyles.ApplyNewLayerStyle(layer, ComponentStyles.Of(DrawingComponent.Nut, NutOverride()));
@@ -148,7 +148,7 @@ namespace GuitarForm.Tests
         }
 
         [Test]
-        public void AParentLayerIsBlackWithNoPlotColour()
+        public void AParentLayerIsBlackWithNoPlotColor()
         {
             var layer = new Layer { Name = "Guitar" };
             ComponentStyles.ApplyNewLayerStyle(layer, ComponentStyles.Of(DrawingComponent.Nut, NutOverride()), leaf: false);

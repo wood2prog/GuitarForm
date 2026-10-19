@@ -1,7 +1,7 @@
 namespace GuitarForm.Model
 {
     // A whole guitar design. Each section is one area of the guitar and one tab in the editor. Lengths are in
-    // millimetres.
+    // millimeters.
     public sealed record GuitarDesign
     {
         public string Name { get; init; } = "";

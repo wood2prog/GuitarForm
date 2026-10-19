@@ -87,7 +87,7 @@ namespace GuitarForm
             return doc.Objects.AddCurve(copy, attributes) == System.Guid.Empty ? 0 : 1;
         }
 
-        // Finds the layer for the style's path, adding it and any missing parents (root first). Colours are set only
+        // Finds the layer for the style's path, adding it and any missing parents (root first). Colors are set only
         // on a layer this adds; an existing layer is left as the user has it.
         static int FindOrAddLayer(RhinoDoc doc, ComponentStyle style)
         {

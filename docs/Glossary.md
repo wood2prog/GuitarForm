@@ -275,7 +275,7 @@ The superellipse exponent n that sets how square the back of a profile is. Each 
 The offset of the apex from the neck's centerline, as a percentage of half the profile's width. The apex moves by half-width x asymmetry / 100, toward the treble side when positive. The treble half is then half-width x (1 - asymmetry / 100) wide and the bass half half-width x (1 + asymmetry / 100). Used in both modes.
 
 **Blend**
-The V-C-D position used in advanced mode: 0% is the V, 50% the round C, 100% the D. Between two neighbouring reference shapes the profile is the point-for-point mix of them, weighted by how far along it is (25% is half V and half round C; 75% is half round C and half D).
+The V-C-D position used in advanced mode: 0% is the V, 50% the round C, 100% the D. Between two neighboring reference shapes the profile is the point-for-point mix of them, weighted by how far along it is (25% is half V and half round C; 75% is half round C and half D).
 
 **Basic mode**
 Profile Advanced Mode off. A profile is set by its squareness and asymmetry; the blend is ignored.

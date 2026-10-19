@@ -119,7 +119,7 @@ namespace GuitarForm.Tests
         [Test]
         public void Soundhole_QuickTestValues()
         {
-            // docs/Soundhole.md Quick Test: diameter 100 at tail offset 420 is a circle of radius 50 centred on (0, 420);
+            // docs/Soundhole.md Quick Test: diameter 100 at tail offset 420 is a circle of radius 50 centerd on (0, 420);
             // a horizontal offset of -20 moves it left; a diameter of 0 leaves no soundhole.
             var top = new TopPlate
             {

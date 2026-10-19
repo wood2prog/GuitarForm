@@ -2,7 +2,7 @@
 
 The neck: its angle and overstand, the thickness at the first and selected frets, the shape of its profile (cross-section) at the first fret, the selected fret and through the heel, the heel shaft, and the heel end, heel cap and heel section. The fretboard, nut and headshape have their own tabs. Every field's meaning is in [Glossary.md](Glossary.md); this page covers how the profile fields work together.
 
-The profiles are drawn beside the side view, fretboard (or heel/body joint) side up with the treble side to the right. Lengths are shown and typed in the Rhino document's units and stored in millimetres; see [Units](../README.md#units).
+The profiles are drawn beside the side view, fretboard (or heel/body joint) side up with the treble side to the right. Lengths are shown and typed in the Rhino document's units and stored in millimeters; see [Units](../README.md#units).
 
 ## Profiles
 
@@ -55,7 +55,7 @@ Asymmetry moves the apex off the neck's centerline: by half-width x asymmetry / 
 
 ### Blend
 
-Blend is a position along three reference shapes: the V (n = 1) at 0%, the round C (n = 2) at 50% and the D (n = 3.2) at 100%. A blend between two neighbouring references is the point-for-point mix of their curves: for the same angle t, each point is (1 - w) x the lower reference's point + w x the upper's, where w is how far along between the two the blend is (blend / 50 between 0 and 50, and (blend - 50) / 50 between 50 and 100). It isn't a curve of any single squareness, so blend 25 is close to, but not the same as, squareness 1.5.
+Blend is a position along three reference shapes: the V (n = 1) at 0%, the round C (n = 2) at 50% and the D (n = 3.2) at 100%. A blend between two neighboring references is the point-for-point mix of their curves: for the same angle t, each point is (1 - w) x the lower reference's point + w x the upper's, where w is how far along between the two the blend is (blend / 50 between 0 and 50, and (blend - 50) / 50 between 50 and 100). It isn't a curve of any single squareness, so blend 25 is close to, but not the same as, squareness 1.5.
 
 Examples, at t = 45 degrees, as a fraction of the half-width across from the apex and of the height up from the bottom:
 
@@ -101,7 +101,7 @@ The shaft and the heel are two closed outlines, on separate layers (`Guitar::Nec
 
 ## Quick Test
 
-The tests use a 645 scale, a 600 body, 20 frets, a 44 nut and 54 at the bridge, a 400 fretboard radius and thicknesses of 7 at the nut and 6 at the end. In a document in millimetres, with Neck Thickness at First Fret 21, Neck Thickness at Selected Fret 23, Neck Thickness Fret 9 and Profile Includes Fretboard unticked at the first fret:
+The tests use a 645 scale, a 600 body, 20 frets, a 44 nut and 54 at the bridge, a 400 fretboard radius and thicknesses of 7 at the nut and 6 at the end. In a document in millimeters, with Neck Thickness at First Fret 21, Neck Thickness at Selected Fret 23, Neck Thickness Fret 9 and Profile Includes Fretboard unticked at the first fret:
 
 | Field | Value | Result |
 |---|---|---|

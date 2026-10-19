@@ -23,10 +23,10 @@ namespace GuitarForm.Data
         public static string DefaultFolder =>
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GuitarForm", "recovery");
 
-        static string Normalise(string libraryPath) => Path.GetFullPath(libraryPath).ToLowerInvariant();
+        static string Normalize(string libraryPath) => Path.GetFullPath(libraryPath).ToLowerInvariant();
 
         static string Prefix(string libraryPath) =>
-            Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Normalise(libraryPath))), 0, 6).ToLowerInvariant();
+            Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Normalize(libraryPath))), 0, 6).ToLowerInvariant();
 
         string PathFor(string libraryPath, long id) =>
             Path.Combine(_folder, Prefix(libraryPath) + "-" + id.ToString(CultureInfo.InvariantCulture) + ".json");
@@ -39,7 +39,7 @@ namespace GuitarForm.Data
             Directory.CreateDirectory(_folder);
             string path = PathFor(libraryPath, id);
             string temp = path + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(new Recovery(name, DateTime.UtcNow, document, Normalise(libraryPath))));
+            File.WriteAllText(temp, JsonSerializer.Serialize(new Recovery(name, DateTime.UtcNow, document, Normalize(libraryPath))));
             File.Move(temp, path, true);
         }
 
@@ -52,7 +52,7 @@ namespace GuitarForm.Data
                 if (!File.Exists(path))
                     return null;
                 var recovery = JsonSerializer.Deserialize<Recovery>(File.ReadAllText(path));
-                if (recovery?.Document == null || recovery.LibraryPath != Normalise(libraryPath))
+                if (recovery?.Document == null || recovery.LibraryPath != Normalize(libraryPath))
                     return null;
                 return recovery;
             }

@@ -13,7 +13,7 @@ namespace GuitarForm.Tests
         const double Tolerance = 0.001;
 
         // Right triangle drawn away from the origin: corners (100, 50), (160, 50), (100, 110). Its area centroid,
-        // (120, 70), isn't the centre of its bounding box, (130, 80).
+        // (120, 70), isn't the center of its bounding box, (130, 80).
         static Curve Triangle(double z = 0) => new PolylineCurve(new[]
         {
             new Point3d(100, 50, z), new Point3d(160, 50, z), new Point3d(100, 110, z), new Point3d(100, 50, z),

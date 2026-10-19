@@ -1,7 +1,7 @@
 namespace GuitarForm.Model
 {
     // A round soundhole (see docs/Soundhole.md). The horizontal offset is optional (null when not set) and defaults to
-    // 0, the body centre.
+    // 0, the body center.
     public sealed record Soundhole
     {
         public double Diameter { get; init; }

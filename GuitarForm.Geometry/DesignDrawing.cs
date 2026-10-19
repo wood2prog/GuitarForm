@@ -5,7 +5,7 @@ using Rhino.Geometry;
 
 namespace GuitarForm.Geometry
 {
-    // Everything drawn for a design, in millimetres: the plate outline from the origin up +Y, the side view to its
+    // Everything drawn for a design, in millimeters: the plate outline from the origin up +Y, the side view to its
     // right (the gap away from the plate's widest point), and the soundhole. Construction geometry (construction lines,
     // outline radii circles) is kept apart from the final outline, which is drawn and built differently. Messages are
     // kept per section so each can be shown with that section's values.

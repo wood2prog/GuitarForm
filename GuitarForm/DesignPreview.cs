@@ -10,7 +10,7 @@ using Rhino.Geometry;
 namespace GuitarForm
 {
     // Draws the open design in the viewports without adding it to the document, each curve in its component's
-    // display colour (construction geometry light grey), so the preview matches what Build makes.
+    // display color (construction geometry light gray), so the preview matches what Build makes.
     sealed class DesignPreview : DisplayConduit
     {
         public static readonly Color ConstructionColor = ComponentStyles.ConstructionColor;

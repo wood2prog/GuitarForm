@@ -2,7 +2,7 @@
 
 The library of fretwires: the wire's manufacturer, product code, bead and tang dimensions, the slot depth it recommends and an optional price. A guitar chooses one fretwire for its neck. Every field's meaning is in [Glossary.md](Glossary.md); this page covers how the tab works.
 
-The tab works with no design open, since fretwires are library items shared by every guitar. Lengths are shown and typed in the Rhino document's units and stored in millimetres. See [Units](../README.md#units). It works like the [Strings tab](Strings.md), and the two share their picker, prompts and delete flow.
+The tab works with no design open, since fretwires are library items shared by every guitar. Lengths are shown and typed in the Rhino document's units and stored in millimeters. See [Units](../README.md#units). It works like the [Strings tab](Strings.md), and the two share their picker, prompts and delete flow.
 
 ## Picker and buttons
 
@@ -90,7 +90,7 @@ Frets and slots are previewed and built in their component colors; see [Layers a
 
 ## Quick Test
 
-Use a document in millimetres. This is a checklist for the panel; the drawn values are checked by tests and listed in [Fretboard.md](Fretboard.md#quick-test) (a Bead Width of 2.5 gives 20 bead-width frets, fret 14 with corners at y = 601.25 and 598.75; a Tang Thickness of 0.53 gives 20 slots; a Slot Depth of 2 gives 20 slot lines).
+Use a document in millimeters. This is a checklist for the panel; the drawn values are checked by tests and listed in [Fretboard.md](Fretboard.md#quick-test) (a Bead Width of 2.5 gives 20 bead-width frets, fret 14 with corners at y = 601.25 and 598.75; a Tang Thickness of 0.53 gives 20 slots; a Slot Depth of 2 gives 20 slot lines).
 
 1. Open the **Frets** tab with no design open. Click **New**. **Use for this guitar** and **Use no fretwire** are disabled.
 2. Click **Save** with the Product Code blank. It is refused, naming the Product Code.

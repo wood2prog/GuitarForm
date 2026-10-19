@@ -6,7 +6,7 @@ using Rhino.Testing.Fixtures;
 
 namespace GuitarForm.Tests
 {
-    // Checks the conversion between a design's millimetres and the document's units.
+    // Checks the conversion between a design's millimeters and the document's units.
     [RhinoTestFixture]
     public class DesignUnitsTests
     {
@@ -15,7 +15,7 @@ namespace GuitarForm.Tests
         [TestCase(UnitSystem.Millimeters, 254.0)]
         [TestCase(UnitSystem.Centimeters, 25.4)]
         [TestCase(UnitSystem.Inches, 10.0)]
-        public void ToDocument_ScalesMillimetres(UnitSystem units, double expectedX)
+        public void ToDocument_ScalesMillimeters(UnitSystem units, double expectedX)
         {
             var point = new Point3d(254, 0, 0);
             point.Transform(DesignUnits.ToDocument(units));

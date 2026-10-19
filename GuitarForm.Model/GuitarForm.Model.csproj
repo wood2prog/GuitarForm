@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!-- The design model: plain records with no Rhino dependency, so they can be saved, exported and tested anywhere.
-       Lengths are in millimetres. -->
+       Lengths are in millimeters. -->
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
     <Nullable>disable</Nullable>

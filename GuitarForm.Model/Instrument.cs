@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace GuitarForm.Model
 {
-    // Values that apply to the whole instrument. Lengths are in millimetres.
+    // Values that apply to the whole instrument. Lengths are in millimeters.
     public sealed record Instrument
     {
         // Distance from the nut to the saddle (the vibrating string length).

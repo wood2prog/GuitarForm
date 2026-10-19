@@ -2,7 +2,7 @@
 
 The library of string sets: the set's manufacturer and name, and for each string its description, diameter, construction (plain or wound), unit weight, and the core of a wound string. A guitar chooses one set for its neck. Every field's meaning is in [Glossary.md](Glossary.md); this page covers how the tab works.
 
-The tab works with no design open, since sets are library items shared by every guitar. Lengths are shown and typed in the Rhino document's units and stored in millimetres; the unit weight is shown in lb/in or kg/m and stored in kg/m. See [Units](../README.md#units).
+The tab works with no design open, since sets are library items shared by every guitar. Lengths are shown and typed in the Rhino document's units and stored in millimeters; the unit weight is shown in lb/in or kg/m and stored in kg/m. See [Units](../README.md#units).
 
 ## Picker and buttons
 
@@ -91,7 +91,7 @@ The design's chosen set is kept by its id in the design's `NewFields` file, besi
 
 ## Quick Test
 
-Use a document in millimetres. The unit weight conversion (0.0002 lb/in) and the wound string's core values (5 GPa, 100 MPa) match `StringSetTests`.
+Use a document in millimeters. The unit weight conversion (0.0002 lb/in) and the wound string's core values (5 GPa, 100 MPa) match `StringSetTests`.
 
 1. Open the **Strings** tab with no design open. Click **New**.
 2. Enter Manufacturer `Test` and Name `Quick 2`.

@@ -109,7 +109,7 @@ The finger braces and tone bars are placed on the X brace, so they're drawn only
 
 Braces are named in the order drawn: The headblock, The tailblock, The upper transverse bar, The graft, The X brace, The X brace's bass side upper leg, The X brace's treble side lower leg, Treble finger brace 1.., Bass finger brace 1.., Tone bar 1.., then The bottom, treble and bass soundhole braces.
 
-Each brace is built as a closed outline. Everything is previewed in Rhino's feedback colour, and the centerline in light grey, as for the other tabs. Built objects go on the `GuitarForm::Outline` layer and the centerline on `GuitarForm::Construction`.
+Each brace is built as a closed outline. Everything is previewed in Rhino's feedback color, and the centerline in light gray, as for the other tabs. Built objects go on the `GuitarForm::Outline` layer and the centerline on `GuitarForm::Construction`.
 
 ## Messages
 

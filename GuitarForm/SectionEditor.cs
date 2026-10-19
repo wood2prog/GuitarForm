@@ -336,7 +336,7 @@ namespace GuitarForm
         };
     }
     // The selected tab's messages below the tabs: a header with the counts (click it to expand or collapse) and, when
-    // expanded, one line per message, coloured by severity and prefixed with its level. Hidden when there are none,
+    // expanded, one line per message, colored by severity and prefixed with its level. Hidden when there are none,
     // and opened when errors appear.
     sealed class MessagesBar : StackLayout
     {

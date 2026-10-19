@@ -1,6 +1,6 @@
 # Improvements
 
-Project-organisation work, in the order we plan to do it. Tick items off as they're done. Items marked **(decision)** need direction from the user before any code is written.
+Project-organization work, in the order we plan to do it. Tick items off as they're done. Items marked **(decision)** need direction from the user before any code is written.
 
 ## Where we left off
 
@@ -23,7 +23,7 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 - **SQLite holds everything.** Opening a previous design rebuilds the model from the database.
 - **A design owns copies of its sections.** Each area (Instrument, Body, Soundhole, String set, ...) can also be saved as a named library preset. Loading a preset copies its values into the design, so editing a design never changes the library or other designs.
 - **Edits change a working copy.** Save, Save as and Revert write it to the library; switching or closing with unsaved changes asks first. `RecoveryStore` keeps unsaved work outside the library, so it can be offered back.
-- **Lengths are stored in millimetres** (database, presets, JSON, geometry) **and shown and typed in the Rhino document's units** everywhere in GuitarForm: the tab fields, dialogs, settings and messages. They're converted when drawn, too.
+- **Lengths are stored in millimeters** (database, presets, JSON, geometry) **and shown and typed in the Rhino document's units** everywhere in GuitarForm: the tab fields, dialogs, settings and messages. They're converted when drawn, too.
 - **Live preview while editing, plus a Build command.** The preview is drawn, not added to the document. Build writes real objects to GuitarForm layers and replaces those from the previous build of that design.
 - **One library database, kept locally, with backups to a synced folder.** The main copy is `%LOCALAPPDATA%\GuitarForm\GuitarForm.db` by default, which isn't synced, so OneDrive never sees a half-written file. Backups are written with SQLite's backup API to `Documents\GuitarForm\Backups` by default, which OneDrive syncs. Both locations are set on the Settings page, and kept in Rhino's plug-in settings rather than the database, since they're needed before it's opened.
 - **A design can be exported** as a structured JSON document that other programs can read.
@@ -98,15 +98,15 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 - [ ] **(question)** Cross-checks between the Fretwire Slot Depth (FWSD) and the Tang Height (FWTH) or the fretboard thickness: which, if any, should be errors or warnings?
 - [ ] **(question)** The fretwire price's unit or currency, when job costing is built.
 - [ ] **(question)** Construction lines print at the outline weight. Confirm that is right.
-- [ ] The print colour path (a component's optional print colour to the layer's PlotColor) is untested.
+- [ ] The print color path (a component's optional print color to the layer's PlotColor) is untested.
 - [x] Add a library upgrade test (a v1 library with data migrates to v2).
 - [x] Back up the library before a schema migration.
 - [x] Add non-invariant culture tests (de-DE).
-- [x] Add tests for `Segment`, `FretboardSideShape`, `SideViewShape`, `SoundholeShape`, `ShapeCurves` and FK/cascade behaviour (the Rhino-free parts of `NewFields` are still untested).
-- [x] Centralise the csproj settings (`Directory.Build.props`).
+- [x] Add tests for `Segment`, `FretboardSideShape`, `SideViewShape`, `SoundholeShape`, `ShapeCurves` and FK/cascade behavior (the Rhino-free parts of `NewFields` are still untested).
+- [x] Centralize the csproj settings (`Directory.Build.props`).
 - [ ] Extract the duplicated UI helpers (Run, ActionButton, the discard prompt). Partly done: `LibraryItemUi` now holds the library-item helpers shared by the Strings and Frets tabs; `GuitarFormPanel` and `SettingsPage` still have their own.
 - [x] Remove the `UiMetrics` bypasses and dead code. Partly done: `ScreenScale` is gone and `NumberSlider`'s sizes are named in `UiMetrics`; `Scale` stays as a no-op wrapper. The bypasses in `SectionEditor.cs` and `Sections.cs` are left for the migration.
-- [ ] Pick one spelling (American) across code and docs, including the UI text and CLAUDE.md. Rhino API names such as `DisplayColor` aren't affected.
+- [x] Pick one spelling (American) across code and docs, including the UI text and CLAUDE.md. Rhino API names such as `DisplayColor` aren't affected.
 - [x] Fix the Strings tab's missing unsaved-changes prompt on switch. There is still no prompt on hide or close, by design, since Rhino's shutdown must not be blocked.
 - [ ] Make `CopyDesign`, `ImportDesign` and `SaveDesign` atomic with `NewFields` (resolved by the migration).
 - [ ] Slider steps converted from mm look odd in inches (0.1 mm = 0.003937 in); snap to a sensible grid in non-mm units.
@@ -152,7 +152,7 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 
 ## 3. Planned features
 
-- [ ] **Custom soundhole** (planned). The legacy `CustomSoundholeGeometry` has no `Shapes` replacement, and the plug-in doesn't use it. It needs a `Shapes` version when the product owner specifies the shape; keep the legacy class until then. Still to decide: how the shape is provided (picked from the Rhino document, or imported) and stored (e.g. the curve serialised into the database).
+- [ ] **Custom soundhole** (planned). The legacy `CustomSoundholeGeometry` has no `Shapes` replacement, and the plug-in doesn't use it. It needs a `Shapes` version when the product owner specifies the shape; keep the legacy class until then. Still to decide: how the shape is provided (picked from the Rhino document, or imported) and stored (e.g. the curve serialized into the database).
 - [ ] GitHub Actions workflow that builds the plug-in on each push.
 - [ ] Yak package for distribution through Rhino's Package Manager.
 - [ ] Use Relief, Relief Fret and String Action in the drawing (future): today these are information-only fields on the Fretboard tab and don't modify any geometry.
@@ -176,11 +176,11 @@ These need the product owner's direction before any code is written.
   - Decided: frets are drawn as an orange bead-width rectangle with a thinner center line marking the tang. Strings are drawn green, as rectangles at their diameter.
   - Decided: each component is on its own sublayer under a main grouping layer.
 - [x] **(decision)** Is the split right between construction lines (frets, strings) and outline objects (slots, dots)?
-  - Decided: superseded by the layer tree. Each component has its own layer and colour (`ComponentStyles`), and each group has a light grey Construction sublayer.
+  - Decided: superseded by the layer tree. Each component has its own layer and color (`ComponentStyles`), and each group has a light gray Construction sublayer.
 
 ## Review follow-ups (layers, library tabs)
 
-- [x] `ComponentStyles` completeness (every `DrawingComponent` has a style) and the print colour path (a Print override reaches `Layer.PlotColor`) are tested: `ComponentStyles` moved to `GuitarForm.Geometry` (`ComponentStylesTests`).
+- [x] `ComponentStyles` completeness (every `DrawingComponent` has a style) and the print color path (a Print override reaches `Layer.PlotColor`) are tested: `ComponentStyles` moved to `GuitarForm.Geometry` (`ComponentStylesTests`).
 - [ ] Unsaved Frets and Strings library edits have no crash recovery.
 - [x] `DesignDrawing.Construction` and `DesignDrawing.Outline` recompute on every access. Done: each is computed once, on first use.
 - [ ] NeckSideShape heel split: the Error for a seam that doesn't land on the joint line between the heel end and the top of the joint has no test (hard to reach through the public API: other Errors fire first); also nothing checks that the back line stays beyond heelEndX all the way up to the heel end's front (extreme neck angle could make the heel self-intersect without an Error).

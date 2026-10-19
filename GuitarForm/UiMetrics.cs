@@ -3,10 +3,10 @@ using Eto.Forms;
 
 namespace GuitarForm
 {
-    /// <summary>Layout constants and helpers shared by the panel, so spacing, widths and colours stay consistent.</summary>
+    /// <summary>Layout constants and helpers shared by the panel, so spacing, widths and colors stay consistent.</summary>
     internal static class UiMetrics
     {
-        /// <summary>Space between neighbouring controls, in pixels.</summary>
+        /// <summary>Space between neighboring controls, in pixels.</summary>
         public const int Gap = 6;
 
         /// <summary>Space between groups of fields, in pixels.</summary>
@@ -48,7 +48,7 @@ namespace GuitarForm
         /// <summary>Width of the text column in a small dialog, in pixels.</summary>
         public const int DialogTextWidth = 260;
 
-        /// <summary>True when the window background is dark, so colours should suit a dark theme.</summary>
+        /// <summary>True when the window background is dark, so colors should suit a dark theme.</summary>
         public static bool IsDark
         {
             get
@@ -58,16 +58,16 @@ namespace GuitarForm
             }
         }
 
-        /// <summary>Colour for error text, readable on the current background.</summary>
+        /// <summary>Color for error text, readable on the current background.</summary>
         public static Color ErrorColor => IsDark ? Color.FromArgb(255, 125, 115) : Color.FromArgb(180, 25, 25);
 
-        /// <summary>Colour for warning text, readable on the current background.</summary>
+        /// <summary>Color for warning text, readable on the current background.</summary>
         public static Color WarningColor => IsDark ? Color.FromArgb(240, 190, 80) : Color.FromArgb(150, 90, 0);
 
-        /// <summary>Colour for informational notes, readable on the current background.</summary>
+        /// <summary>Color for informational notes, readable on the current background.</summary>
         public static Color NoteColor => IsDark ? Color.FromArgb(130, 180, 240) : Color.FromArgb(25, 90, 160);
 
-        /// <summary>Colour for faint tick marks and other secondary detail, visible but quiet on the current background.</summary>
+        /// <summary>Color for faint tick marks and other secondary detail, visible but quiet on the current background.</summary>
         public static Color MutedTickColor => IsDark ? Color.FromArgb(150, 150, 150) : Color.FromArgb(120, 120, 120);
 
         /// <summary>Height of a slider and its number box, in pixels.</summary>

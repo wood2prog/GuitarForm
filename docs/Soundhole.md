@@ -2,22 +2,22 @@
 
 A round soundhole. Tick **This design has a soundhole** to add one; untick it to remove it (ticking it again brings the values back while the design is open). The circle is part of the final outline.
 
-The guitar is drawn vertically from the origin up +Y. Lengths are shown and typed in the Rhino document's units and stored in millimetres; see [Units](../README.md#units).
+The guitar is drawn vertically from the origin up +Y. Lengths are shown and typed in the Rhino document's units and stored in millimeters; see [Units](../README.md#units).
 
 | Field | Description |
 |---|---|
 | Diameter | *Required.* Diameter of the soundhole. Must be greater than 0. |
-| Horizontal offset | *Optional.* Distance of the soundhole centre from the body centreline along X (+X is right). Blank centres the hole. |
-| Tail offset | *Required.* Distance of the soundhole centre up Y from the tail end (the origin). |
+| Horizontal offset | *Optional.* Distance of the soundhole center from the body centerline along X (+X is right). Blank centers the hole. |
+| Tail offset | *Required.* Distance of the soundhole center up Y from the tail end (the origin). |
 
-The soundhole is a circle of radius Diameter / 2, centred at (Horizontal offset, Tail offset).
+The soundhole is a circle of radius Diameter / 2, centerd at (Horizontal offset, Tail offset).
 
-**Quick test:** in a document in millimetres, tick the soundhole box and type these values. They change the working copy until you press **Save**:
+**Quick test:** in a document in millimeters, tick the soundhole box and type these values. They change the working copy until you press **Save**:
 
 | Field | Value | Result |
 |---|---|---|
-| Diameter, Tail offset | 100, 420 | Circle of radius 50 centred at (0, 420). |
-| Horizontal offset | −20 | The circle moves left, centred at (−20, 420). |
+| Diameter, Tail offset | 100, 420 | Circle of radius 50 centerd at (0, 420). |
+| Horizontal offset | −20 | The circle moves left, centerd at (−20, 420). |
 | Diameter | change to 0 | Error: the diameter must be greater than zero. |
 
 ## Custom shapes (not in the panel yet)

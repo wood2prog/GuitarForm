@@ -7,7 +7,7 @@ using NUnit.Framework;
 namespace GuitarForm.Tests
 {
     // Checks that formatting, parsing and JSON don't depend on the machine's culture, using German (decimal comma).
-    // Behaviour pinned here is the current behaviour; where it looks wrong, a comment says so.
+    // Behavior pinned here is the current behavior; where it looks wrong, a comment says so.
     public class CultureTests
     {
         static readonly CultureInfo German = new CultureInfo("de-DE");

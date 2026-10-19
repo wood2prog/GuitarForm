@@ -20,7 +20,7 @@ Running record of where the project stands. Update it at the end of each session
 - Built the plan in `docs/Plan-FretsAndLayers.md`:
   - Fretboard and Bracing tab fields, including the Courses group (SPC, CSN, CSB), side dots and fret slot lines in the side view.
   - The Frets tab (`FretsTab`, `FretwireEditor`, shared `LibraryItemUi`) and fretwire persistence with the design, its export and import.
-  - The `Guitar` layer tree with `ComponentStyles` (names, paths and colours), colours ByLayer, and the preview in the same colours.
+  - The `Guitar` layer tree with `ComponentStyles` (names, paths and colors), colors ByLayer, and the preview in the same colors.
   - Bead-width frets with a thinner center line, strings as rectangles at their diameter, and the "Show strings" plug-in setting.
   - Model fields FWSD, FWPR and FBSO (FWM is now optional).
 - Wrote `docs/Frets.md` and updated `docs/Fretboard.md`, the README, `CLAUDE.md` and `IMPROVEMENTS.md`.
@@ -31,7 +31,7 @@ Running record of where the project stands. Update it at the end of each session
 - Wave B is done: shared shape helpers (`ShapeSupport`, `ShapeMessages`, `PolygonMath`), the splits of `BracingShape`, `PlateShape.AddCutaway`, `NeckSideShape` and `NeckProfilesShape` sampling, and `InternalsVisibleTo` for the tests. An independent review passed.
 - Remaining waves:
   - C is done: backup before migration (T8), `ComponentStyles` moved to Geometry with `ComponentStylesTests` (T10), and `DesignDrawing` caching and the `UiMetrics` tidy (T11).
-  - D: `Directory.Build.props` is done (T9: LangVersion and NETSDK1138 centralised; output and 596 tests unchanged). Remaining: American spelling.
+  - D: `Directory.Build.props` is done (T9: LangVersion and NETSDK1138 centralized; output and 596 tests unchanged). American spelling is done (T12); wave D and the pre-migration cleanup are complete.
 - Owner decisions: the upgrade backup goes next to the library (e.g. `GuitarForm.before-v1.bak`), and a failed copy blocks opening. `Directory.Build.props`, the `ComponentStyles` move and Shapes `InternalsVisibleTo` are approved. UI helper duplicates are deferred.
 - Follow-ups found by the tests are in `IMPROVEMENTS.md` ("Follow-ups from the test work").
 
@@ -54,7 +54,7 @@ The owner confirmed the Rhino checks all passed.
 - F5 / `launchSettings` starts Rhino. DIDN'T TEST
 - The last build was blocked by a running Rhino locking the `.rhp`. Close Rhino and rebuild to confirm 0 warnings after the Bracing and Fretboard field additions.
 
-- Rhino check for the `ComponentStyles` move: Build still creates the `Guitar` layer tree with the same colours, and a layer recoloured by hand keeps its colour after building again.
+- Rhino check for the `ComponentStyles` move: Build still creates the `Guitar` layer tree with the same colors, and a layer recolored by hand keeps its color after building again.
 
 ### New this round
 
@@ -69,17 +69,17 @@ Frets tab (see `docs/Frets.md`):
 
 Fretboard tab:
 
-- Courses: SPC 1 greys CSN and CSB. SPC 2 enables them and 12 strings draw.
+- Courses: SPC 1 grays CSN and CSB. SPC 2 enables them and 12 strings draw.
 - Side dots and fret slot lines draw in the side view. Check the warnings: a side dot breaking through the top, and a slot that cuts through or is cut off at thin frets.
 - **Show strings** hides and shows the strings in the preview and in Build, and persists across a Rhino restart.
 
-Layers and colours:
+Layers and colors:
 
 - Build makes the layer tree with sublayers and a Construction sublayer per group. Objects are colored ByLayer.
 - Rebuilding replaces only that design's objects. Two designs coexist. One Undo removes a build.
-- A layer you recolour keeps its colour after a rebuild.
+- A layer you recolor keeps its color after a rebuild.
 - The old `GuitarForm::Outline` and `GuitarForm::Construction` layers are removed when empty, and kept when they have objects.
-- Centerlines are thinner. The preview colours match the built colours.
+- Centerlines are thinner. The preview colors match the built colors.
 
 Unsaved library edits, prompts and builds:
 
@@ -89,7 +89,7 @@ Unsaved library edits, prompts and builds:
 - Old empty `GuitarForm` layers (and the parent) are removed in the same build. A layer with an object, the current layer, or one used by a block stays.
 - **Show strings** redraws the preview, persists across a Rhino restart, and doesn't reset the backup timer.
 - A fretboard slot deeper than the board's thickness shows the cut-through Warning and draws no slot lines.
-- Heel layer now has objects: Build puts the shaft on `Guitar::Neck::Side view` and the heel on `Guitar::Neck::Heel`. They share the seam (the back of the neck carried on to the joint line), both ending flush on the joint line, and the Heel layer's colour shows in the preview.
+- Heel layer now has objects: Build puts the shaft on `Guitar::Neck::Side view` and the heel on `Guitar::Neck::Heel`. They share the seam (the back of the neck carried on to the joint line), both ending flush on the joint line, and the Heel layer's color shows in the preview.
 
 ## Decisions made
 
@@ -111,7 +111,7 @@ Unsaved library edits, prompts and builds:
 
 ## Next up
 
-1. Remaining pre-migration cleanup (wave D), from `IMPROVEMENTS.md`: American spelling; then tests for the untested shapes and for plug-in code.
+1. Pre-migration cleanup is complete (wave D done, American spelling included). Next: tests for the untested shapes and for plug-in code.
 2. Migrate `NewFields` into the library. This needs the owner's sign-off and a senior-engineer plan first.
 
 ## Open questions for the owner
@@ -122,4 +122,4 @@ Unsaved library edits, prompts and builds:
 - What unit or currency is the fretwire price in?
 - Construction lines print at the outline weight. Is that what you want?
 - The **Use no fretwire** button was added unasked. Keep it?
-- The stricter value coercion now rejects wrong-typed values in hand-edited JSON with a `FormatException`. Is that the intended behaviour?
+- The stricter value coercion now rejects wrong-typed values in hand-edited JSON with a `FormatException`. Is that the intended behavior?

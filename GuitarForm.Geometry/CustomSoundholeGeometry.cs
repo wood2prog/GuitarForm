@@ -5,7 +5,7 @@ using Rhino.Geometry;
 namespace GuitarForm.Geometry
 {
     // Custom soundhole inputs. The horizontal offset is optional (null when not connected) and defaults to 0, the body
-    // centre.
+    // center.
     public sealed record CustomSoundholeDimensions
     {
         public Curve Shape { get; init; }
@@ -14,7 +14,7 @@ namespace GuitarForm.Geometry
     }
 
     // Custom-shaped soundhole: a closed curve in the XY plane, moved so its area centroid sits HorizontalOffset across
-    // from the body centreline (+X is right) and TailOffset up the Y axis from the tail end (the origin). Where the shape
+    // from the body centerline (+X is right) and TailOffset up the Y axis from the tail end (the origin). Where the shape
     // was drawn doesn't matter; only its form is used.
     public sealed class CustomSoundholeGeometry
     {

@@ -25,7 +25,7 @@ Limits come from the model. A field left blank is unset and has no default. The 
 | Course String Spacing at Nut | CSN | more than 0 | For courses of two, the distance between the two strings of a course at the nut. |
 | Course String Spacing at Bridge | CSB | more than 0 | The same at the saddle. |
 
-The two course spacings are disabled (greyed, not hidden) unless Strings per Course is 2. A disabled field keeps its value, so changing SPC to 1 and back loses nothing. When SPC is 2 the model requires both.
+The two course spacings are disabled (grayed, not hidden) unless Strings per Course is 2. A disabled field keeps its value, so changing SPC to 1 and back loses nothing. When SPC is 2 the model requires both.
 
 ### Frets
 
@@ -186,5 +186,5 @@ Not checked by a test: the appearance of the preview and the built layers (see O
 ## Open questions
 
 - Decided: the fretwire (which also supplies the slot width and depth) is chosen only on the [Frets tab](Frets.md), the way string sets are chosen on the Strings tab.
-- Decided: each component is previewed and built in its own colour on its own layer (frets orange, strings green); construction geometry is light grey on a Construction sublayer. See [Layers and colors](../README.md#layers-and-colors).
+- Decided: each component is previewed and built in its own color on its own layer (frets orange, strings green); construction geometry is light gray on a Construction sublayer. See [Layers and colors](../README.md#layers-and-colors).
 - Construction lines are printed at the outline weight. Is that right, or should they be thinner or not printed?

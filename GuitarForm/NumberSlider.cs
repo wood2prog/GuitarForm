@@ -128,7 +128,7 @@ namespace GuitarForm
             }
         }
 
-        // Shown greyed out on the lever while the value is empty.
+        // Shown grayed out on the lever while the value is empty.
         public string PlaceholderText { get; set; } = "";
 
         public new string ToolTip
@@ -324,7 +324,7 @@ namespace GuitarForm
             g.FillRectangle(SystemColors.Control, left, middle - 2 * s1, right - left, four);
             g.DrawRectangle(groove, left, middle - 2 * s1, right - left, four);
 
-            // A focus ring around the whole slider, in the theme's highlight colour.
+            // A focus ring around the whole slider, in the theme's highlight color.
             if (_bar.HasFocus && enabled)
                 g.DrawRectangle(new Pen(SystemColors.Highlight, 2 * s1), s1, s1, width - 2 * s1, height - 2 * s1);
 

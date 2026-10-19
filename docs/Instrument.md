@@ -2,7 +2,7 @@
 
 Values that apply to the whole instrument. Other parts of the design read them; the Instrument tab draws nothing itself.
 
-Lengths are shown and typed in the Rhino document's units and stored in millimetres; see [Units](../README.md#units).
+Lengths are shown and typed in the Rhino document's units and stored in millimeters; see [Units](../README.md#units).
 
 | Field | Description |
 |---|---|
@@ -11,7 +11,7 @@ Lengths are shown and typed in the Rhino document's units and stored in millimet
 
 The distance from the nut to any fret uses equal-tempered spacing: *L* − *L* / 2^(*n*/12). The distance to the neck join fret is the neck's length from the nut to the body.
 
-**Quick test:** in a document in millimetres, open a design and type these values on the Instrument tab. They change the working copy until you press **Save**:
+**Quick test:** in a document in millimeters, open a design and type these values on the Instrument tab. They change the working copy until you press **Save**:
 
 | Field | Value | Result |
 |---|---|---|

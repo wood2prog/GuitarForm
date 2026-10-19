@@ -4,7 +4,7 @@ using Rhino;
 
 namespace GuitarForm
 {
-    // Lengths are stored in millimetres and shown, and typed, in the active document's units.
+    // Lengths are stored in millimeters and shown, and typed, in the active document's units.
     sealed record DisplayUnits(UnitSystem System)
     {
         public static DisplayUnits Current => new DisplayUnits(RhinoDoc.ActiveDoc?.ModelUnitSystem ?? UnitSystem.Millimeters);

@@ -6,9 +6,9 @@ using Rhino.DocObjects;
 
 namespace GuitarForm.Geometry
 {
-    // How a drawn component looks: the layer it's built on (root first), its display colour (the layer colour when
-    // Build creates the layer, and the preview colour) and an optional print colour (the layer's PlotColor). This is
-    // the ONE place for component names, layer paths and colours: adding, renaming or recolouring a component is a
+    // How a drawn component looks: the layer it's built on (root first), its display color (the layer color when
+    // Build creates the layer, and the preview color) and an optional print color (the layer's PlotColor). This is
+    // the ONE place for component names, layer paths and colors: adding, renaming or recoloring a component is a
     // change to the table below. A future Colors tab will override Display and Print.
     readonly record struct ComponentStyle(string[] LayerPath, Color Display, Color? Print = null)
     {
@@ -29,7 +29,7 @@ namespace GuitarForm.Geometry
         public const int OutlineThickness = 2;
         public const int CenterlineThickness = 1;
 
-        // The construction geometry's colour, the same for every group.
+        // The construction geometry's color, the same for every group.
         public static readonly Color ConstructionColor = Color.FromArgb(200, 200, 200);
 
         static ComponentStyle Style(string group, string name, int r, int g, int b, Color? print = null) =>
@@ -79,8 +79,8 @@ namespace GuitarForm.Geometry
             return style;
         }
 
-        // The layer path, layer colour and print colour for a drawn item: construction items go on their group's
-        // Construction layer in light grey, the rest on their component's layer.
+        // The layer path, layer color and print color for a drawn item: construction items go on their group's
+        // Construction layer in light gray, the rest on their component's layer.
         public static ComponentStyle For(DrawingComponent component, DrawingRole role) => For(component, role, Overrides);
 
         internal static ComponentStyle For(DrawingComponent component, DrawingRole role,
@@ -92,7 +92,7 @@ namespace GuitarForm.Geometry
                 : style;
         }
 
-        // The colour a drawn item is previewed in.
+        // The color a drawn item is previewed in.
         public static Color DisplayColor(DrawingComponent component, DrawingRole role) => For(component, role).Display;
 
         public static double PlotWeight(DrawingRole role) =>
@@ -101,9 +101,9 @@ namespace GuitarForm.Geometry
         public static int Thickness(DrawingRole role) =>
             role == DrawingRole.Outline ? OutlineThickness : CenterlineThickness;
 
-        // Colours a layer that Build is creating: the display colour on the leaf (parents are black), and the print
-        // colour (PlotColor) only when the style has one. Never called for a layer that already exists, so a layer
-        // the user has recoloured keeps its colour.
+        // Colors a layer that Build is creating: the display color on the leaf (parents are black), and the print
+        // color (PlotColor) only when the style has one. Never called for a layer that already exists, so a layer
+        // the user has recolored keeps its color.
         internal static void ApplyNewLayerStyle(Layer layer, ComponentStyle style, bool leaf = true)
         {
             layer.Color = leaf ? style.Display : Color.Black;
