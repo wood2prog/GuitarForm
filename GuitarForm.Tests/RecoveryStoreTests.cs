@@ -96,5 +96,104 @@ namespace GuitarForm.Tests
             Assert.That(_store.Exists(Lib, 2), Is.False);
             Assert.That(_store.Exists(Other, 2), Is.True);
         }
+
+        [Test]
+        public void StringKeyRoundTripsWithLibraryIds()
+        {
+            _store.Write(Lib, "guitar-abc_1", "OM", "{\"a\":1}", 7, 9);
+            var r = _store.TryRead(Lib, "guitar-abc_1");
+            Assert.That(_store.Exists(Lib, "guitar-abc_1"));
+            Assert.That(r.Document, Is.EqualTo("{\"a\":1}"));
+            Assert.That(r.FretwireId, Is.EqualTo(7));
+            Assert.That(r.StringSetId, Is.EqualTo(9));
+            Assert.That(_store.TryRead(Other, "guitar-abc_1"), Is.Null);
+            _store.Delete(Lib, "guitar-abc_1");
+            Assert.That(_store.Exists(Lib, "guitar-abc_1"), Is.False);
+        }
+
+        [Test]
+        public void IdsDefaultToNull()
+        {
+            _store.Write(Lib, "guitar-x", "A", "d");
+            var r = _store.TryRead(Lib, "guitar-x");
+            Assert.That(r.FretwireId, Is.Null);
+            Assert.That(r.StringSetId, Is.Null);
+        }
+
+        [TestCase("")]
+        [TestCase("a/b")]
+        [TestCase("..\\x")]
+        [TestCase("a b")]
+        [TestCase("a.b")]
+        [TestCase("123")]
+        public void UnsafeKeyIsRejected(string key)
+        {
+            Assert.Throws<ArgumentException>(() => _store.Write(Lib, key, "A", "d"));
+            Assert.Throws<ArgumentException>(() => _store.TryRead(Lib, key));
+            Assert.Throws<ArgumentException>(() => _store.Delete(Lib, key));
+        }
+
+        [Test]
+        public void OldFormatFileWithoutIdsStillReads()
+        {
+            _store.Write(Lib, "guitar-old", "A", "d");
+            string file = Directory.GetFiles(_folder)[0];
+            var doc = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(file)).AsObject();
+            doc.Remove("FretwireId");
+            doc.Remove("StringSetId");
+            File.WriteAllText(file, doc.ToJsonString());
+            var r = _store.TryRead(Lib, "guitar-old");
+            Assert.That(r.Document, Is.EqualTo("d"));
+            Assert.That(r.FretwireId, Is.Null);
+        }
+
+        [Test]
+        public void LegacyReadAndDelete()
+        {
+            _store.Write(Lib, 5, "A", "legacy");
+            Assert.That(_store.TryReadLegacy(Lib, 5).Document, Is.EqualTo("legacy"));
+            _store.DeleteLegacy(Lib, 5);
+            Assert.That(_store.TryReadLegacy(Lib, 5), Is.Null);
+        }
+
+        [Test]
+        public void StringDeleteStaleLeavesKeptKeysOtherLibrariesAndLegacyFiles()
+        {
+            _store.Write(Lib, "guitar-a", "A", "1");
+            _store.Write(Lib, "guitar-b", "B", "2");
+            _store.Write(Other, "guitar-b", "C", "3");
+            _store.Write(Lib, 12, "D", "legacy");
+            _store.DeleteStale(Lib, new[] { "guitar-a" });
+            Assert.That(_store.Exists(Lib, "guitar-a"));
+            Assert.That(_store.Exists(Lib, "guitar-b"), Is.False);
+            Assert.That(_store.Exists(Other, "guitar-b"));
+            Assert.That(_store.Exists(Lib, 12));
+        }
+
+        [Test]
+        public void LongIdDeleteStale_LeavesStringKeyedFiles()
+        {
+            _store.Write(Lib, 1, "A", "x");
+            _store.Write(Lib, 2, "B", "y");
+            _store.Write(Lib, "guitar-abc", "G", "z");
+            _store.DeleteStale(Lib, new long[] { 1 });
+            Assert.That(_store.Exists(Lib, 1));
+            Assert.That(_store.Exists(Lib, 2), Is.False);
+            Assert.That(_store.Exists(Lib, "guitar-abc"));
+        }
+
+        [Test]
+        public void TryReadStatus_DistinguishesMissingOkCorruptAndUnavailable()
+        {
+            Assert.That(_store.TryRead(Lib, "guitar-s", out _), Is.EqualTo(RecoveryReadStatus.Missing));
+            _store.Write(Lib, "guitar-s", "S", "doc");
+            Assert.That(_store.TryRead(Lib, "guitar-s", out var r), Is.EqualTo(RecoveryReadStatus.Ok));
+            Assert.That(r.Document, Is.EqualTo("doc"));
+            string file = Directory.GetFiles(_folder)[0];
+            using (new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.None))
+                Assert.That(_store.TryRead(Lib, "guitar-s", out _), Is.EqualTo(RecoveryReadStatus.Unavailable));
+            File.WriteAllText(file, "garbage");
+            Assert.That(_store.TryRead(Lib, "guitar-s", out _), Is.EqualTo(RecoveryReadStatus.Corrupt));
+        }
     }
 }

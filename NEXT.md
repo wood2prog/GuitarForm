@@ -5,7 +5,7 @@ Running record of where the project stands. Update it at the end of each session
 ## State
 
 - Branch: `main`. This session's work is committed.
-- Build: 0 warnings. Tests: 625 passing (405 before wave A).
+- Build: 0 warnings. Tests: 673 passing (405 before wave A).
 - An independent review of this batch was done and its findings were fixed (T10). 
 - A code review of the whole codebase was done; the quick fixes from it are in.
 - Bracing, Fretboard and Frets docs are written.
@@ -132,6 +132,17 @@ The senior-engineer plan is approved. It runs in four stages:
 - `LegacyNewFields`, `DotMarkerText` and `DisplayName`.
 - `GuitarDocument.Read`.
 - Tests: 625 passing.
+
+**Stage 2 done** (DesignSession in GuitarForm.Data with import/export/recovery/legacy recovery, RecoveryStore string keys `guitar-<uid>`, DesignBuilder buildKey + alsoReplace; not wired into the panel yet). Tests 673. Independent review (Opus) passed; its defects were fixed.
+
+Stage 3 must:
+
+- Pass `DesignSession.BuildKey` with `LegacyBuildKeys` to Build.
+- Remove or replace the panel's old long-id `RecoveryStore.DeleteStale` call (GuitarFormPanel ~line 619) with `DeleteStaleRecovery`.
+- Supply the panel-only behaviors: dirty label, Save state and debounce timer; flush on hide, close and Rhino shutdown; `RequireNoInputErrors`; the delete warning; the export dialog; `ConfirmLibraryChange`; validating an import file with `GuitarDocument.Read` before asking about discard; catching and logging `FlushRecovery`/`ClearRecovery` failures; and `ResolveLibraryItems` error swallowing.
+- Use Open, CreateNew, Copy and `Import(discardPrevious: true)` after a user-confirmed discard.
+- Tabs treat `note == null` as no note.
+- `DesignBuilder`'s null-key guard has no automated test (it needs Rhino). Check in Rhino that Build still replaces only its own objects.
 
 **Owner decisions:**
 

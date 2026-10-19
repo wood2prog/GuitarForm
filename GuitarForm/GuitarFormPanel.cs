@@ -1180,7 +1180,7 @@ namespace GuitarForm
                     $"The design has {errors} {(errors == 1 ? "error" : "errors")} (see Messages), so the parts with errors will be missing from the build.\n\nBuild anyway?",
                     "GuitarForm", MessageBoxButtons.YesNo, MessageBoxType.Warning) != DialogResult.Yes)
                 return;
-            int added = DesignBuilder.Build(doc, _designId.Value, _design.Name, drawing, _showStrings.Checked == true);
+            int added = DesignBuilder.Build(doc, _designId.Value.ToString(CultureInfo.InvariantCulture), new List<string>(), _design.Name, drawing, _showStrings.Checked == true);
             RhinoApp.WriteLine($"GuitarForm: built \"{_design.Name}\"{(_dirty ? " (unsaved)" : "")} ({added} objects).");
         }
 

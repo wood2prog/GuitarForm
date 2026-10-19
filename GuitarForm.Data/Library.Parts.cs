@@ -42,6 +42,13 @@ namespace GuitarForm.Data
 
         public bool GuitarExists(string name) => TopLevelId("guitar", name) != null;
 
+        // True if a guitar other than exceptId has the name (trimmed, ignoring case): what a rename or Save as must check.
+        public bool GuitarExists(string name, long? exceptId)
+        {
+            long? existing = TopLevelId("guitar", name?.Trim() ?? "");
+            return existing != null && existing != exceptId;
+        }
+
         // Saves a new guitar, with its neck, body and bracing, and returns its id. Its name is its Instrument Name.
         // Throws InvalidOperationException if the name is empty or taken (ignoring case), or the neck refers to a
         // fretwire or string set that isn't in the library.

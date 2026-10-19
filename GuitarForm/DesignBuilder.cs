@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Drawing;
-using System.Globalization;
 using System.Linq;
 using GuitarForm.Geometry;
 using GuitarForm.Shapes;
@@ -19,10 +18,14 @@ namespace GuitarForm
         // The layers earlier versions built on: removed after a build when nothing is left on them.
         static readonly string[] OldLayers = { "GuitarForm::Outline", "GuitarForm::Construction", "GuitarForm" };
 
-        // Returns the number of objects added. Strings are left out unless showStrings.
-        public static int Build(RhinoDoc doc, long designId, string designName, DesignDrawing drawing, bool showStrings = true)
+        // Returns the number of objects added. Strings are left out unless showStrings. New objects are tagged with
+        // buildKey; earlier objects tagged with buildKey or any key in alsoReplace are deleted first.
+        public static int Build(RhinoDoc doc, string buildKey, IEnumerable<string> alsoReplace, string designName, DesignDrawing drawing, bool showStrings = true)
         {
-            string id = designId.ToString(CultureInfo.InvariantCulture);
+            if (string.IsNullOrEmpty(buildKey))
+                throw new System.ArgumentException("A build key is required.", nameof(buildKey));
+            var replaceKeys = new HashSet<string>(
+                (alsoReplace ?? Enumerable.Empty<string>()).Where(k => !string.IsNullOrEmpty(k))) { buildKey };
             var toDocument = DesignUnits.ToDocument(doc.ModelUnitSystem);
             uint undo = doc.BeginUndoRecord($"GuitarForm Build {designName}");
             try
@@ -48,7 +51,7 @@ namespace GuitarForm
                         ReferenceObjects = false,
                         IncludeLights = false,
                     })
-                    .Where(o => o.Attributes.GetUserString(DesignIdKey) == id)
+                    .Where(o => IsTaggedWithAny(o, replaceKeys))
                     .ToList();
                 foreach (var obj in previous)
                     doc.Objects.Delete(obj, true, true);
@@ -58,7 +61,7 @@ namespace GuitarForm
                 {
                     var style = ComponentStyles.For(drawn.Component, drawn.Role);
                     string key = string.Join(ModelComponent.NamePathSeparator, style.LayerPath);
-                    added += Add(doc, drawn, toDocument, layers[key], id, designName);
+                    added += Add(doc, drawn, toDocument, layers[key], buildKey, designName);
                 }
 
                 RemoveEmptyOldLayers(doc);
@@ -71,7 +74,14 @@ namespace GuitarForm
             }
         }
 
-        static int Add(RhinoDoc doc, DrawnCurve drawn, Transform toDocument, int layer, string id, string name)
+        // Untagged objects (no tag, or an empty one) are never the design's.
+        static bool IsTaggedWithAny(RhinoObject o, HashSet<string> keys)
+        {
+            string tag = o.Attributes.GetUserString(DesignIdKey);
+            return !string.IsNullOrEmpty(tag) && keys.Contains(tag);
+        }
+
+        static int Add(RhinoDoc doc, DrawnCurve drawn, Transform toDocument, int layer, string buildKey, string name)
         {
             var copy = drawn.Curve.DuplicateCurve();
             copy.Transform(toDocument);
@@ -83,7 +93,7 @@ namespace GuitarForm
                 PlotWeightSource = ObjectPlotWeightSource.PlotWeightFromObject,
                 PlotWeight = ComponentStyles.PlotWeight(drawn.Role),
             };
-            attributes.SetUserString(DesignIdKey, id);
+            attributes.SetUserString(DesignIdKey, buildKey);
             return doc.Objects.AddCurve(copy, attributes) == System.Guid.Empty ? 0 : 1;
         }
 

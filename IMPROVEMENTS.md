@@ -156,6 +156,12 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 - [ ] `ReadPart` doesn't report a null `parts.name`.
 - [ ] `MigrationContext`/`Notes` scaffolding is unused until the v4 conversion.
 
+### Follow-ups from migration stage 2
+
+- [ ] Legacy numeric recovery files for guitars that no longer exist are never pruned.
+- [ ] Import now also resolves string set/fretwire by name when the id doesn't match (document in the Settings and Strings docs).
+- [ ] A recovery file for another library reads as Corrupt and is deleted. This can't happen in practice, since the file name carries a library hash.
+
 ## 3. Planned features
 
 - [ ] **Custom soundhole** (planned). The legacy `CustomSoundholeGeometry` has no `Shapes` replacement, and the plug-in doesn't use it. It needs a `Shapes` version when the product owner specifies the shape; keep the legacy class until then. Still to decide: how the shape is provided (picked from the Rhino document, or imported) and stored (e.g. the curve serialized into the database).
