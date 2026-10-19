@@ -9,7 +9,7 @@ using System.Text.Json;
 namespace GuitarForm.Data
 {
     // What was recovered: the library and design it belongs to, when it was written, and the working copy as a design
-    // document (the DesignDocument JSON, with the plug-in's new fields in its "newFields" object).
+    // document (a GuitarDocument, or for a legacy numeric file a version 1 design document).
     public sealed record Recovery(string Name, DateTime SavedAtUtc, string Document, string LibraryPath = null,
         long? FretwireId = null, long? StringSetId = null);
 
@@ -75,12 +75,19 @@ namespace GuitarForm.Data
         public void Delete(string libraryPath, string key) => DeleteFile(PathFor(libraryPath, key));
 
         // The old numeric-key files, until they're converted.
-        public Recovery TryReadLegacy(string libraryPath, long designId) => TryRead(libraryPath, designId);
+        public Recovery TryReadLegacy(string libraryPath, long designId) =>
+            ReadFrom(PathFor(libraryPath, designId), libraryPath);
 
         public RecoveryReadStatus TryReadLegacy(string libraryPath, long designId, out Recovery recovery) =>
             ReadStatus(PathFor(libraryPath, designId), libraryPath, out recovery);
 
-        public void DeleteLegacy(string libraryPath, long designId) => Delete(libraryPath, designId);
+        // Legacy files are no longer written; these are for tests that need one to read.
+        internal void WriteLegacy(string libraryPath, long designId, string name, string document) =>
+            WriteTo(PathFor(libraryPath, designId), libraryPath, name, document, null, null);
+
+        internal bool LegacyExists(string libraryPath, long designId) => File.Exists(PathFor(libraryPath, designId));
+
+        public void DeleteLegacy(string libraryPath, long designId) => DeleteFile(PathFor(libraryPath, designId));
 
         // Deletes this library's string-keyed recovery files whose key isn't given. Legacy numeric files are left alone.
         public void DeleteStale(string libraryPath, IEnumerable<string> keys)
@@ -106,12 +113,6 @@ namespace GuitarForm.Data
             }
         }
 
-        public bool Exists(string libraryPath, long id) => File.Exists(PathFor(libraryPath, id));
-
-        // Written to a temporary file and moved over the old one, so an interrupted write leaves the last good file.
-        public void Write(string libraryPath, long id, string name, string document) =>
-            WriteTo(PathFor(libraryPath, id), libraryPath, name, document, null, null);
-
         void WriteTo(string path, string libraryPath, string name, string document, long? fretwireId, long? stringSetId)
         {
             Directory.CreateDirectory(_folder);
@@ -120,9 +121,6 @@ namespace GuitarForm.Data
                 new Recovery(name, DateTime.UtcNow, document, Normalize(libraryPath), fretwireId, stringSetId)));
             File.Move(temp, path, true);
         }
-
-        // Null when there's no file, it can't be read, or it was written for a different library.
-        public Recovery TryRead(string libraryPath, long id) => ReadFrom(PathFor(libraryPath, id), libraryPath);
 
         Recovery ReadFrom(string path, string libraryPath)
         {
@@ -153,38 +151,11 @@ namespace GuitarForm.Data
             }
         }
 
-        public void Delete(string libraryPath, long id) => DeleteFile(PathFor(libraryPath, id));
-
         static void DeleteFile(string path)
         {
             try
             {
                 File.Delete(path);
-            }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-            {
-            }
-        }
-
-        // Deletes this library's legacy (all-digit key) recovery files for designs that no longer exist. String-keyed
-        // files are left alone.
-        public void DeleteStale(string libraryPath, IEnumerable<long> existingIds)
-        {
-            try
-            {
-                if (!Directory.Exists(_folder))
-                    return;
-                var keep = new HashSet<string>();
-                foreach (long id in existingIds)
-                    keep.Add(Path.GetFileName(PathFor(libraryPath, id)));
-                string prefix = Prefix(libraryPath) + "-";
-                foreach (string file in Directory.GetFiles(_folder, prefix + "*.json"))
-                {
-                    string name = Path.GetFileName(file);
-                    string key = name.Substring(prefix.Length, name.Length - prefix.Length - ".json".Length);
-                    if (IsAllDigits(key) && !keep.Contains(name))
-                        File.Delete(file);
-                }
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {

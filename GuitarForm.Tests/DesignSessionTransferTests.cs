@@ -61,13 +61,7 @@ namespace GuitarForm.Tests
 
         static string V1(string name, JsonObject newFields = null)
         {
-            var design = new GuitarDesign
-            {
-                Name = name,
-                Instrument = new Instrument { ScaleLength = 650, NeckJoinFret = 14 },
-                Body = new GuitarForm.Model.Body { BodyLength = 480 },
-            };
-            var document = JsonNode.Parse(DesignDocument.ToJson(design)).AsObject();
+            var document = JsonNode.Parse(V1Documents.Json(name, 650, 14, 480)).AsObject();
             if (newFields != null)
                 document["newFields"] = JsonNode.Parse(newFields.ToJsonString());
             return document.ToJsonString();
@@ -230,14 +224,14 @@ namespace GuitarForm.Tests
         public void LegacyRecovery_IsFoundThroughTheLegacyDesignId()
         {
             long id = Create("A", 42);
-            _recovery.Write(_path, 42L, "Old", V1("A", new JsonObject { ["Markers"] = "5" }));
+            _recovery.WriteLegacy(_path, 42L, "Old", V1("A", new JsonObject { ["Markers"] = "5" }));
             var (_, pending) = _session.Open(id);
             Assert.That(pending, Is.Not.Null);
             _session.AcceptRecovery(pending);
             Assert.That(_session.Dirty);
             Assert.That(_session.Working.ScaleLength.Value, Is.EqualTo(650));
             Assert.That(_session.Working.Neck.Fretboard.Markers, Has.Count.EqualTo(1));
-            Assert.That(_recovery.Exists(_path, 42L), Is.False);
+            Assert.That(_recovery.LegacyExists(_path, 42L), Is.False);
             Assert.That(_recovery.Exists(_path, _session.BuildKey)); // The work lives on under the new key.
         }
 
@@ -245,14 +239,14 @@ namespace GuitarForm.Tests
         public void LegacyRecovery_AcceptKeepsTheLegacyFileIfTheNewOneCantBeWritten()
         {
             long id = Create("A", 42);
-            _recovery.Write(_path, 42L, "Old", V1("A"));
+            _recovery.WriteLegacy(_path, 42L, "Old", V1("A"));
             string legacyFile = Directory.GetFiles(Path.Combine(_folder, "recovery")).Single();
             string prefix = Path.GetFileName(legacyFile).Split('-')[0];
             var (_, pending) = _session.Open(id);
             // A directory where the new file belongs makes the write fail.
             Directory.CreateDirectory(Path.Combine(_folder, "recovery", prefix + "-" + _session.BuildKey + ".json"));
             Assert.That(() => _session.AcceptRecovery(pending), Throws.InstanceOf<Exception>());
-            Assert.That(_recovery.Exists(_path, 42L));
+            Assert.That(_recovery.LegacyExists(_path, 42L));
         }
 
         [Test]
@@ -357,10 +351,10 @@ namespace GuitarForm.Tests
         public void LegacyRecovery_DeclineDeletesTheFile()
         {
             long id = Create("A", 42);
-            _recovery.Write(_path, 42L, "Old", V1("A"));
+            _recovery.WriteLegacy(_path, 42L, "Old", V1("A"));
             _session.Open(id);
             _session.DeclineRecovery();
-            Assert.That(_recovery.Exists(_path, 42L), Is.False);
+            Assert.That(_recovery.LegacyExists(_path, 42L), Is.False);
             Assert.That(_session.Open(id).Pending, Is.Null);
         }
 

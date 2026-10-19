@@ -65,7 +65,7 @@ Build puts objects on a `Guitar` layer tree: `Guitar::Body`, `Guitar::Neck` and 
 
 ## Library and backups
 
-Designs and presets are kept in one SQLite library, `GuitarForm.db`, in `%LOCALAPPDATA%\GuitarForm` by default. It's backed up every 15 minutes while it has changes, and when Rhino closes, to `Documents\GuitarForm\Backups` (which OneDrive usually syncs). See [docs/Settings.md](docs/Settings.md) to move either, change the backup timing, back up by hand or restore.
+Guitars, their saved body, neck and bracing copies, string sets and fretwires are kept in one SQLite library, `GuitarForm.db`, in `%LOCALAPPDATA%\GuitarForm` by default. It's backed up every 15 minutes while it has changes, and when Rhino closes, to `Documents\GuitarForm\Backups` (which OneDrive usually syncs). See [docs/Settings.md](docs/Settings.md) to move either, change the backup timing, back up by hand or restore.
 
 ## Tests
 

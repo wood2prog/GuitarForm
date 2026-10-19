@@ -119,13 +119,7 @@ namespace GuitarForm.Tests
         [Test]
         public void Version1Document_WithNewFields_ReadsThem()
         {
-            var design = new GuitarDesign
-            {
-                Name = "Old OM",
-                Instrument = new Instrument { ScaleLength = 645, NeckJoinFret = 14 },
-                Body = new Model.Body { BodyLength = 495 },
-            };
-            var document = JsonNode.Parse(DesignDocument.ToJson(design))!.AsObject();
+            var document = JsonNode.Parse(V1Documents.Json("Old OM", 645, 14, 495))!.AsObject();
             document["newFields"] = new JsonObject
             {
                 ["Markers"] = "5 12:2",
@@ -147,8 +141,7 @@ namespace GuitarForm.Tests
         [Test]
         public void Version1Document_WithoutNewFields_HasNoReferences()
         {
-            var design = new GuitarDesign { Instrument = new Instrument { ScaleLength = 645 }, Body = new Model.Body() };
-            var read = GuitarDocument.Read(DesignDocument.ToJson(design));
+            var read = GuitarDocument.Read(V1Documents.Json("Old OM", 645, 14, 495));
             Assert.That(read.StringSet, Is.Null);
             Assert.That(read.Fretwire, Is.Null);
         }

@@ -186,22 +186,21 @@ namespace GuitarForm.Tests
         }
 
         [Test]
-        public void DesignDocument_UnderGerman_EqualsEnglish_AndRoundTrips()
+        public void Version1Document_UnderGerman_ReadsTheSameAsUnderEnglish()
         {
-            var design = new GuitarDesign
-            {
-                Name = "OM",
-                Instrument = new Instrument { ScaleLength = 645.5, NeckJoinFret = 14 },
-                Body = new Body { BodyLength = 495.25, UbWidth = 290.5, LbWidth = 390, TailDepth = 105, NeckDepth = 90 },
-                Soundhole = new Soundhole { Diameter = 100.5, TailOffset = 330 },
-            };
+            string json = V1Documents.Document("OM", V1Documents.Instrument(645.5, 14),
+                V1Documents.Obj(("bodyLength", 495.25), ("ubWidth", 290.5)),
+                V1Documents.Obj(("diameter", 100.5), ("tailOffset", 330))).ToJsonString();
+            Assert.That(json, Does.Contain("645.5"));
 
-            string german = DesignDocument.ToJson(design);
-            Assert.That(DesignDocument.FromJson(german), Is.EqualTo(design));
+            var german = GuitarForm.Model.Parts.GuitarDocument.FromJson(json);
             UseEnglish();
-            Assert.That(german, Is.EqualTo(DesignDocument.ToJson(design)));
-            Assert.That(german, Does.Contain("645.5"));
-            Assert.That(german, Does.Not.Contain("645,5"));
+            var english = GuitarForm.Model.Parts.GuitarDocument.FromJson(json);
+
+            TestGuitars.AssertSameValues(german, english);
+            Assert.That(german.ScaleLength.Value, Is.EqualTo(645.5));
+            Assert.That(german.Body.Length.Value, Is.EqualTo(495.25));
+            Assert.That(german.Body.TopPlate.SoundholeDiameter.Value, Is.EqualTo(100.5));
         }
     }
 }

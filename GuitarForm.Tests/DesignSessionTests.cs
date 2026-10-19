@@ -322,6 +322,35 @@ namespace GuitarForm.Tests
         }
 
         [Test]
+        public void LoadNamed_Neck_RestoresTheFretwireAndStringSetReferences()
+        {
+            long wireId, setId, guitarId;
+            using (var library = Library.Open(_path))
+            {
+                wireId = library.SaveLibraryItem(TestGuitars.Fretwire);
+                setId = library.SaveLibraryItem(TestGuitars.StringSet);
+                var om = TestGuitars.OM("A");
+                guitarId = library.CreateGuitar(om with
+                {
+                    Neck = om.Neck with
+                    {
+                        Fretwire = TestGuitars.Fretwire with { Id = wireId },
+                        StringSet = TestGuitars.StringSet with { Id = setId },
+                    },
+                });
+            }
+            _session.Open(guitarId);
+            long copy = _session.SaveNamed<Neck>("With wire");
+
+            _session.Open(Create("B"), discardPrevious: true);
+            Assert.That(_session.Working.Neck.Fretwire, Is.Null);
+            _session.LoadNamed<Neck>(copy);
+
+            Assert.That(_session.Working.Neck.Fretwire.Id, Is.EqualTo(wireId));
+            Assert.That(_session.Working.Neck.StringSet.Id, Is.EqualTo(setId));
+        }
+
+        [Test]
         public void LoadNamed_MissingCopy_ThrowsAndChangesNothing()
         {
             _session.Open(Create("A"));

@@ -111,10 +111,10 @@ Unsaved library edits, prompts and builds:
 
 ## Next up
 
-1. Pre-migration cleanup is complete (wave D done, American spelling included). Next: tests for the untested shapes and for plug-in code.
-2. Migrate `NewFields` into the library. This needs the owner's sign-off and a senior-engineer plan first.
+1. The NewFields migration is complete (stages 1 to 4, including R1/R2 below). Next: tests for the untested shapes and for plug-in code, and the Rhino checks listed under P2, P4 and P5.
+2. A later migration (v5) can drop the old tables (`designs`, `instruments`, `bodies`, `soundholes`) once the owner is happy with the converted libraries. `LegacyDesignMigration` reads them with raw SQL, so its tests must stay green until then.
 
-### NewFields → library migration (plan approved by owner)
+### NewFields → library migration (complete)
 
 The senior-engineer plan is approved. It runs in four stages:
 
@@ -144,6 +144,8 @@ Stage 3 must:
 - Tabs treat `note == null` as no note.
 - `DesignBuilder`'s null-key guard has no automated test (it needs Rhino). Check in Rhino that Build still replaces only its own objects.
 
+**Stage 4 (R1/R2) done: the old model is retired.** Deleted: `GuitarDesign`, `Instrument`, the old `Body` and `Soundhole`, `DesignDocument`, `SectionTable`/`SectionTables`, and `Library`'s design and preset API (`ListDesigns`, `CreateDesign`, `LoadDesign`, `SaveDesign`, `CopyDesign`, `DeleteDesign`, presets). `GuitarDocument` reads version 1 through its own frozen field map. `RecoveryStore` lost its long-id `Write`/`TryRead`/`Exists`/`Delete`/`DeleteStale`; `TryReadLegacy`/`DeleteLegacy` stay for numeric-key files (tests write one with the internal `WriteLegacy`). Tests build version 1 JSON with `V1Documents`. Tests: 690.
+
 **Owner decisions:**
 
 - Convert existing designs on upgrade.
@@ -162,8 +164,8 @@ Stage 3 must:
 
 - Schema v4 runs `LegacyDesignMigration`. `Library.UpgradeNotes`, `Library.TakeUpgradeNotes()` (once, for the panel) and a `<name>.before-v{N}.notes.txt` beside the safety copy keep the notes.
 - The panel holds a `DesignSession` and no longer keeps its own design, new fields, dirty flag, recovery plumbing or note strings. The design list comes from `ListGuitars()`; Build passes `BuildKey` and `LegacyBuildKeys`; Export writes a guitar document (version 3); the old long-id `RecoveryStore.DeleteStale` call is gone (`DeleteStaleRecovery` replaces it).
-- Temporary bridge (P4 deleted `LegacyFieldAdapter`; P5 deleted `GuitarFieldMap`): `GuitarForm.Model/GuitarFieldMap.cs` (a Guitar as the old Instrument, Body and Soundhole records and back, tested in `GuitarFieldMapTests`) and `GuitarForm/LegacyFieldAdapter.cs` (the panel's `Design`, `Fields` and `Apply`). The new-field editors edit the session's Guitar directly; the `NewFields` file I/O was removed.
-- The Instrument, Body and Soundhole presets still use the old preset tables (P5 replaces them).
+- (Historical, done) Temporary bridge (P4 deleted `LegacyFieldAdapter`; P5 deleted `GuitarFieldMap`): `GuitarForm.Model/GuitarFieldMap.cs` (a Guitar as the old Instrument, Body and Soundhole records and back, tested in `GuitarFieldMapTests`) and `GuitarForm/LegacyFieldAdapter.cs` (the panel's `Design`, `Fields` and `Apply`). The new-field editors edit the session's Guitar directly; the `NewFields` file I/O was removed.
+- (Historical, done) The Instrument, Body and Soundhole presets still use the old preset tables (P5 replaces them).
 
 **P3 done (unused until P4):** field table `GuitarFields` in GuitarForm.Model/Parts and `FieldBinding` in the plug-in; tests 717. Open P4 questions:
 
@@ -179,7 +181,7 @@ Stage 3 must:
 - Messages per tab come from the model's `Validate` (Instrument = the guitar's own checks, Body = body minus top plate, Soundhole = top plate minus bracing, Bracing, Fretboard, Neck = neck minus fretboard) plus the shapes' messages and the tab's input errors. The drawing takes the Guitar directly from the session.
 - Soundhole: the check box above the groups changes only SH; SHD/SHOC/SHOT keep their values and are grayed while unticked; shapes draw no soundhole when SH is No (test `Soundhole_UntickedKeepsItsValuesAndDrawsNone`).
 - Behaviour changes: a blank required field (SL, NJF, BDL) clears the value; Save, Save as, Export and Build refuse while one is blank or some text can't be read. A blank Soundhole Diameter/Offset with SH ticked is a model error (Messages bar; Build asks) but no longer blocks Save. Labels are glossary labels with the old descriptions as tooltips. Minimums are the definitions' limits (error text is the model's). Tab messages now include the model's text for the Instrument, Body and Soundhole values.
-- Left for P5: `GuitarFieldMap` (+ `GuitarFieldMapTests`) and the Instrument/Body/Soundhole `PresetRow<T>` rows (`CurrentDesign`/`ApplyDesign` in `GuitarFormPanel.Layout.cs`), which still use the old records and preset tables.
+- (Historical, done in P5) Left for P5: `GuitarFieldMap` (+ `GuitarFieldMapTests`) and the Instrument/Body/Soundhole `PresetRow<T>` rows (`CurrentDesign`/`ApplyDesign` in `GuitarFormPanel.Layout.cs`), which still use the old records and preset tables.
 
 **P5 done (presets are saved copies):** the Body, Neck and Bracing tabs each have a "Saved <part> copies" row (`SavedCopiesRow<T>` in `GuitarFormPanel.Layout.cs`): drop-down, Load, Save as…, Delete. `DesignSession` has `ListNamed<T>`, `CheckNamedName<T>`, `LoadNamed<T>` (Apply, so dirty; a Neck load clears the fretwire and string set notes; returns unreadable-value problems, shown as a warning), `SaveNamed<T>` (rejects empty or taken names, ignoring case) and `DeleteNamed`. A saved body carries its top plate, soundhole and bracing; Bracing replaces only `Body.TopPlate.Bracing`. The Instrument and Soundhole preset rows are gone. Deleted: `PresetRow<T>`, `CurrentDesign`, `ApplyDesign`, `GuitarFieldMap`, `GuitarFieldMapTests`. The old preset tables and the `Library` preset API remain for R1. Tests: 726 (9 removed, 7 added).
 
@@ -201,7 +203,7 @@ Stage 3 must:
 - Slider steps: drag, arrow, Shift and Ctrl steps stop at limits; angle and blend steps are 1.
 - Clear Scale Length, Neck Join Fret or Body Length: the box shows "required", the Messages bar names it, Save/Export/Build refuse. Type junk in any box: the same.
 - Recovery: edit, hide the panel, reopen the design and accept the offer; Revert and switching designs refill every tab.
-- Instrument, Body and Soundhole presets still load, save and delete.
+- (Historical; the old Instrument, Body and Soundhole presets no longer exist. Check the saved body, neck and bracing copies instead.)
 
 **Rhino check after P2** (stage 3):
 
@@ -209,7 +211,7 @@ Stage 3 must:
 - Edit a value: "Unsaved changes" appears, the preview updates, Save keeps it, Revert drops it. First Save of a design still asks overwrite or new copy.
 - Switch design, New, Copy, Import and Delete with unsaved changes: Save, Don't save and Cancel each behave as before; after "Don't save" no recovery offer comes back for the discarded work.
 - Edit, hide the panel (or close Rhino), reopen the design: the recovery offer appears and Yes brings the edits back. A recovery file left by the old version for a converted design is offered too, once.
-- Untick and tick the soundhole; load an Instrument, Body and Soundhole preset; type dot markers and a bad value (the Messages bar names it and Save/Export/Build refuse).
+- Untick and tick the soundhole; type dot markers and a bad value (the Messages bar names it and Save/Export/Build refuse).
 - Export a design and import it again (also import an old version 1 file): the import opens as a new design; a missing string set or fretwire leaves a note on its tab.
 - Build, edit, Build again: only that design's objects are replaced, and objects built before the upgrade (tagged with the old design id) are replaced too, not duplicated. `DesignBuilder`'s null-key guard has no automated test.
 - Use a fretwire and a string set on a design, delete one in its tab: the design shows it as gone, with a note.
@@ -230,3 +232,4 @@ Stage 3 must:
 - Construction lines print at the outline weight. Is that what you want?
 - The **Use no fretwire** button was added unasked. Keep it?
 - The stricter value coercion now rejects wrong-typed values in hand-edited JSON with a `FormatException`. Is that the intended behavior?
+- When should migration v5 drop the old tables (`designs`, `instruments`, `bodies`, `soundholes`)? Until then the old Instrument and Soundhole presets live only there, and the `NewFields` folders stay on disk.

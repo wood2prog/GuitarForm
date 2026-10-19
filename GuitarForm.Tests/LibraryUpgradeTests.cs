@@ -211,7 +211,7 @@ namespace GuitarForm.Tests
                 Assert.That(om.ScaleLength.Value, Is.EqualTo(645));
                 Assert.That(om.NeckJoinFret.Value, Is.EqualTo(14));
                 Assert.That(om.Body.Length.Value, Is.EqualTo(495));
-                Assert.That(library.ListDesigns().Count, Is.EqualTo(2));
+                Assert.That(Scalar("SELECT count(*) FROM designs"), Is.EqualTo(2));
             }
 
             Assert.That(Scalar("PRAGMA user_version"), Is.EqualTo(LatestVersion));
@@ -270,39 +270,18 @@ namespace GuitarForm.Tests
         }
 
         [Test]
-        public void Version1Library_KeepsItsDesigns()
+        public void Version1Library_KeepsItsOldTables()
         {
             MakeVersion1Library();
 
-            using var library = Library.Open(_path);
+            using (Library.Open(_path)) { }
 
-            Assert.That(library.ListDesigns().Count, Is.EqualTo(2));
-            var om = library.LoadDesign(1);
-            Assert.That(om.Name, Is.EqualTo("OM"));
-            Assert.That(om.Instrument, Is.EqualTo(new Instrument { ScaleLength = 645, NeckJoinFret = 14 }));
-            Assert.That(om.Body, Is.EqualTo(new Body
-                { BodyLength = 495, UbWidth = 290, LbWidth = 390, TailDepth = 105, NeckDepth = 90 }));
-            Assert.That(om.Soundhole, Is.EqualTo(new Soundhole { Diameter = 100, TailOffset = 330 }));
-
-            var parlour = library.LoadDesign(2);
-            Assert.That(parlour.Name, Is.EqualTo("Parlour"));
-            Assert.That(parlour.Instrument.ScaleLength, Is.EqualTo(610));
-            Assert.That(parlour.Body, Is.EqualTo(new Body { BodyLength = 450, LbWidth = 330, TailDepth = 95 }));
-            Assert.That(parlour.Soundhole, Is.Null);
-        }
-
-        [Test]
-        public void Version1Library_KeepsItsPresets()
-        {
-            MakeVersion1Library();
-
-            using var library = Library.Open(_path);
-
-            Assert.That(library.ListPresets<Instrument>(), Is.EqualTo(new[] { "Short" }));
-            Assert.That(library.LoadPreset<Instrument>("Short"),
-                Is.EqualTo(new Instrument { ScaleLength = 580, NeckJoinFret = 12 }));
-            Assert.That(library.LoadPreset<Soundhole>("Round"),
-                Is.EqualTo(new Soundhole { Diameter = 85, HorizontalOffset = 0, TailOffset = 300 }));
+            Assert.That(Scalar("SELECT count(*) FROM designs"), Is.EqualTo(2));
+            Assert.That(Scalar("SELECT scale_length FROM instruments WHERE design_id = 1"), Is.EqualTo(645));
+            Assert.That(Scalar("SELECT body_length FROM bodies WHERE design_id = 2"), Is.EqualTo(450));
+            Assert.That(Scalar("SELECT count(*) FROM soundholes WHERE design_id = 2"), Is.Zero);
+            Assert.That(Scalar("SELECT count(*) FROM instruments WHERE preset_name = 'Short'"), Is.EqualTo(1));
+            Assert.That(Scalar("SELECT count(*) FROM soundholes WHERE preset_name = 'Round'"), Is.EqualTo(1));
         }
 
         [Test]
@@ -316,7 +295,7 @@ namespace GuitarForm.Tests
 
             using var reopened = Library.Open(_path);
             TestGuitars.AssertSameValues(reopened.LoadGuitar(id), TestGuitars.OM("Upgraded"));
-            Assert.That(reopened.ListDesigns().Count, Is.EqualTo(2));
+            Assert.That(Scalar("SELECT count(*) FROM designs"), Is.EqualTo(2));
         }
 
         [Test]

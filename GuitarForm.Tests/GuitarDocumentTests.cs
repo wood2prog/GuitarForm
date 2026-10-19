@@ -193,15 +193,11 @@ namespace GuitarForm.Tests
         [Test]
         public void Version1Design_IsConverted()
         {
-            var design = new Model.GuitarDesign
-            {
-                Name = "Old OM",
-                Instrument = new Model.Instrument { ScaleLength = 645, NeckJoinFret = 14 },
-                Body = new Model.Body { BodyLength = 495, UbWidth = 290, HeelWidth = 56, TailDepth = 105 },
-                Soundhole = new Model.Soundhole { Diameter = 100, TailOffset = 330 },
-            };
+            var json = V1Documents.Document("Old OM", V1Documents.Instrument(645, 14),
+                V1Documents.Obj(("bodyLength", 495), ("ubWidth", 290), ("heelWidth", 56), ("tailDepth", 105)),
+                V1Documents.Obj(("diameter", 100), ("tailOffset", 330))).ToJsonString();
 
-            var guitar = GuitarDocument.FromJson(Model.DesignDocument.ToJson(design));
+            var guitar = GuitarDocument.FromJson(json);
 
             Assert.That(guitar.Name.Value, Is.EqualTo("Old OM"));
             Assert.That(guitar.ScaleLength.Value, Is.EqualTo(645));
@@ -218,44 +214,84 @@ namespace GuitarForm.Tests
         [Test]
         public void Version1DesignWithoutSoundhole_HasNone()
         {
-            var design = new Model.GuitarDesign
-            {
-                Name = "Old OM",
-                Instrument = new Model.Instrument { ScaleLength = 645, NeckJoinFret = 14 },
-                Body = new Model.Body { BodyLength = 495 },
-            };
+            string json = V1Documents.Json("Old OM", 645, 14, 495);
 
-            Assert.That(GuitarDocument.FromJson(Model.DesignDocument.ToJson(design)).Body.TopPlate.Soundhole.Value, Is.False);
+            Assert.That(GuitarDocument.FromJson(json).Body.TopPlate.Soundhole.Value, Is.False);
+        }
+
+        // The Examples/Quick Test.json file the panel imports for testing is a version 1 document.
+        [Test]
+        public void QuickTestExample_Reads()
+        {
+            string path = System.IO.Path.Combine(TestContext.CurrentContext.TestDirectory, "..", "..", "..", "..",
+                "Examples", "Quick Test.json");
+
+            var guitar = GuitarDocument.FromJson(System.IO.File.ReadAllText(path));
+
+            Assert.That(guitar.Body.Length.Value, Is.EqualTo(600));
+            Assert.That(guitar.Body.TopPlate.SoundholeOffsetFromTailEnd.Value, Is.EqualTo(380));
+        }
+
+        // A hand-written document, so a change to the JSON names is caught here and not only by a round trip.
+        [Test]
+        public void Version1_ReadsAHandWrittenDocument()
+        {
+            const string json = @"{
+                ""schemaVersion"": 1,
+                ""units"": ""mm"",
+                ""design"": {
+                    ""name"": ""Parlour"",
+                    ""instrument"": { ""scaleLength"": 610, ""neckJoinFret"": 12 },
+                    ""body"": { ""bodyLength"": 450, ""lbWidth"": 330, ""tailDepth"": 95 },
+                    ""soundhole"": { ""diameter"": 85, ""horizontalOffset"": 0, ""tailOffset"": 300 }
+                }
+            }";
+
+            var guitar = GuitarDocument.FromJson(json);
+
+            Assert.That(guitar.Name.Value, Is.EqualTo("Parlour"));
+            Assert.That(guitar.ScaleLength.Value, Is.EqualTo(610));
+            Assert.That(guitar.NeckJoinFret.Value, Is.EqualTo(12));
+            Assert.That(guitar.Body.Length.Value, Is.EqualTo(450));
+            Assert.That(guitar.Body.LowerBoutWidth.Value, Is.EqualTo(330));
+            Assert.That(guitar.Body.DepthAtTailEnd.Value, Is.EqualTo(95));
+            Assert.That(guitar.Body.TopPlate.SoundholeDiameter.Value, Is.EqualTo(85));
+            Assert.That(guitar.Body.TopPlate.SoundholeOffsetFromCenterline.Value, Is.EqualTo(0));
+            Assert.That(guitar.Body.TopPlate.SoundholeOffsetFromTailEnd.Value, Is.EqualTo(300));
+            Assert.That(guitar.Body.UpperBoutWidth.HasValue, Is.False);
+        }
+
+        [TestCase(@"{ ""schemaVersion"": 1, ""units"": ""in"", ""design"": {} }")]
+        [TestCase(@"{ ""schemaVersion"": 1, ""units"": ""mm"" }")]
+        [TestCase(@"{ ""schemaVersion"": 1, ""units"": ""mm"", ""design"": { ""body"": { ""bodyLength"": 450 } } }")]
+        [TestCase(@"{ ""schemaVersion"": 1, ""units"": ""mm"", ""design"": { ""instrument"": { ""scaleLength"": 610 } } }")]
+        public void Version1_RejectsDocumentsItCantRead(string json)
+        {
+            Assert.That(() => GuitarDocument.FromJson(json), Throws.TypeOf<FormatException>());
         }
 
         [Test]
         public void EveryVersion1FieldIsConverted()
         {
-            // Each field DesignDocument writes for an instrument, body or soundhole must be one FromDesign knows.
-            var design = new Model.GuitarDesign
-            {
-                Name = "All",
-                Instrument = new Model.Instrument { ScaleLength = 1, NeckJoinFret = 1 },
-                Body = new Model.Body
-                {
-                    BodyLength = 1, UbWidth = 1, UbOffset = 1, UbRadius = 1, UbSecondaryOffset = 1, WaistRadius = 1,
-                    WaistWidth = 1, WaistOffset = 1, LbWidth = 1, LbOffset = 1, LbRadius = 1, LbSecondaryOffset = 1,
-                    HeelWidth = 1, TailDepth = 1, NeckDepth = 1,
-                },
-                Soundhole = new Model.Soundhole { Diameter = 1, HorizontalOffset = 1, TailOffset = 1 },
-            };
+            // Each field the version 1 writer wrote for an instrument, body or soundhole must be one FromDesign knows.
+            var document = V1Documents.Document("All", V1Documents.Instrument(1, 1),
+                V1Documents.Obj(("bodyLength", 1), ("ubWidth", 1), ("ubOffset", 1), ("ubRadius", 1),
+                    ("ubSecondaryOffset", 1), ("waistRadius", 1), ("waistWidth", 1), ("waistOffset", 1),
+                    ("lbWidth", 1), ("lbOffset", 1), ("lbRadius", 1), ("lbSecondaryOffset", 1), ("heelWidth", 1),
+                    ("tailDepth", 1), ("neckDepth", 1)),
+                V1Documents.Obj(("diameter", 1), ("horizontalOffset", 1), ("tailOffset", 1)));
             // neckJoinDistance is written too, but it's calculated from the scale length and neck join fret.
-            var sections = Parse(Model.DesignDocument.ToJson(design))["design"].AsObject();
-            int written = sections.Where(s => s.Value is JsonObject)
+            int written = document["design"].AsObject().Where(s => s.Value is JsonObject)
                 .Sum(s => s.Value.AsObject().Count(field => field.Key != "neckJoinDistance"));
 
-            var guitar = GuitarDocument.FromJson(Model.DesignDocument.ToJson(design));
+            var guitar = GuitarDocument.FromJson(document.ToJsonString());
             int read = guitar.StoredValues.Concat(guitar.Body.StoredValues)
                 .Count(v => v.Value is double or int && Convert.ToDouble(v.Value) == 1);
 
             Assert.That(read, Is.EqualTo(written));
         }
-            [TestCase(null, 3, 5)]
+
+        [TestCase(null, 3, 5)]
         [TestCase(3, null, 5)]
         [TestCase(3, 5, null)]
         public void BlankMarkers_SurviveJson(int? a, int? b, int? c)

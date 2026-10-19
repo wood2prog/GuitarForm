@@ -50,8 +50,8 @@ namespace GuitarForm.Model.Parts
         public bool HasMarkers { get; init; }
     }
 
-    // Every field the tabs show, grouped as the tabs lay them out. This one table replaces the old Sections and
-    // NewFields tables.
+    // Every field the tabs show, grouped as the tabs lay them out. This one table is the only place that
+    // declares them.
     public static class GuitarFields
     {
         public const string InstrumentTab = "Instrument";

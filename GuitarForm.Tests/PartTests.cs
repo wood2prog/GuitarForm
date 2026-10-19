@@ -315,6 +315,29 @@ namespace GuitarForm.Tests
         }
 
         [Test]
+        public void FretDistance_TwelfthIsHalfTheScale_NutIsZero_FourteenthIsEqualTempered()
+        {
+            var guitar = Minimal;
+            double scale = 645;
+
+            Assert.That(guitar.FretDistance(0), Is.EqualTo(0).Within(1e-9));
+            Assert.That(guitar.FretDistance(12), Is.EqualTo(scale / 2).Within(1e-9));
+            Assert.That(guitar.FretDistance(14), Is.EqualTo(scale * (1 - Math.Pow(2, -14 / 12.0))).Within(1e-9));
+            Assert.That(guitar.NeckJoinDistance, Is.EqualTo(guitar.FretDistance(14)).Within(1e-9));
+        }
+
+        [Test]
+        public void Validate_RejectsScaleLengthNotPositive_AndNeckJoinFretBelowOne()
+        {
+            Assert.That(Messages(Minimal with { ScaleLength = new(Guitar.Definitions.ScaleLength, 0) }),
+                Is.EqualTo(new[] { "Scale Length (SL) must be greater than 0 mm." }));
+            Assert.That(Messages(Minimal with { ScaleLength = new(Guitar.Definitions.ScaleLength, -5) }),
+                Is.EqualTo(new[] { "Scale Length (SL) must be greater than 0 mm." }));
+            Assert.That(Messages(Minimal with { NeckJoinFret = new(Guitar.Definitions.NeckJoinFret, 0) }),
+                Is.EqualTo(new[] { "Neck Join Fret (NJF) must be at least 1." }));
+        }
+
+        [Test]
         public void Markers_CheckedWithTheirPlaceInTheList()
         {
             var fretboard = new Fretboard

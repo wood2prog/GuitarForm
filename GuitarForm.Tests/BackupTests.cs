@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using GuitarForm.Data;
-using GuitarForm.Model;
+using GuitarForm.Model.Parts;
 using NUnit.Framework;
 
 namespace GuitarForm.Tests
@@ -10,12 +10,7 @@ namespace GuitarForm.Tests
     // Checks backing up, pruning and restoring the library, in a temporary folder for each test.
     public class BackupTests
     {
-        static readonly GuitarDesign OM = new GuitarDesign
-        {
-            Name = "OM",
-            Instrument = new Instrument { ScaleLength = 645, NeckJoinFret = 14 },
-            Body = new Body { BodyLength = 495, LbWidth = 390 },
-        };
+        static readonly Guitar OM = TestGuitars.OM();
 
         string _folder;
         string _library;
@@ -36,10 +31,10 @@ namespace GuitarForm.Tests
                 Directory.Delete(_folder, true);
         }
 
-        long CreateLibrary(GuitarDesign design)
+        long CreateLibrary(Guitar guitar)
         {
             using var library = Library.Open(_library);
-            return library.CreateDesign(design);
+            return library.CreateGuitar(guitar);
         }
 
         [Test]
@@ -52,7 +47,7 @@ namespace GuitarForm.Tests
             Assert.That(Path.GetFileName(backup), Is.EqualTo("GuitarForm 2026-10-08 183005.db"));
             Assert.That(Directory.GetFiles(_backups), Is.EqualTo(new[] { backup }));
             using var copy = Library.Open(backup);
-            Assert.That(copy.LoadDesign(id), Is.EqualTo(OM));
+            TestGuitars.AssertSameValues(copy.LoadGuitar(id), OM);
         }
 
         [Test]
@@ -122,16 +117,16 @@ namespace GuitarForm.Tests
             string backup = Backups.BackUp(_library, _backups, new DateTime(2026, 10, 1, 9, 0, 0));
             using (var library = Library.Open(_library))
             {
-                library.DeleteDesign(library.ListDesigns().Single().Id);
-                library.CreateDesign(OM with { Name = "Dread" });
+                library.DeleteGuitar(library.ListGuitars().Single().Id);
+                library.CreateGuitar(TestGuitars.OM("Dread"));
             }
 
             string safety = Backups.Restore(backup, _library, _backups);
 
             using (var restored = Library.Open(_library))
-                Assert.That(restored.ListDesigns().Select(d => d.Name), Is.EqualTo(new[] { "OM" }));
+                Assert.That(restored.ListGuitars().Select(d => d.Name), Is.EqualTo(new[] { "OM" }));
             using (var old = Library.Open(safety))
-                Assert.That(old.ListDesigns().Select(d => d.Name), Is.EqualTo(new[] { "Dread" }));
+                Assert.That(old.ListGuitars().Select(d => d.Name), Is.EqualTo(new[] { "Dread" }));
         }
 
         [Test]
@@ -170,7 +165,7 @@ namespace GuitarForm.Tests
 
             Assert.That(() => Backups.Restore(notALibrary, _library, _backups), Throws.TypeOf<InvalidDataException>());
             using var library = Library.Open(_library);
-            Assert.That(library.ListDesigns().Select(d => d.Name), Is.EqualTo(new[] { "OM" }));
+            Assert.That(library.ListGuitars().Select(d => d.Name), Is.EqualTo(new[] { "OM" }));
         }
     }
 }

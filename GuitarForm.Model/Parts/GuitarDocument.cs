@@ -22,7 +22,7 @@ namespace GuitarForm.Model.Parts
     // written, so an imported fretwire or string set has no Id: match it to the library by its name, or save it.
     //
     // Increase SchemaVersion whenever the shape of the document changes, and teach FromJson to read the older
-    // versions. Version 1 is DesignDocument's design, which is converted.
+    // versions. Version 1 is the first design document (instrument, body and soundhole), which is converted.
     public static class GuitarDocument
     {
         public const int SchemaVersion = 3;
@@ -77,7 +77,7 @@ namespace GuitarForm.Model.Parts
                 throw new FormatException($"Guitar document units must be \"{Units}\", not \"{units}\".");
 
             if (version == 1)
-                return FromDesignDocument(document);
+                return FromVersion1(document);
             var guitar = (Guitar)ReadPart(new Guitar(), document["guitar"] as JsonObject
                 ?? throw new FormatException("The guitar document has no guitar."));
             return new ReadResult(guitar,
@@ -86,7 +86,7 @@ namespace GuitarForm.Model.Parts
                 Array.Empty<string>());
         }
 
-        static ReadResult FromDesignDocument(JsonObject document)
+        static ReadResult FromVersion1(JsonObject document)
         {
             var guitar = FromDesign(document["design"] as JsonObject
                 ?? throw new FormatException("The design document has no design."));
@@ -227,7 +227,7 @@ namespace GuitarForm.Model.Parts
 
         // --- Version 1 ---
 
-        // DesignDocument's fields, with the abbreviations they became. This mapping is frozen: version 1 documents
+        // The version 1 document's fields, with the abbreviations they became. This mapping is frozen: version 1 documents
         // only ever had these fields, so don't extend it for new sections or fields.
         static readonly (string Section, string Field, string Abbreviation)[] DesignFields =
         {
@@ -242,7 +242,7 @@ namespace GuitarForm.Model.Parts
         };
 
         // Converts a version 1 design: its name, instrument, body and soundhole (the document's "newFields" is applied
-        // by FromDesignDocument).
+        // by FromVersion1).
         static Guitar FromDesign(JsonObject design)
         {
             if (design["instrument"] is not JsonObject)

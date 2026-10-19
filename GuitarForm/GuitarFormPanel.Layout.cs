@@ -12,7 +12,6 @@ using GuitarForm.Model;
 using GuitarForm.Model.Parameters;
 using GuitarForm.Model.Parts;
 using Rhino;
-using Body = GuitarForm.Model.Body;
 using GuitarDrawing = GuitarForm.Shapes.GuitarDrawing;
 using IPanel = Rhino.UI.IPanel;
 using ShowPanelReason = Rhino.UI.ShowPanelReason;

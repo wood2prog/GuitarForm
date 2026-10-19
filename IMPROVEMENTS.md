@@ -21,9 +21,9 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 
 - **Grasshopper is dropped.** Keeping track of many wired values, and saving a copy of them, was the problem. In the plug-in every part reads shared values from the one design.
 - **SQLite holds everything.** Opening a previous design rebuilds the model from the database.
-- **A design owns copies of its sections.** Each area (Instrument, Body, Soundhole, String set, ...) can also be saved as a named library preset. Loading a preset copies its values into the design, so editing a design never changes the library or other designs.
+- **A design owns copies of its sections.** The body, neck and bracing can also be saved as named copies in the library, and string sets and fretwires are library items. Loading a saved copy copies its values into the guitar, so editing a design never changes the library or other designs.
 - **Edits change a working copy.** Save, Save as and Revert write it to the library; switching or closing with unsaved changes asks first. `RecoveryStore` keeps unsaved work outside the library, so it can be offered back.
-- **Lengths are stored in millimeters** (database, presets, JSON, geometry) **and shown and typed in the Rhino document's units** everywhere in GuitarForm: the tab fields, dialogs, settings and messages. They're converted when drawn, too.
+- **Lengths are stored in millimeters** (database, saved copies, JSON, geometry) **and shown and typed in the Rhino document's units** everywhere in GuitarForm: the tab fields, dialogs, settings and messages. They're converted when drawn, too.
 - **Live preview while editing, plus a Build command.** The preview is drawn, not added to the document. Build writes real objects to GuitarForm layers and replaces those from the previous build of that design.
 - **One library database, kept locally, with backups to a synced folder.** The main copy is `%LOCALAPPDATA%\GuitarForm\GuitarForm.db` by default, which isn't synced, so OneDrive never sees a half-written file. Backups are written with SQLite's backup API to `Documents\GuitarForm\Backups` by default, which OneDrive syncs. Both locations are set on the Settings page, and kept in Rhino's plug-in settings rather than the database, since they're needed before it's opened.
 - **A design can be exported** as a structured JSON document that other programs can read.
@@ -108,7 +108,7 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 - [x] Remove the `UiMetrics` bypasses and dead code. Partly done: `ScreenScale` is gone and `NumberSlider`'s sizes are named in `UiMetrics`; `Scale` stays as a no-op wrapper. The bypasses in `SectionEditor.cs` and `Sections.cs` are left for the migration.
 - [x] Pick one spelling (American) across code and docs, including the UI text and CLAUDE.md. Rhino API names such as `DisplayColor` aren't affected.
 - [x] Fix the Strings tab's missing unsaved-changes prompt on switch. There is still no prompt on hide or close, by design, since Rhino's shutdown must not be blocked.
-- [ ] Make `CopyDesign`, `ImportDesign` and `SaveDesign` atomic with `NewFields` (resolved by the migration).
+- [x] Make `CopyDesign`, `ImportDesign` and `SaveDesign` atomic with `NewFields` (resolved by the migration).
 - [ ] Slider steps converted from mm look odd in inches (0.1 mm = 0.003937 in); snap to a sensible grid in non-mm units.
 - [ ] Tests for plug-in code (`NewFields.Delete`, `RequireNoInputErrors`, slider conversion) need Rhino-free code moved out of the .rhp.
 - [ ] Add tests for `NeckSideShape` parallel-line/near-parallel guards and the `BracingShape` unsupported segment (currently unreachable via the public API); add `InternalsVisibleTo` or a public seam for `Library.IsNameConflict` (`InternalsVisibleTo` is already in for Shapes).
@@ -139,16 +139,16 @@ The decisions behind the plug-in. The work they led to is done and in git histor
 - [ ] `ShapeSupport.BracingSlack` is used by the general-purpose `PolygonMath`; consider renaming it.
 - [ ] Long interpolated messages in the moved code need re-indenting (cosmetic).
 
-### Migration (needs product-owner sign-off and a senior-engineer plan first)
+### Migration (complete)
 
-- [ ] Move `NewFields` values into the library via `part_values` (fixes backup, restore, move and id reuse, with AUTOINCREMENT or equivalent).
-- [ ] Retire `GuitarDesign`, the `Sections.cs` vs `NewFields.Groups` duplication, and same-named legacy/new records.
-- [ ] Split `GuitarFormPanel` (a `DesignSession` class, and a `NewFieldBinding` per field replacing the parallel arrays).
-- [ ] Recovery ids need a kind prefix once guitars replace designs.
-- [ ] Save blank list items (`DotMarker`) so they round-trip.
-- [ ] Store the guitar name once (trimmed vs untrimmed IN), and make library item names collision-safe.
-- [ ] `SaveGuitar` and parse tolerate one bad `part_values` row.
-- [ ] The `NewFields` folder is shared by all library files in the same directory, and design ids are per library, so orphan cleanup was removed. Resolved by moving `NewFields` into the library.
+- [x] Move `NewFields` values into the library via `part_values` (fixes backup, restore, move and id reuse, with AUTOINCREMENT or equivalent).
+- [x] Retire `GuitarDesign`, the `Sections.cs` vs `NewFields.Groups` duplication, and same-named legacy/new records. Done: the old model, `DesignDocument`, `SectionTables` and the design/preset API of `Library` are deleted (the old tables stay in the file for a later migration to drop).
+- [x] Split `GuitarFormPanel` (a `DesignSession` class, and a `NewFieldBinding` per field replacing the parallel arrays).
+- [x] Recovery ids need a kind prefix once guitars replace designs.
+- [x] Save blank list items (`DotMarker`) so they round-trip.
+- [x] Store the guitar name once (trimmed vs untrimmed IN), and make library item names collision-safe.
+- [x] `SaveGuitar` and parse tolerate one bad `part_values` row.
+- [x] The `NewFields` folder is shared by all library files in the same directory, and design ids are per library, so orphan cleanup was removed. Resolved by moving `NewFields` into the library.
 
 ### Follow-ups from migration stage 1
 
@@ -210,3 +210,7 @@ These need the product owner's direction before any code is written.
 - [ ] A .tmp left by a crash mid-copy costs one spurious failure, then recovers.
 - [ ] No test for a read-only folder or a very long path.
 - [x] **(decision: yes)** `BackupScheduler.MoveLibrary` now moves the `*.before-v*.bak` and `.notes.txt` files too (`LibraryFiles.Move`); it aborts before changing anything if a destination name is taken.
+
+## Follow-ups from retiring the old model
+
+- [ ] Saved-copy drop-downs refresh only after their own Save as/Delete/library change, not when switching design or when a copy is saved from another row.
