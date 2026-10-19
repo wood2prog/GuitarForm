@@ -12,6 +12,15 @@ Short handoff for a new session. Update it at the end of each session. The full 
 
 ## Do next, in order
 
+Start here next session: the bridge's plan settings (product owner decision). Today only the bridge's heights exist (Bridge Height BRH, saddle height). Nothing defines the bridge's footprint seen from above, so the bridge patch (BPT, BPWO, BPO) isn't drawn and no brace heights are drawn (see docs/Bracing.md). Ask the product owner; don't guess at guitar geometry:
+1. Bridge width along the centerline (neck to tail)?
+2. Where the saddle sits within that width (distance from the neck-side edge, or centered)?
+3. Bridge length across the guitar (side to side): string spacing at the bridge plus an overhang each side?
+4. Shape: plain rectangle, or a profile such as tapered ends?
+5. Placement: positioned by the saddle, which the scale length already fixes?
+
+Then plan new fields (Glossary, Parameter definitions, GuitarFields, a shape, GuitarDrawing, docs, tests), draw the bridge and its patch.
+
 1. Bridge plan settings (width along the centerline, saddle position in it) so the bridge patch can be drawn. Needs a decision.
 2. UI polish: alignment and positioning in the panel. The owner will describe or screenshot what looks off.
 3. Limits on values, field by field with the owner, so nonsense values can't be entered. Then slider feel and per-field steps (including steps in inches).
